@@ -1677,6 +1677,7 @@ _docker_run() {
 		--stop-signal
 		--storage-opt
 		--tmpfs
+		--sysctl
 		--ulimit
 		--user -u
 		--userns

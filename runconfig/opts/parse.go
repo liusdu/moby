@@ -42,6 +42,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		flDevices           = opts.NewListOpts(ValidateDevice)
 
 		flUlimits = NewUlimitOpt(nil)
+		flSysctls = opts.NewMapOpts(nil, opts.ValidateSysctl)
 
 		flPublish           = opts.NewListOpts(nil)
 		flExpose            = opts.NewListOpts(nil)
@@ -131,6 +132,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 	cmd.Var(&flSecurityOpt, []string{"-security-opt"}, "Security Options")
 	cmd.Var(&flStorageOpt, []string{"-storage-opt"}, "Set storage driver options per container")
 	cmd.Var(flUlimits, []string{"-ulimit"}, "Ulimit options")
+	cmd.Var(flSysctls, []string{"-sysctl"}, "Sysctl options")
 	cmd.Var(&flLoggingOpts, []string{"-log-opt"}, "Log driver options")
 	cmd.Var(&flHugetlb, []string{"-hugetlb-limit"}, "Huge page limit (format: [size:]<limit>, e.g. --hugetlb-limit 2MB:32MB)")
 
@@ -436,6 +438,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		ShmSize:         shmSize,
 		Resources:       resources,
 		Tmpfs:           tmpfs,
+		Sysctls:         flSysctls.GetAll(),
 		ExternalRootfs:  *flExternalRootfs,
 		HookSpec:        *flHookSpec,
 		SystemContainer: *flSystemContainer,
