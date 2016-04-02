@@ -279,9 +279,10 @@ func (clnt *client) setExited(containerID string) error {
 	}
 
 	err := clnt.backend.StateChanged(containerID, StateInfo{
-		State:    StateExit,
-		ExitCode: exitCode,
-	})
+		CommonStateInfo: CommonStateInfo{
+			State:    StateExit,
+			ExitCode: exitCode,
+		}})
 
 	clnt.cleanupOldRootfs(containerID)
 
