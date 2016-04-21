@@ -776,21 +776,6 @@ var DefaultProfile = &types.Seccomp{
 			Args:   []*types.Arg{},
 		},
 		{
-			Name:   "mlock",
-			Action: types.ActAllow,
-			Args:   []*types.Arg{},
-		},
-		{
-			Name:   "mlock2",
-			Action: types.ActAllow,
-			Args:   []*types.Arg{},
-		},
-		{
-			Name:   "mlockall",
-			Action: types.ActAllow,
-			Args:   []*types.Arg{},
-		},
-		{
 			Name:   "mmap",
 			Action: types.ActAllow,
 			Args:   []*types.Arg{},
@@ -1625,11 +1610,6 @@ var DefaultProfile = &types.Seccomp{
 		},
 		{
 			Name:   "vfork",
-			Action: types.ActAllow,
-			Args:   []*types.Arg{},
-		},
-		{
-			Name:   "vhangup",
 			Action: types.ActAllow,
 			Args:   []*types.Arg{},
 		},
