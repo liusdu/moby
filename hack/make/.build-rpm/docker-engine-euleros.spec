@@ -39,7 +39,7 @@ Requires(preun): chkconfig
 Requires(preun): initscripts
 %endif
 
-BuildRequires: golang == 1.5.3
+BuildRequires: golang == 1.5.4
 BuildRequires: go-md2man
 BuildRequires: btrfs-progs-devel
 BuildRequires: device-mapper-devel
