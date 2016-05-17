@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Microsoft/go-winio"
 	"github.com/Microsoft/go-winio/archive/tar"
 	"github.com/Microsoft/go-winio/backuptar"
 	"github.com/Microsoft/hcsshim"
@@ -26,7 +27,6 @@ import (
 	"github.com/docker/docker/pkg/chrootarchive"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/ioutils"
-	"github.com/docker/docker/vendor/src/github.com/Microsoft/go-winio"
 	"github.com/vbatts/tar-split/tar/storage"
 )
 
