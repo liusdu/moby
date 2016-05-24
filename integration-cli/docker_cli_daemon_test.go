@@ -2171,7 +2171,7 @@ func (s *DockerSuite) TestDaemonDiscoveryBackendConfigReload(c *check.C) {
 }
 
 func (s *DockerDaemonSuite) TestBuildOnDisabledBridgeNetworkDaemon(c *check.C) {
-	err := s.d.Start("-b=none", "--iptables=false")
+	err := s.d.StartWithBusybox("-b=none", "--iptables=false")
 	c.Assert(err, check.IsNil)
 	s.d.c.Logf("dockerBinary %s", dockerBinary)
 	out, code, err := s.d.buildImageWithOut("busyboxs",
