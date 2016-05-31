@@ -132,6 +132,9 @@ func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (grap
 	case graphdriver.FsMagicOverlay:
 		logrus.Error("'overlay' is not supported over overlay.")
 		return nil, graphdriver.ErrIncompatibleFS
+	case graphdriver.FsMagicEcryptfs:
+		logrus.Error("'overlay' is not supported over eCryptfs.")
+		return nil, graphdriver.ErrIncompatibleFS
 	}
 
 	rootUID, rootGID, err := idtools.GetRootUIDGID(uidMaps, gidMaps)

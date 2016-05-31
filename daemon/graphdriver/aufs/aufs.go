@@ -55,6 +55,7 @@ var (
 	incompatibleFsMagic = []graphdriver.FsMagic{
 		graphdriver.FsMagicBtrfs,
 		graphdriver.FsMagicAufs,
+		graphdriver.FsMagicEcryptfs,
 	}
 	backingFs = "<unknown>"
 
