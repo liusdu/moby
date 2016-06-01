@@ -52,6 +52,7 @@ type remote struct {
 	pastEvents    map[string]*containerd.Event
 	runtimeArgs   []string
 	liveRestore   bool
+	daemonWaitCh  chan struct{}
 }
 
 // New creates a fresh instance of libcontainerd remote.
@@ -140,6 +141,7 @@ func (r *remote) handleConnectionChange() {
 					transientFailureCount = 0
 					if utils.IsProcessAlive(r.daemonPid) {
 						utils.KillProcess(r.daemonPid)
+						<-r.daemonWaitCh
 					}
 					if err := r.runContainerdDaemon(); err != nil { //FIXME: Handle error
 						logrus.Errorf("error restarting containerd: %v", err)
@@ -395,7 +397,11 @@ func (r *remote) runContainerdDaemon() error {
 		return err
 	}
 
-	go cmd.Wait() // Reap our child when needed
+	r.daemonWaitCh = make(chan struct{})
+	go func() {
+		cmd.Wait()
+		close(r.daemonWaitCh)
+	}() // Reap our child when needed
 	r.daemonPid = cmd.Process.Pid
 	return nil
 }
