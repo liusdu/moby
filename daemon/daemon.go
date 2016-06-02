@@ -129,6 +129,7 @@ type Daemon struct {
 	nameIndex                 *registrar.Registrar
 	linkIndex                 *linkIndex
 	containerd                libcontainerd.Client
+	containerdRemote          libcontainerd.Remote
 	defaultIsolation          containertypes.Isolation // Default isolation mode on Windows
 }
 
@@ -849,6 +850,7 @@ func NewDaemon(config *Config, registryService *registry.Service, containerdRemo
 
 	d.nameIndex = registrar.NewRegistrar()
 	d.linkIndex = newLinkIndex()
+	d.containerdRemote = containerdRemote
 
 	go d.execCommandGC()
 
@@ -906,6 +908,11 @@ func (daemon *Daemon) shutdownContainer(c *container.Container) error {
 // Shutdown stops the daemon.
 func (daemon *Daemon) Shutdown() error {
 	daemon.shutdown = true
+	// Keep mounts and networking running on daemon shutdown if
+	// we are to keep containers running and restore them.
+	if daemon.configStore.LiveRestore {
+		return nil
+	}
 	if daemon.containers != nil {
 		logrus.Debug("starting clean shutdown of all containers...")
 		daemon.containers.ApplyAll(func(c *container.Container) {
@@ -1634,6 +1641,7 @@ func (daemon *Daemon) initDiscovery(config *Config) error {
 // This are the settings that Reload changes:
 // - Daemon labels.
 // - Cluster discovery (reconfigure and restart).
+// - Daemon live restore
 func (daemon *Daemon) Reload(config *Config) error {
 	daemon.configStore.reloadLock.Lock()
 	defer daemon.configStore.reloadLock.Unlock()
@@ -1642,6 +1650,13 @@ func (daemon *Daemon) Reload(config *Config) error {
 	}
 	if config.IsValueSet("debug") {
 		daemon.configStore.Debug = config.Debug
+	}
+	if config.IsValueSet("live-restore") {
+		daemon.configStore.LiveRestore = config.LiveRestore
+		if err := daemon.containerdRemote.UpdateOptions(libcontainerd.WithLiveRestore(config.LiveRestore)); err != nil {
+			return err
+		}
+
 	}
 	return daemon.reloadClusterDiscovery(config)
 }
