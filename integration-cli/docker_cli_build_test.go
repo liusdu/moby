@@ -7159,3 +7159,17 @@ func (s *DockerSuite) TestBuildWithUTF8BOMDockerignore(c *check.C) {
 		c.Fatal(err)
 	}
 }
+
+// Test case for #23221
+func (s *DockerSuite) TestBuildWithUTF8BOM(c *check.C) {
+	name := "test-with-utf8-bom"
+	dockerfile := []byte(`FROM busybox`)
+	bomDockerfile := append([]byte{0xEF, 0xBB, 0xBF}, dockerfile...)
+	ctx, err := fakeContextFromNewTempDir()
+	c.Assert(err, check.IsNil)
+	defer ctx.Close()
+	err = ctx.addFile("Dockerfile", bomDockerfile)
+	c.Assert(err, check.IsNil)
+	_, err = buildImageFromContext(name, ctx, true)
+	c.Assert(err, check.IsNil)
+}
