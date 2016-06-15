@@ -10,6 +10,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
+	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1510,4 +1513,305 @@ func (s *DockerNetworkSuite) TestDockerNetworkCreateDeleteSpecialCharacters(c *c
 	assertNwIsAvailable(c, "kiwl$%^")
 	dockerCmd(c, "network", "rm", "kiwl$%^")
 	assertNwNotAvailable(c, "kiwl$%^")
+}
+
+func (s *DockerDaemonSuite) TestDaemonRestartRestoreBridgeNetwork(t *check.C) {
+	testRequires(t, DaemonIsLinux)
+	if err := s.d.StartWithBusybox(); err != nil {
+		t.Fatal(err)
+	}
+	defer s.d.Stop()
+	oldCon := "old"
+
+	_, err := s.d.Cmd("run", "-d", "--name", oldCon, "-p", "80:80", "busybox", "top")
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldContainerIP, err := s.d.Cmd("inspect", "-f", "{{ .NetworkSettings.Networks.bridge.IPAddress }}", oldCon)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Kill the daemon
+	if err := s.d.Kill(); err != nil {
+		t.Fatal(err)
+	}
+
+	// restart the daemon
+	if err := s.d.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	// start a new container, the new container's ip should not be the same with
+	// old running container.
+	newCon := "new"
+	_, err = s.d.Cmd("run", "-d", "--name", newCon, "busybox", "top")
+	if err != nil {
+		t.Fatal(err)
+	}
+	newContainerIP, err := s.d.Cmd("inspect", "-f", "{{ .NetworkSettings.Networks.bridge.IPAddress }}", newCon)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Compare(strings.TrimSpace(oldContainerIP), strings.TrimSpace(newContainerIP)) == 0 {
+		t.Fatalf("new container ip should not equal to old running container  ip")
+	}
+
+	// start a new container, the new container should ping old running container
+	_, err = s.d.Cmd("run", "-t", "busybox", "ping", "-c", "1", oldContainerIP)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// start a new container try to publist port 80:80 will failed
+	out, err := s.d.Cmd("run", "-p", "80:80", "-d", "busybox", "top")
+	if err == nil || !strings.Contains(out, "Bind for 0.0.0.0:80 failed: port is already allocated") {
+		t.Fatalf("80 port is allocated to old running container, it should failed on allocating to new container")
+	}
+
+	// kill old running container and try to allocate again
+	_, err = s.d.Cmd("kill", oldCon)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.d.Cmd("run", "-p", "80:80", "-d", "busybox", "top")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingStats(t *check.C) {
+	testRequires(t, SameHostDaemon)
+	testRequires(t, DaemonIsLinux)
+
+	if err := s.d.StartWithBusybox(); err != nil {
+		t.Fatal(err)
+	}
+	defer s.d.Stop()
+	tmpHost := os.Getenv("DOCKER_HOST")
+	defer func() {
+		os.Setenv("DOCKER_HOST", tmpHost)
+	}()
+
+	os.Setenv("DOCKER_HOST", s.d.sock())
+
+	conName := "test"
+	_, err := s.d.Cmd("run", "--name", conName, "-d", "busybox", "top")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Retrieve the container address
+	containerIP, err := s.d.Cmd("inspect", "-f", "{{ .NetworkSettings.Networks.bridge.IPAddress }}", conName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	numPings := 4
+
+	var preRxPackets uint64
+	var preTxPackets uint64
+	var postRxPackets uint64
+	var postTxPackets uint64
+
+	// Get the container networking stats before and after pinging the container
+	nwStatsPre := getNetworkStats(t, conName)
+	for _, v := range nwStatsPre {
+		preRxPackets += v.RxPackets
+		preTxPackets += v.TxPackets
+	}
+
+	// Kill the daemon
+	if err := s.d.Kill(); err != nil {
+		t.Fatal(err)
+	}
+
+	// restart the daemon
+	if err := s.d.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	countParam := "-c"
+	if runtime.GOOS == "windows" {
+		countParam = "-n" // Ping count parameter is -n on Windows
+	}
+	pingout, err := exec.Command("ping", containerIP, countParam, strconv.Itoa(numPings)).CombinedOutput()
+	if err != nil && runtime.GOOS == "linux" {
+		// If it fails then try a work-around, but just for linux.
+		// If this fails too then go back to the old error for reporting.
+		//
+		// The ping will sometimes fail due to an apparmor issue where it
+		// denies access to the libc.so.6 shared library - running it
+		// via /lib64/ld-linux-x86-64.so.2 seems to work around it.
+		pingout2, err2 := exec.Command("/lib64/ld-linux-x86-64.so.2", "/bin/ping", containerIP, "-c", strconv.Itoa(numPings)).CombinedOutput()
+		if err2 == nil {
+			pingout = pingout2
+			err = err2
+		}
+	}
+	t.Assert(err, checker.IsNil)
+	pingouts := string(pingout[:])
+	nwStatsPost := getNetworkStats(t, conName)
+	for _, v := range nwStatsPost {
+		postRxPackets += v.RxPackets
+		postTxPackets += v.TxPackets
+	}
+
+	// Verify the stats contain at least the expected number of packets (account for ARP)
+	expRxPkts := 1 + preRxPackets + uint64(numPings)
+	expTxPkts := 1 + preTxPackets + uint64(numPings)
+	t.Assert(postTxPackets, checker.GreaterOrEqualThan, expTxPkts,
+		check.Commentf("Reported less TxPackets than expected. Expected >= %d. Found %d. %s", expTxPkts, postTxPackets, pingouts))
+	t.Assert(postRxPackets, checker.GreaterOrEqualThan, expRxPkts,
+		check.Commentf("Reported less Txbytes than expected. Expected >= %d. Found %d. %s", expRxPkts, postRxPackets, pingouts))
+
+}
+
+func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingConnectDisconnect(t *check.C) {
+	testRequires(t, DaemonIsLinux)
+
+	if err := s.d.StartWithBusybox(); err != nil {
+		t.Fatal(err)
+	}
+	defer s.d.Stop()
+
+	contName := "old"
+
+	_, err := s.d.Cmd("run", "-d", "--name", contName, "busybox", "top")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.d.Cmd("network", "create", "foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.d.Cmd("network", "connect", "foo", contName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Kill the daemon
+	if err := s.d.Kill(); err != nil {
+		t.Fatal(err)
+	}
+
+	// restart the daemon
+	if err := s.d.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = s.d.Cmd("network", "disconnect", "foo", contName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = s.d.Cmd("network", "create", "bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = s.d.Cmd("network", "connect", "bar", contName)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingHostAndNone(t *check.C) {
+	testRequires(t, DaemonIsLinux)
+
+	if err := s.d.StartWithBusybox(); err != nil {
+		t.Fatal(err)
+	}
+	defer s.d.Stop()
+
+	out, err := s.d.Cmd("run", "-d", "--net", "host", "busybox", "top")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hostModeContId := strings.TrimSpace(out)
+
+	out, err = s.d.Cmd("run", "-d", "--net", "none", "busybox", "top")
+	if err != nil {
+		t.Fatal(err)
+	}
+	noneModeContId := strings.TrimSpace(out)
+
+	// Kill the daemon
+	if err := s.d.Kill(); err != nil {
+		t.Fatal(err)
+	}
+
+	// restart the daemon
+	if err := s.d.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err = s.d.Cmd("network", "inspect", "host")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, hostModeContId) {
+		t.Fatal("failed to restore host network mode container")
+	}
+
+	out, err = s.d.Cmd("network", "inspect", "none")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, noneModeContId) {
+		t.Fatal("failed to restore none network mode container")
+	}
+}
+
+func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingEmbedDns(t *check.C) {
+	testRequires(t, DaemonIsLinux)
+
+	if err := s.d.StartWithBusybox(); err != nil {
+		t.Fatal(err)
+	}
+	defer s.d.Stop()
+	contName1 := "foo"
+	contName2 := "bar"
+	contName3 := "bz"
+	networkName := "test"
+	_, err := s.d.Cmd("network", "create", networkName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = s.d.Cmd("run", "-tid", "--name", contName1, "--net", networkName, "busybox", "top")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.d.Cmd("run", "-tid", "--name", contName2, "--net", networkName, "busybox", "top")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Kill the daemon
+	if err := s.d.Kill(); err != nil {
+		t.Fatal(err)
+	}
+
+	// restart the daemon
+	if err := s.d.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = s.d.Cmd("exec", contName1, "ping", "-c", "1", contName2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.d.Cmd("run", "-tid", "--name", contName3, "--net", networkName, "busybox", "top")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = s.d.Cmd("exec", contName3, "ping", "-c", "1", contName1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.d.Cmd("exec", contName1, "ping", "-c", "1", contName3)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
