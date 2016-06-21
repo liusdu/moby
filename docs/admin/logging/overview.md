@@ -125,7 +125,7 @@ This option is ignored if the address protocol is not `tcp+tls`.
 This option is ignored if the address protocol is not `tcp+tls`.
 
 `syslog-tls-skip-verify` configures the TLS verification.
-This verification is enabled by default, but it can be overriden by setting
+This verification is enabled by default, but it can be overridden by setting
 this option to `true`. This option is ignored if the address protocol is not `tcp+tls`.
 
 By default, Docker uses the first 12 characters of the container ID to tag log messages.
