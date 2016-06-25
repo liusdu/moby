@@ -54,6 +54,8 @@ func (l *JSONFileLogger) readLogs(logWatcher *logger.LogWatcher, config logger.R
 			}
 			continue
 		}
+		defer f.Close()
+
 		files = append(files, f)
 	}
 
@@ -62,6 +64,7 @@ func (l *JSONFileLogger) readLogs(logWatcher *logger.LogWatcher, config logger.R
 		logWatcher.Err <- err
 		return
 	}
+	defer latestFile.Close()
 
 	if config.Tail != 0 {
 		tailer := ioutils.MultiReadSeeker(append(files, latestFile)...)

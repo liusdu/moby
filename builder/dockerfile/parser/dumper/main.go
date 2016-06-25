@@ -21,6 +21,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		defer f.Close()
 
 		ast, err := parser.Parse(f)
 		if err != nil {

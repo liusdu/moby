@@ -133,6 +133,7 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
+		defer f.Close()
 
 		var excludes []string
 		if err == nil {
