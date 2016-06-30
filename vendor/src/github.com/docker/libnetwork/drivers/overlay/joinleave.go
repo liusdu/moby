@@ -35,11 +35,11 @@ func (d *driver) Join(nid, eid string, sboxKey string, jinfo driverapi.JoinInfo,
 		return fmt.Errorf("couldn't get vxlan id for %q: %v", s.subnetIP.String(), err)
 	}
 
-	if err := n.joinSandbox(); err != nil {
+	if err := n.joinSandbox(false); err != nil {
 		return fmt.Errorf("network sandbox join failed: %v", err)
 	}
 
-	if err := n.joinSubnetSandbox(s); err != nil {
+	if err := n.joinSubnetSandbox(s, false); err != nil {
 		return fmt.Errorf("subnet sandbox join failed for %q: %v", s.subnetIP.String(), err)
 	}
 
@@ -56,6 +56,9 @@ func (d *driver) Join(nid, eid string, sboxKey string, jinfo driverapi.JoinInfo,
 
 	ep.ifName = containerIfName
 
+	if err := d.writeEndpointToStore(ep); err != nil {
+		return fmt.Errorf("failed to update overlay endpoint %s to local data store: %v", ep.id[0:7], err)
+	}
 	// Set the container interface and its peer MTU to 1450 to allow
 	// for 50 bytes vxlan encap (inner eth header(14) + outer IP(20) +
 	// outer UDP(8) + vxlan header(8))
