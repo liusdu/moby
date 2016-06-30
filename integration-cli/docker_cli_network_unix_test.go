@@ -873,7 +873,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkOverlayPortMapping(c *check.C) {
 }
 
 func (s *DockerNetworkSuite) TestDockerNetworkDriverUngracefulRestart(c *check.C) {
-	testRequires(c, DaemonIsLinux, NotUserNamespace)
+	testRequires(c, DaemonIsLinux, NotUserNamespace, NotExperimentalDaemon)
 	dnd := "dnd"
 	did := "did"
 
@@ -1516,7 +1516,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkCreateDeleteSpecialCharacters(c *c
 }
 
 func (s *DockerDaemonSuite) TestDaemonRestartRestoreBridgeNetwork(t *check.C) {
-	testRequires(t, DaemonIsLinux)
+	testRequires(t, DaemonIsLinux, ExperimentalDaemon)
 	if err := s.d.StartWithBusybox(); err != nil {
 		t.Fatal(err)
 	}
@@ -1580,8 +1580,7 @@ func (s *DockerDaemonSuite) TestDaemonRestartRestoreBridgeNetwork(t *check.C) {
 }
 
 func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingStats(t *check.C) {
-	testRequires(t, SameHostDaemon)
-	testRequires(t, DaemonIsLinux)
+	testRequires(t, SameHostDaemon, DaemonIsLinux, ExperimentalDaemon)
 
 	if err := s.d.StartWithBusybox(); err != nil {
 		t.Fatal(err)
@@ -1716,7 +1715,7 @@ func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingConnectDisconnect(
 }
 
 func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingHostAndNone(t *check.C) {
-	testRequires(t, DaemonIsLinux)
+	testRequires(t, DaemonIsLinux, ExperimentalDaemon)
 
 	if err := s.d.StartWithBusybox(); err != nil {
 		t.Fatal(err)
@@ -1763,7 +1762,7 @@ func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingHostAndNone(t *che
 }
 
 func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingEmbedDns(t *check.C) {
-	testRequires(t, DaemonIsLinux)
+	testRequires(t, DaemonIsLinux, ExperimentalDaemon)
 
 	if err := s.d.StartWithBusybox(); err != nil {
 		t.Fatal(err)

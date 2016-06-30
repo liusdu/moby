@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/utils"
 	"github.com/go-check/check"
 )
 
@@ -28,6 +29,14 @@ var (
 	DaemonIsLinux = testRequirement{
 		func() bool { return daemonPlatform == "linux" },
 		"Test requires a Linux daemon",
+	}
+	ExperimentalDaemon = testRequirement{
+		func() bool { return utils.ExperimentalBuild() },
+		"Test requires an experimental daemon",
+	}
+	NotExperimentalDaemon = testRequirement{
+		func() bool { return !utils.ExperimentalBuild() },
+		"Test requires a non experimental daemon",
 	}
 	NotArm = testRequirement{
 		func() bool { return os.Getenv("DOCKER_ENGINE_GOARCH") != "arm" },
