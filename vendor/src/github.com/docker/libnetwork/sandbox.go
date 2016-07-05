@@ -664,7 +664,7 @@ func (sb *sandbox) restoreOslSandbox() error {
 			}
 		}
 		if ep.needResolver() {
-			sb.startResolver()
+			sb.startResolver(true)
 		}
 	}
 
@@ -697,7 +697,7 @@ func (sb *sandbox) populateNetworkResources(ep *endpoint) error {
 	ep.Unlock()
 
 	if ep.needResolver() {
-		sb.startResolver()
+		sb.startResolver(false)
 	}
 
 	if i != nil && i.srcName != "" {
