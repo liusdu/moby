@@ -82,5 +82,7 @@ func (d *driver) DeleteEndpoint(nid, eid string) error {
 	if err := d.storeDelete(ep); err != nil {
 		logrus.Warnf("Failed to remove ipvlan endpoint %s from store: %v", ep.id[0:7], err)
 	}
+
+	n.deleteEndpoint(ep.id)
 	return nil
 }
