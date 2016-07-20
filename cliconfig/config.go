@@ -115,6 +115,12 @@ func (configFile *ConfigFile) LoadFromReader(configData io.Reader) error {
 		return err
 	}
 	for addr, ac := range configFile.AuthConfigs {
+		if ac.Auth == "" {
+			ac.ServerAddress = addr
+			configFile.AuthConfigs[addr] = ac
+			continue
+		}
+
 		data, err := base64.StdEncoding.DecodeString(ac.Auth)
 		if err != nil {
 			return err
@@ -225,6 +231,16 @@ func (configFile *ConfigFile) SaveToWriter(writer io.Writer) error {
 	tmpAuthConfigs := make(map[string]types.AuthConfig, len(configFile.AuthConfigs))
 	for k, authConfig := range configFile.AuthConfigs {
 		authCopy := authConfig
+
+		if authCopy.Username == "" && authCopy.Password == "" {
+			authCopy.Auth = ""
+			authCopy.Username = ""
+			authCopy.Password = ""
+			authCopy.ServerAddress = ""
+			tmpAuthConfigs[k] = authCopy
+			continue
+		}
+
 		encAuth, err := aes.AESEncrypt([]byte(encodeAuth(&authCopy)), aes.KEY_AES)
 		if err != nil {
 			return err
