@@ -1065,7 +1065,7 @@ func (n *network) ipamAllocate() error {
 		return nil
 	}
 
-	ipam, err := n.getController().getIpamDriver(n.ipamType)
+	ipam, _, err := n.getController().getIpamDriver(n.ipamType)
 	if err != nil {
 		return err
 	}
@@ -1189,7 +1189,7 @@ func (n *network) ipamRelease() {
 	if n.Type() == "host" || n.Type() == "null" {
 		return
 	}
-	ipam, err := n.getController().getIpamDriver(n.ipamType)
+	ipam, _, err := n.getController().getIpamDriver(n.ipamType)
 	if err != nil {
 		log.Warnf("Failed to retrieve ipam driver to release address pool(s) on delete of network %s (%s): %v", n.Name(), n.ID(), err)
 		return

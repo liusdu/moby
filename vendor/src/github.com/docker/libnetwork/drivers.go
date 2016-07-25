@@ -76,7 +76,7 @@ func initIpams(ic ipamapi.Callback, lDs, gDs interface{}) error {
 		remoteIpam.Init,
 		nullIpam.Init,
 	} {
-		if err := fn(ic, lDs, gDs); err != nil {
+		if err := fn(ic, nil, gDs); err != nil {
 			return err
 		}
 	}
