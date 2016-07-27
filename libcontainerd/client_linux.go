@@ -631,6 +631,8 @@ func (clnt *client) Restore(containerID string, attachStdio StdioCallback, optio
 		clnt.remote.Lock()
 		return nil
 	}
+	// relock because of the defer
+	clnt.remote.Lock()
 
 	clnt.deleteContainer(containerID)
 
