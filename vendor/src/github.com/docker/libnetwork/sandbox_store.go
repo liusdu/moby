@@ -246,6 +246,10 @@ func (c *controller) sandboxCleanup(activeSandboxes map[string]interface{}) {
 				}
 			}
 
+			if _, ok := activeSandboxes[sb.ID()]; ok && err != nil {
+				logrus.Errorf("failed to restore endpoint %s in %s for container %s due to %v", eps.Eid, eps.Nid, sb.ContainerID(), err)
+				continue
+			}
 			heap.Push(&sb.endpoints, ep)
 		}
 
