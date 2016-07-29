@@ -91,6 +91,7 @@ type connectivityConfiguration struct {
 
 type bridgeEndpoint struct {
 	id              string
+	nid             string
 	srcName         string
 	addr            *net.IPNet
 	addrv6          *net.IPNet
@@ -99,6 +100,8 @@ type bridgeEndpoint struct {
 	containerConfig *containerConfiguration
 	extConnConfig   *connectivityConfiguration
 	portMapping     []types.PortBinding // Operation port bindings
+	dbIndex         uint64
+	dbExists        bool
 }
 
 type bridgeNetwork struct {
@@ -583,13 +586,26 @@ func (d *driver) createNetwork(config *networkConfiguration) error {
 	defer osl.InitOSContext()()
 
 	networkList := d.getNetworks()
-	for _, nw := range networkList {
+	for i, nw := range networkList {
 		nw.Lock()
 		nwConfig := nw.config
 		nw.Unlock()
 		if err := nwConfig.Conflicts(config); err != nil {
-			return types.ForbiddenErrorf("cannot create network %s (%s): conflicts with network %s (%s): %s",
-				config.ID, config.BridgeName, nwConfig.ID, nwConfig.BridgeName, err.Error())
+			if config.DefaultBridge {
+				// We encountered and identified a stale default network
+				// We must delete it as libnetwork is the source of thruth
+				// The default network being created must be the only one
+				// This can happen only from docker 1.12 on ward
+				logrus.Infof("Removing stale default bridge network %s (%s)", nwConfig.ID, nwConfig.BridgeName)
+				if err := d.DeleteNetwork(nwConfig.ID); err != nil {
+					logrus.Warnf("Failed to remove stale default network: %s (%s): %v. Will remove from store.", nwConfig.ID, nwConfig.BridgeName, err)
+					d.storeDelete(nwConfig)
+				}
+				networkList = append(networkList[:i], networkList[i+1:]...)
+			} else {
+				return types.ForbiddenErrorf("cannot create network %s (%s): conflicts with network %s (%s): %s",
+					config.ID, config.BridgeName, nwConfig.ID, nwConfig.BridgeName, err.Error())
+			}
 		}
 	}
 
@@ -750,12 +766,6 @@ func (d *driver) DeleteNetwork(nid string) error {
 		return err
 	}
 
-	// Cannot remove network if endpoints are still present
-	if len(n.endpoints) != 0 {
-		err = ActiveEndpointsError(n.id)
-		return err
-	}
-
 	// We only delete the bridge when it's not the default bridge. This is keep the backward compatible behavior.
 	if !config.DefaultBridge {
 		if err := netlink.LinkDel(n.bridge.Link); err != nil {
@@ -873,7 +883,7 @@ func (d *driver) CreateEndpoint(nid, eid string, ifInfo driverapi.InterfaceInfo,
 
 	// Create and add the endpoint
 	n.Lock()
-	endpoint := &bridgeEndpoint{id: eid, config: epConfig}
+	endpoint := &bridgeEndpoint{id: eid, nid: nid, config: epConfig}
 	n.endpoints[eid] = endpoint
 	n.Unlock()
 
@@ -1000,6 +1010,10 @@ func (d *driver) CreateEndpoint(nid, eid string, ifInfo driverapi.InterfaceInfo,
 		}
 	}
 
+	if err = d.storeUpdate(endpoint); err != nil {
+		return fmt.Errorf("failed to save bridge endpoint %s to store: %v", endpoint.id[0:7], err)
+	}
+
 	return nil
 }
 
@@ -1059,7 +1073,9 @@ func (d *driver) DeleteEndpoint(nid, eid string) error {
 	if link, err := netlink.LinkByName(ep.srcName); err == nil {
 		netlink.LinkDel(link)
 	}
-
+	if err := d.storeDelete(ep); err != nil {
+		logrus.Warnf("Failed to remove bridge endpoint %s from store: %v", ep.id[0:7], err)
+	}
 	return nil
 }
 
@@ -1214,6 +1230,11 @@ func (d *driver) ProgramExternalConnectivity(nid, eid string, options map[string
 	endpoint.portMapping, err = network.allocatePorts(endpoint, network.config.DefaultBindingIP, d.config.EnableUserlandProxy)
 	if err != nil {
 		return err
+	}
+
+	if err = d.storeUpdate(endpoint); err != nil {
+		endpoint.portMapping = nil
+		return fmt.Errorf("failed to update bridge endpoint %s to store: %v", endpoint.id[0:7], err)
 	}
 
 	if !network.config.EnableICC {

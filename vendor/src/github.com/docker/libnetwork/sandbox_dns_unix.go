@@ -22,7 +22,7 @@ const (
 	filePerm      = 0644
 )
 
-func (sb *sandbox) startResolver() {
+func (sb *sandbox) startResolver(restore bool) {
 	sb.resolverOnce.Do(func() {
 		var err error
 		sb.resolver = NewResolver(sb)
@@ -32,10 +32,16 @@ func (sb *sandbox) startResolver() {
 			}
 		}()
 
-		err = sb.rebuildDNS()
-		if err != nil {
-			log.Errorf("Updating resolv.conf failed for container %s, %q", sb.ContainerID(), err)
-			return
+		// In the case of live restore container is already running with
+		// right resolv.conf contents created before. Just update the
+		// external DNS servers from the restored sandbox for embedded
+		// server to use.
+		if !restore {
+			err = sb.rebuildDNS()
+			if err != nil {
+				log.Errorf("Updating resolv.conf failed for container %s, %q", sb.ContainerID(), err)
+				return
+			}
 		}
 		sb.resolver.SetExtServers(sb.extDNS)
 
@@ -134,6 +140,16 @@ func (sb *sandbox) updateParentHosts() error {
 	}
 
 	return nil
+}
+
+func (sb *sandbox) restorePath() {
+	if sb.config.resolvConfPath == "" {
+		sb.config.resolvConfPath = defaultPrefix + "/" + sb.id + "/resolv.conf"
+	}
+	sb.config.resolvConfHashFile = sb.config.resolvConfPath + ".hash"
+	if sb.config.hostsPath == "" {
+		sb.config.hostsPath = defaultPrefix + "/" + sb.id + "/hosts"
+	}
 }
 
 func (sb *sandbox) setupDNS() error {

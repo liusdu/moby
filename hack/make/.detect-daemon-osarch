@@ -48,7 +48,7 @@ case "${DOCKER_ENGINE_GOARCH:-$DOCKER_CLIENT_GOARCH}" in
 esac
 export PACKAGE_ARCH
 
-DOCKERFILE='Dockerfile'
+DOCKERFILE='Dockerfile.huawei'
 TEST_IMAGE_NAMESPACE=
 case "$PACKAGE_ARCH" in
 	amd64)

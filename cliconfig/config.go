@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/docker/aes"
 	"github.com/docker/docker/pkg/homedir"
 	"github.com/docker/engine-api/types"
 )
@@ -110,9 +111,27 @@ func (configFile *ConfigFile) LoadFromReader(configData io.Reader) error {
 	if err := json.NewDecoder(configData).Decode(&configFile); err != nil {
 		return err
 	}
-	var err error
+	if err := aes.InitAESKey(); err != nil {
+		return err
+	}
 	for addr, ac := range configFile.AuthConfigs {
-		ac.Username, ac.Password, err = decodeAuth(ac.Auth)
+		if ac.Auth == "" {
+			ac.ServerAddress = addr
+			configFile.AuthConfigs[addr] = ac
+			continue
+		}
+
+		data, err := base64.StdEncoding.DecodeString(ac.Auth)
+		if err != nil {
+			return err
+		}
+
+		decAuth, err := aes.AESDecrypt([]byte(data), aes.KEY_AES)
+		if err != nil {
+			return err
+		}
+
+		ac.Username, ac.Password, err = decodeAuth(string(decAuth))
 		if err != nil {
 			return err
 		}
@@ -205,12 +224,28 @@ func Load(configDir string) (*ConfigFile, error) {
 // SaveToWriter encodes and writes out all the authorization information to
 // the given writer
 func (configFile *ConfigFile) SaveToWriter(writer io.Writer) error {
+	if err := aes.InitAESKey(); err != nil {
+		return err
+	}
 	// Encode sensitive data into a new/temp struct
 	tmpAuthConfigs := make(map[string]types.AuthConfig, len(configFile.AuthConfigs))
 	for k, authConfig := range configFile.AuthConfigs {
 		authCopy := authConfig
-		// encode and save the authstring, while blanking out the original fields
-		authCopy.Auth = encodeAuth(&authCopy)
+
+		if authCopy.Username == "" && authCopy.Password == "" {
+			authCopy.Auth = ""
+			authCopy.Username = ""
+			authCopy.Password = ""
+			authCopy.ServerAddress = ""
+			tmpAuthConfigs[k] = authCopy
+			continue
+		}
+
+		encAuth, err := aes.AESEncrypt([]byte(encodeAuth(&authCopy)), aes.KEY_AES)
+		if err != nil {
+			return err
+		}
+		authCopy.Auth = base64.StdEncoding.EncodeToString(encAuth)
 		authCopy.Username = ""
 		authCopy.Password = ""
 		authCopy.ServerAddress = ""

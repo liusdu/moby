@@ -616,8 +616,8 @@ func configureKernelSecuritySupport(config *Config, driverName string) error {
 	return nil
 }
 
-func (daemon *Daemon) initNetworkController(config *Config) (libnetwork.NetworkController, error) {
-	netOptions, err := daemon.networkOptions(config)
+func (daemon *Daemon) initNetworkController(config *Config, activeSandboxes map[string]interface{}) (libnetwork.NetworkController, error) {
+	netOptions, err := daemon.networkOptions(config, activeSandboxes)
 	if err != nil {
 		return nil, err
 	}
@@ -627,14 +627,23 @@ func (daemon *Daemon) initNetworkController(config *Config) (libnetwork.NetworkC
 		return nil, fmt.Errorf("error obtaining controller instance: %v", err)
 	}
 
+	if len(activeSandboxes) > 0 {
+		logrus.Infof("There are old running containers, the network config will not take affect")
+		return controller, nil
+	}
+
 	// Initialize default network on "null"
-	if _, err := controller.NewNetwork("null", "none", libnetwork.NetworkOptionPersist(false)); err != nil {
-		return nil, fmt.Errorf("Error creating default \"null\" network: %v", err)
+	if n, _ := controller.NetworkByName("none"); n == nil {
+		if _, err := controller.NewNetwork("null", "none", libnetwork.NetworkOptionPersist(true)); err != nil {
+			return nil, fmt.Errorf("Error creating default \"null\" network: %v", err)
+		}
 	}
 
 	// Initialize default network on "host"
-	if _, err := controller.NewNetwork("host", "host", libnetwork.NetworkOptionPersist(false)); err != nil {
-		return nil, fmt.Errorf("Error creating default \"host\" network: %v", err)
+	if n, _ := controller.NetworkByName("host"); n == nil {
+		if _, err := controller.NewNetwork("host", "host", libnetwork.NetworkOptionPersist(true)); err != nil {
+			return nil, fmt.Errorf("Error creating default \"host\" network: %v", err)
+		}
 	}
 
 	if !config.DisableBridge {

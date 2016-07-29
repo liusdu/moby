@@ -133,7 +133,7 @@ func configureMaxThreads(config *Config) error {
 	return nil
 }
 
-func (daemon *Daemon) initNetworkController(config *Config) (libnetwork.NetworkController, error) {
+func (daemon *Daemon) initNetworkController(config *Config, activeSandboxes map[string]interface{}) (libnetwork.NetworkController, error) {
 	// TODO Windows: Remove this check once TP4 is no longer supported
 	osv, err := system.GetOSVersion()
 	if err != nil {
@@ -149,7 +149,7 @@ func (daemon *Daemon) initNetworkController(config *Config) (libnetwork.NetworkC
 		return nil, nil
 	}
 
-	netOptions, err := daemon.networkOptions(config)
+	netOptions, err := daemon.networkOptions(config, nil)
 	if err != nil {
 		return nil, err
 	}

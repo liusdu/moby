@@ -185,7 +185,9 @@ func New(cfgOptions ...config.Option) (NetworkController, error) {
 		return nil, err
 	}
 
-	c.sandboxCleanup()
+	c.reservePools()
+
+	c.sandboxCleanup(c.cfg.ActiveSandboxes)
 	c.cleanupLocalEndpoints()
 	c.networkCleanup()
 
@@ -194,6 +196,72 @@ func New(cfgOptions ...config.Option) (NetworkController, error) {
 	}
 
 	return c, nil
+}
+
+func (c *controller) reservePools() {
+	networks, err := c.getNetworksForScope(datastore.LocalScope)
+	if err != nil {
+		log.Warnf("Could not retrieve networks from local store during ipam allocation for existing networks: %v", err)
+		return
+	}
+
+	for _, n := range networks {
+		if !doReplayPoolReserve(n) {
+			continue
+		}
+		// Construct pseudo configs for the auto IP case
+		autoIPv4 := (len(n.ipamV4Config) == 0 || (len(n.ipamV4Config) == 1 && n.ipamV4Config[0].PreferredPool == "")) && len(n.ipamV4Info) > 0
+		autoIPv6 := (len(n.ipamV6Config) == 0 || (len(n.ipamV6Config) == 1 && n.ipamV6Config[0].PreferredPool == "")) && len(n.ipamV6Info) > 0
+		if autoIPv4 {
+			n.ipamV4Config = []*IpamConf{{PreferredPool: n.ipamV4Info[0].Pool.String()}}
+		}
+		if n.enableIPv6 && autoIPv6 {
+			n.ipamV6Config = []*IpamConf{{PreferredPool: n.ipamV6Info[0].Pool.String()}}
+		}
+		// Account current network gateways
+		for i, c := range n.ipamV4Config {
+			if c.Gateway == "" && n.ipamV4Info[i].Gateway != nil {
+				c.Gateway = n.ipamV4Info[i].Gateway.IP.String()
+			}
+		}
+		for i, c := range n.ipamV6Config {
+			if c.Gateway == "" && n.ipamV6Info[i].Gateway != nil {
+				c.Gateway = n.ipamV6Info[i].Gateway.IP.String()
+			}
+		}
+		if err := n.ipamAllocate(); err != nil {
+			log.Warnf("Failed to allocate ipam pool(s) for network %q (%s): %v", n.Name(), n.ID(), err)
+		}
+
+		// Reserve existing endpoints' addresses
+		ipam, _, err := n.getController().getIpamDriver(n.ipamType)
+		if err != nil {
+			log.Warnf("Failed to retrieve ipam driver for network %q (%s) during address reservation", n.Name(), n.ID())
+			continue
+		}
+		epl, err := n.getEndpointsFromStore()
+		if err != nil {
+			log.Warnf("Failed to retrieve list of current endpoints on network %q (%s)", n.Name(), n.ID())
+			continue
+		}
+		for _, ep := range epl {
+			if err := ep.assignAddress(ipam, true, ep.Iface().AddressIPv6() != nil); err != nil {
+				log.Warnf("Failed to reserve current adress for endpoint %q (%s) on network %q (%s)",
+					ep.Name(), ep.ID(), n.Name(), n.ID())
+			}
+		}
+
+	}
+
+}
+
+func doReplayPoolReserve(n *network) bool {
+	_, caps, err := n.getController().getIpamDriver(n.ipamType)
+	if err != nil {
+		log.Warnf("Failed to retrieve ipam driver for network %q (%s): %v", n.Name(), n.ID(), err)
+		return false
+	}
+	return caps.RequiresRequestReplay
 }
 
 var procReloadConfig = make(chan (bool), 1)
@@ -467,7 +535,6 @@ func (c *controller) NewNetwork(networkType, name string, options ...NetworkOpti
 			network.ipamRelease()
 		}
 	}()
-
 	if err = c.addNetwork(network); err != nil {
 		return nil, err
 	}
@@ -629,7 +696,7 @@ func (c *controller) NewSandbox(containerID string, options ...SandboxOption) (S
 
 	if sb.config.useDefaultSandBox {
 		c.sboxOnce.Do(func() {
-			c.defOsSbox, err = osl.NewSandbox(sb.Key(), false)
+			c.defOsSbox, err = osl.NewSandbox(sb.Key(), false, false)
 		})
 
 		if err != nil {
@@ -641,7 +708,7 @@ func (c *controller) NewSandbox(containerID string, options ...SandboxOption) (S
 	}
 
 	if sb.osSbox == nil && !sb.config.useExternalKey {
-		if sb.osSbox, err = osl.NewSandbox(sb.Key(), !sb.config.useDefaultSandBox); err != nil {
+		if sb.osSbox, err = osl.NewSandbox(sb.Key(), !sb.config.useDefaultSandBox, false); err != nil {
 			return nil, fmt.Errorf("failed to create new osl sandbox: %v", err)
 		}
 	}
@@ -791,12 +858,12 @@ func (c *controller) getIPAM(name string) (id *ipamData, err error) {
 	return id, err
 }
 
-func (c *controller) getIpamDriver(name string) (ipamapi.Ipam, error) {
+func (c *controller) getIpamDriver(name string) (ipamapi.Ipam, *ipamapi.Capability, error) {
 	id, err := c.getIPAM(name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return id.driver, nil
+	return id.driver, id.capability, nil
 }
 
 func (c *controller) getIpamDrivers() ipamTable {

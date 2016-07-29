@@ -8,7 +8,7 @@ import (
 
 // Stub implementations for DNS related functions
 
-func (sb *sandbox) startResolver() {
+func (sb *sandbox) startResolver(bool) {
 }
 
 func (sb *sandbox) setupResolutionFiles() error {
@@ -29,4 +29,7 @@ func (sb *sandbox) deleteHostsEntries(recs []etchosts.Record) {
 
 func (sb *sandbox) updateDNS(ipv6Enabled bool) error {
 	return nil
+}
+
+func (sb *sandbox) restorePath() {
 }
