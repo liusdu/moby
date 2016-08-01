@@ -32,6 +32,7 @@ func (s *DockerSuite) TestInfoEnsureSucceeds(c *check.C) {
 		"Storage Driver:",
 		"Volume:",
 		"Network:",
+		"Live Restore Enabled:",
 	}
 
 	if utils.ExperimentalBuild() {
