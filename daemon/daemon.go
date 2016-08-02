@@ -308,7 +308,9 @@ func (daemon *Daemon) restore() error {
 					if err != nil {
 						logrus.Warnf("Failed build sandbox option to restore container %s: %v", c.ID, err)
 					}
+					mapLock.Lock()
 					activeSandboxes[c.NetworkSettings.SandboxID] = options
+					mapLock.Unlock()
 				}
 			}
 			// fixme: only if not running
