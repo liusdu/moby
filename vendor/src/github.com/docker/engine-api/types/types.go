@@ -251,6 +251,7 @@ type Info struct {
 	ServerVersion      string
 	ClusterStore       string
 	ClusterAdvertise   string
+	LiveRestore        bool
 }
 
 // PluginsInfo is a temp struct holding Plugins name

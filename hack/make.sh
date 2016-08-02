@@ -80,6 +80,10 @@ VERSION=$(< ./VERSION)
 if command -v git &> /dev/null && git rev-parse &> /dev/null; then
 	GITCOMMIT=$(git rev-parse --short HEAD)
 	if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+	# Due to the obs system can't pack .gitignore file on building rpms,
+	# to avoid the unsupported suffix in the GITCOMMIT in docker version,
+	# we add this line to check if the modified files are .gitignore.
+	( git status --porcelain --untracked-files=no | awk {'print $2'} | while read line; do if [[ ! `echo $line | grep "/.gitignore"` ]];  then exit 1;fi; done ) || {
 		GITCOMMIT="$GITCOMMIT-unsupported"
 		echo "#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 		echo "# GITCOMMIT = $GITCOMMIT"
@@ -89,6 +93,7 @@ if command -v git &> /dev/null && git rev-parse &> /dev/null; then
 		echo "# Here is the current list:"
 		git status --porcelain --untracked-files=no
 		echo "#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+	}
 	fi
 	! BUILDTIME=$(date --rfc-3339 ns | sed -e 's/ /T/') &> /dev/null
 	if [ -z $BUILDTIME ]; then

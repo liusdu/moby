@@ -8,12 +8,13 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	containerd "github.com/docker/containerd/api/grpc/types"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/mount"
-	"github.com/opencontainers/specs/specs-go"
+	specs "github.com/opencontainers/specs/specs-go"
 	"golang.org/x/net/context"
 )
 
@@ -24,6 +25,7 @@ type client struct {
 	remote        *remote
 	q             queue
 	exitNotifiers map[string]*exitNotifier
+	liveRestore   bool
 }
 
 func (clnt *client) AddProcess(containerID, processFriendlyName string, specp Process) error {
@@ -279,9 +281,10 @@ func (clnt *client) setExited(containerID string) error {
 	}
 
 	err := clnt.backend.StateChanged(containerID, StateInfo{
-		State:    StateExit,
-		ExitCode: exitCode,
-	})
+		CommonStateInfo: CommonStateInfo{
+			State:    StateExit,
+			ExitCode: exitCode,
+		}})
 
 	clnt.cleanupOldRootfs(containerID)
 
@@ -377,6 +380,116 @@ func (clnt *client) getOrCreateExitNotifier(containerID string) *exitNotifier {
 		clnt.exitNotifiers[containerID] = w
 	}
 	return w
+}
+
+func (clnt *client) restore(cont *containerd.Container, options ...CreateOption) (err error) {
+	clnt.lock(cont.Id)
+	defer clnt.unlock(cont.Id)
+
+	logrus.Debugf("restore container %s state %s", cont.Id, cont.Status)
+
+	containerID := cont.Id
+	if _, err := clnt.getContainer(containerID); err == nil {
+		return fmt.Errorf("container %s is already active", containerID)
+	}
+
+	defer func() {
+		if err != nil {
+			clnt.deleteContainer(cont.Id)
+		}
+	}()
+
+	container := clnt.newContainer(cont.BundlePath, options...)
+	container.systemPid = systemPid(cont)
+
+	var terminal bool
+	for _, p := range cont.Processes {
+		if p.Pid == InitFriendlyName {
+			terminal = p.Terminal
+		}
+	}
+
+	iopipe, err := container.openFifos(terminal)
+	if err != nil {
+		return err
+	}
+
+	if err := clnt.backend.AttachStreams(containerID, *iopipe); err != nil {
+		return err
+	}
+
+	clnt.appendContainer(container)
+
+	err = clnt.backend.StateChanged(containerID, StateInfo{
+		CommonStateInfo: CommonStateInfo{
+			State: StateRestore,
+			Pid:   container.systemPid,
+		}})
+
+	if err != nil {
+		return err
+	}
+
+	if event, ok := clnt.remote.pastEvents[containerID]; ok {
+		// This should only be a pause or resume event
+		if event.Type == StatePause || event.Type == StateResume {
+			return clnt.backend.StateChanged(containerID, StateInfo{
+				CommonStateInfo: CommonStateInfo{
+					State: event.Type,
+					Pid:   container.systemPid,
+				}})
+		}
+
+		logrus.Warnf("unexpected backlog event: %#v", event)
+	}
+
+	return nil
+}
+
+func (clnt *client) Restore(containerID string, options ...CreateOption) error {
+	if clnt.liveRestore {
+		cont, err := clnt.getContainerdContainer(containerID)
+		if err == nil && cont.Status != "stopped" {
+			if err := clnt.restore(cont, options...); err != nil {
+				logrus.Errorf("error restoring %s: %v", containerID, err)
+			}
+			return nil
+		}
+		return clnt.setExited(containerID)
+	}
+
+	cont, err := clnt.getContainerdContainer(containerID)
+	if err == nil && cont.Status != "stopped" {
+		w := clnt.getOrCreateExitNotifier(containerID)
+		clnt.lock(cont.Id)
+		container := clnt.newContainer(cont.BundlePath)
+		container.systemPid = systemPid(cont)
+		clnt.appendContainer(container)
+		clnt.unlock(cont.Id)
+
+		container.discardFifos()
+
+		if err := clnt.Signal(containerID, int(syscall.SIGTERM)); err != nil {
+			logrus.Errorf("error sending sigterm to %v: %v", containerID, err)
+		}
+		select {
+		case <-time.After(10 * time.Second):
+			if err := clnt.Signal(containerID, int(syscall.SIGKILL)); err != nil {
+				logrus.Errorf("error sending sigkill to %v: %v", containerID, err)
+			}
+			select {
+			case <-time.After(2 * time.Second):
+			case <-w.wait():
+				return nil
+			}
+		case <-w.wait():
+			return nil
+		}
+	}
+
+	clnt.deleteContainer(containerID)
+
+	return clnt.setExited(containerID)
 }
 
 type exitNotifier struct {

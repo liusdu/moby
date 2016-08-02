@@ -129,6 +129,7 @@ type Daemon struct {
 	nameIndex                 *registrar.Registrar
 	linkIndex                 *linkIndex
 	containerd                libcontainerd.Client
+	containerdRemote          libcontainerd.Remote
 	defaultIsolation          containertypes.Isolation // Default isolation mode on Windows
 }
 
@@ -298,11 +299,6 @@ func (daemon *Daemon) restore() error {
 		go func(c *container.Container) {
 			defer wg.Done()
 			if c.IsRunning() || c.IsPaused() {
-				// Fix activityCount such that graph mounts can be unmounted later
-				if err := daemon.layerStore.ReinitRWLayer(c.RWLayer); err != nil {
-					logrus.Errorf("Failed to ReinitRWLayer for %s due to %s", c.ID, err)
-					return
-				}
 				if err := daemon.containerd.Restore(c.ID, libcontainerd.WithRestartManager(c.RestartManager(true))); err != nil {
 					logrus.Errorf("Failed to restore with containerd: %q", err)
 					return
@@ -854,6 +850,7 @@ func NewDaemon(config *Config, registryService *registry.Service, containerdRemo
 
 	d.nameIndex = registrar.NewRegistrar()
 	d.linkIndex = newLinkIndex()
+	d.containerdRemote = containerdRemote
 
 	go d.execCommandGC()
 
@@ -911,6 +908,11 @@ func (daemon *Daemon) shutdownContainer(c *container.Container) error {
 // Shutdown stops the daemon.
 func (daemon *Daemon) Shutdown() error {
 	daemon.shutdown = true
+	// Keep mounts and networking running on daemon shutdown if
+	// we are to keep containers running and restore them.
+	if daemon.configStore.LiveRestore {
+		return nil
+	}
 	if daemon.containers != nil {
 		logrus.Debug("starting clean shutdown of all containers...")
 		daemon.containers.ApplyAll(func(c *container.Container) {
@@ -1579,8 +1581,27 @@ func (daemon *Daemon) GetContainerStats(container *container.Container) (*types.
 	return stats, nil
 }
 
+// Resolve Network SandboxID in case the container reuse another container's network stack
+func (daemon *Daemon) getNetworkSandboxID(c *container.Container) (string, error) {
+	curr := c
+	for curr.HostConfig.NetworkMode.IsContainer() {
+		containerID := curr.HostConfig.NetworkMode.ConnectedContainer()
+		connected, err := daemon.GetContainer(containerID)
+		if err != nil {
+			return "", fmt.Errorf("Could not get container for %s", containerID)
+		}
+		curr = connected
+	}
+	return curr.NetworkSettings.SandboxID, nil
+}
+
 func (daemon *Daemon) getNetworkStats(c *container.Container) (map[string]types.NetworkStats, error) {
-	sb, err := daemon.netController.SandboxByID(c.NetworkSettings.SandboxID)
+	sandboxID, err := daemon.getNetworkSandboxID(c)
+	if err != nil {
+		return nil, err
+	}
+
+	sb, err := daemon.netController.SandboxByID(sandboxID)
 	if err != nil {
 		return nil, err
 	}
@@ -1639,6 +1660,7 @@ func (daemon *Daemon) initDiscovery(config *Config) error {
 // This are the settings that Reload changes:
 // - Daemon labels.
 // - Cluster discovery (reconfigure and restart).
+// - Daemon live restore
 func (daemon *Daemon) Reload(config *Config) error {
 	daemon.configStore.reloadLock.Lock()
 	defer daemon.configStore.reloadLock.Unlock()
@@ -1647,6 +1669,13 @@ func (daemon *Daemon) Reload(config *Config) error {
 	}
 	if config.IsValueSet("debug") {
 		daemon.configStore.Debug = config.Debug
+	}
+	if config.IsValueSet("live-restore") {
+		daemon.configStore.LiveRestore = config.LiveRestore
+		if err := daemon.containerdRemote.UpdateOptions(libcontainerd.WithLiveRestore(config.LiveRestore)); err != nil {
+			return err
+		}
+
 	}
 	return daemon.reloadClusterDiscovery(config)
 }

@@ -151,5 +151,6 @@ func (cli *DockerCli) CmdInfo(args ...string) error {
 	if info.ClusterAdvertise != "" {
 		fmt.Fprintf(cli.out, "Cluster advertise: %s\n", info.ClusterAdvertise)
 	}
+	fmt.Fprintf(cli.out, "Live Restore Enabled: %v\n", info.LiveRestore)
 	return nil
 }
