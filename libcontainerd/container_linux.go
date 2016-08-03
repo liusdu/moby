@@ -122,6 +122,7 @@ func (ctr *container) handleEvent(e *containerd.Event) error {
 	defer ctr.client.unlock(ctr.containerID)
 	switch e.Type {
 	case StateExit, StatePause, StateResume, StateOOM:
+		var waitRestart chan error
 		st := StateInfo{
 			CommonStateInfo: CommonStateInfo{
 				State:    e.Type,
@@ -144,26 +145,7 @@ func (ctr *container) handleEvent(e *containerd.Event) error {
 				st.State = StateRestart
 				ctr.restarting = true
 				ctr.client.deleteContainer(e.Id)
-				go func() {
-					err := <-wait
-					ctr.client.lock(ctr.containerID)
-					defer ctr.client.unlock(ctr.containerID)
-					ctr.restarting = false
-					if err != nil {
-						st.State = StateExit
-						ctr.clean()
-						ctr.client.q.append(e.Id, func() {
-							if err := ctr.client.backend.StateChanged(e.Id, st); err != nil {
-								logrus.Error(err)
-							}
-						})
-						if err != restartmanager.ErrRestartCanceled {
-							logrus.Error(err)
-						}
-					} else {
-						ctr.start()
-					}
-				}()
+				waitRestart = wait
 			}
 		}
 
@@ -178,8 +160,31 @@ func (ctr *container) handleEvent(e *containerd.Event) error {
 		}
 		ctr.client.q.append(e.Id, func() {
 			if err := ctr.client.backend.StateChanged(e.Id, st); err != nil {
-				logrus.Error(err)
+				logrus.Errorf("libcontainerd: backend.StateChanged(): %v", err)
 			}
+			if st.State == StateRestart {
+				go func() {
+					err := <-waitRestart
+					ctr.client.lock(ctr.containerID)
+					defer ctr.client.unlock(ctr.containerID)
+					ctr.restarting = false
+					if err != nil {
+						st.State = StateExit
+						ctr.clean()
+						ctr.client.q.append(e.Id, func() {
+							if err := ctr.client.backend.StateChanged(e.Id, st); err != nil {
+								logrus.Errorf("libcontainerd: %v", err)
+							}
+						})
+						if err != restartmanager.ErrRestartCanceled {
+							logrus.Errorf("libcontainerd: %v", err)
+						}
+					} else {
+						ctr.start()
+					}
+				}()
+			}
+
 			if e.Type == StatePause || e.Type == StateResume {
 				ctr.pauseMonitor.handle(e.Type)
 			}
@@ -191,7 +196,7 @@ func (ctr *container) handleEvent(e *containerd.Event) error {
 		})
 
 	default:
-		logrus.Debugf("event unhandled: %+v", e)
+		logrus.Debugf("libcontainerd: event unhandled: %+v", e)
 	}
 	return nil
 }
