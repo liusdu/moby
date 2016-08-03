@@ -203,14 +203,16 @@ func (ctr *container) waitExit(pid uint32, processFriendlyName string, isFirstPr
 			err := <-waitRestart
 			ctr.restarting = false
 			ctr.client.deleteContainer(ctr.friendlyName)
+			if err == nil {
+				if err = ctr.client.Create(ctr.containerID, ctr.ociSpec, ctr.options...); err != nil {
+					logrus.Errorf("libcontainerd: error restarting %v", err)
+				}
+			}
 			if err != nil {
 				si.State = StateExit
 				if err := ctr.client.backend.StateChanged(ctr.containerID, si); err != nil {
 					logrus.Error(err)
 				}
-				logrus.Error(err)
-			} else {
-				ctr.client.Create(ctr.containerID, ctr.ociSpec, ctr.options...)
 			}
 		}()
 	}
