@@ -15,8 +15,14 @@ import (
 
 var KEY_AES []byte
 
-func InitAESKey() error {
-	filename := filepath.Join(homedir.Get(), ".docker/aeskey")
+func InitAESKey(dir string) error {
+	var filename string
+	if dir != "" {
+		filename = filepath.Join(dir, ".docker/aeskey")
+	} else {
+		filename = filepath.Join(homedir.Get(), ".docker/aeskey")
+	}
+
 	if _, err := os.Stat(filename); err == nil {
 		if KEY_AES, err = ioutil.ReadFile(filename); err != nil {
 			return err
