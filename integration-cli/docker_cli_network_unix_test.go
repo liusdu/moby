@@ -1556,6 +1556,10 @@ func (s *DockerDaemonSuite) TestDaemonRestartRestoreBridgeNetwork(t *check.C) {
 		t.Fatalf("new container ip should not equal to old running container  ip")
 	}
 
+	_, err = s.d.Cmd("kill", newCon)
+	if err != nil {
+		t.Fatal(err)
+	}
 	// start a new container, the new container should ping old running container
 	_, err = s.d.Cmd("run", "-t", "busybox", "ping", "-c", "1", oldContainerIP)
 	if err != nil {
@@ -1573,10 +1577,16 @@ func (s *DockerDaemonSuite) TestDaemonRestartRestoreBridgeNetwork(t *check.C) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = s.d.Cmd("run", "-p", "80:80", "-d", "busybox", "top")
+	con1 := "con1"
+	_, err = s.d.Cmd("run", "--name", con1, "-p", "80:80", "-d", "busybox", "top")
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, err = s.d.Cmd("kill", con1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 }
 
 func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingStats(t *check.C) {
@@ -1662,6 +1672,10 @@ func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingStats(t *check.C) 
 		check.Commentf("Reported less TxPackets than expected. Expected >= %d. Found %d. %s", expTxPkts, postTxPackets, pingouts))
 	t.Assert(postRxPackets, checker.GreaterOrEqualThan, expRxPkts,
 		check.Commentf("Reported less Txbytes than expected. Expected >= %d. Found %d. %s", expRxPkts, postRxPackets, pingouts))
+	_, err = s.d.Cmd("kill", conName)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 }
 
@@ -1712,6 +1726,10 @@ func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingConnectDisconnect(
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, err = s.d.Cmd("kill", contName)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingHostAndNone(t *check.C) {
@@ -1758,6 +1776,10 @@ func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingHostAndNone(t *che
 	}
 	if !strings.Contains(out, noneModeContId) {
 		t.Fatal("failed to restore none network mode container")
+	}
+	_, err = s.d.Cmd("kill", hostModeContId, noneModeContId)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -1810,6 +1832,10 @@ func (s *DockerDaemonSuite) TestDaemonRestartRestoreNetworkingEmbedDns(t *check.
 		t.Fatal(err)
 	}
 	_, err = s.d.Cmd("exec", contName1, "ping", "-c", "1", contName3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.d.Cmd("kill", contName1, contName2, contName3)
 	if err != nil {
 		t.Fatal(err)
 	}

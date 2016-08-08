@@ -130,8 +130,7 @@ depending on a particular stack or provider.
 
 %build
 export AUTO_GOPATH=1
-export DOCKER_EXPERIMENTAL=1
-export DOCKER_BUILDTAGS="seccomp selinux"
+export DOCKER_BUILDTAGS="pkcs11 seccomp selinux"
 export DOCKER_GITCOMMIT=%{_gitcommit}
 ./hack/make.sh dynbinary
 # ./man/md2man-all.sh runs outside the build container (if at all), since we don't have go-md2man here

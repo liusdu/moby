@@ -155,7 +155,7 @@ func (d *Driver) Get(id, mountLabel string) (string, error) {
 	mp := path.Join(d.home, "mnt", id)
 	rootFs := path.Join(mp, "rootfs")
 	if count := d.ctr.Increment(mp); count > 1 {
-		return mp, nil
+		return rootFs, nil
 	}
 
 	uid, gid, err := idtools.GetRootUIDGID(d.uidMaps, d.gidMaps)

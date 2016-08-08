@@ -308,7 +308,9 @@ func (daemon *Daemon) restore() error {
 					if err != nil {
 						logrus.Warnf("Failed build sandbox option to restore container %s: %v", c.ID, err)
 					}
+					mapLock.Lock()
 					activeSandboxes[c.NetworkSettings.SandboxID] = options
+					mapLock.Unlock()
 				}
 			}
 			// fixme: only if not running
@@ -910,9 +912,13 @@ func (daemon *Daemon) Shutdown() error {
 	daemon.shutdown = true
 	// Keep mounts and networking running on daemon shutdown if
 	// we are to keep containers running and restore them.
-	if daemon.configStore.LiveRestore {
-		return nil
+	if daemon.configStore.LiveRestore && daemon.containers != nil {
+		// check if there are any running containers, if none we should do some cleanup
+		if ls, err := daemon.Containers(&types.ContainerListOptions{}); len(ls) != 0 || err != nil {
+			return nil
+		}
 	}
+
 	if daemon.containers != nil {
 		logrus.Debug("starting clean shutdown of all containers...")
 		daemon.containers.ApplyAll(func(c *container.Container) {
