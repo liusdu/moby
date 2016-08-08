@@ -1,6 +1,6 @@
 # Some bits borrowed from the openstack-selinux package
 %global _version 1.11.2
-%global _release 0.0.20160317.005653.git90765d3
+%global _release 0.0.20160808.005653.gita4a7aee
 Name: docker-engine-selinux
 Version: %{_version}
 Release: %{_release}%{?dist}

@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.11.2.1 (2016-08-08)
+
++ Initial version based on v1.11.2
+- Bunch of bugfixes backported from docker upstream
+- Bunch of bugfixes bachported from containerd and runc upstream
+- Add support for hot upgrade (enabled by --live-restore)
+- Add support for login information encryption
 
 Feature details:
 - hot upgrade
