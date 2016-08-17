@@ -74,7 +74,7 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 	}
 	defer func() {
 		if retErr != nil {
-			if err := daemon.cleanupContainer(container, true); err != nil {
+			if err := daemon.cleanupContainer(container, true, true); err != nil {
 				logrus.Errorf("failed to cleanup container on create error: %v", err)
 			}
 		}
@@ -100,13 +100,6 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 	if err := daemon.setHostConfig(container, params.HostConfig); err != nil {
 		return nil, err
 	}
-	defer func() {
-		if retErr != nil {
-			if err := daemon.removeMountPoints(container, true); err != nil {
-				logrus.Error(err)
-			}
-		}
-	}()
 
 	if err := daemon.createContainerPlatformSpecificSettings(container, params.Config, params.HostConfig); err != nil {
 		return nil, err
