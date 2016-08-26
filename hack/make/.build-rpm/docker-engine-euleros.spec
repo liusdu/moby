@@ -1,6 +1,6 @@
 %global _version 1.11.2.2
 %global _release 0.0.20160826.005653.git107b2ad
-%global _origversion 1.11.2.2
+%global _origversion 1.11.2
 
 Name: docker-engine
 Version: %{_version}
