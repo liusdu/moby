@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.2.2 (2016-08-26)
+
+- Fix inspect network show gateway with mask
+- Fix paused state error after several restarts
+- Fix paused state error after several restarts
+
 ## v1.11.2.1 (2016-08-08)
 
 + Initial version based on v1.11.2
