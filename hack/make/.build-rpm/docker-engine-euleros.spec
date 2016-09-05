@@ -12,8 +12,6 @@ License: ASL 2.0
 Source: %{name}.tar.gz
 
 URL: https://dockerproject.org
-Vendor: Docker
-Packager: Docker <support@docker.com>
 
 # is_systemd conditional
 %if 0%{?fedora} >= 21 || 0%{?centos} >= 7 || 0%{?rhel} >= 7 || 0%{?suse_version} >= 1210
