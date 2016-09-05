@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.2.3 (2016-09-05)
+
+- Fix original version in spec
+- Fix upgrade on systemd
+- Remove vendor info in euleros spec
+
 ## v1.11.2.2 (2016-08-26)
 
 - Fix inspect network show gateway with mask
