@@ -12,8 +12,6 @@ License: GPLv2
 Source: %{name}.tar.gz
 
 URL: https://dockerproject.org
-Vendor: Docker
-Packager: Docker <support@docker.com>
 
 # Version of SELinux we were using
 %if 0%{?fedora} == 20
