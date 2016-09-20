@@ -10,6 +10,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	containerd "github.com/docker/containerd/api/grpc/types"
+	"github.com/docker/docker/pkg/ioutils"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/net/context"
 )
@@ -69,10 +70,23 @@ func (ctr *container) start() error {
 	if err != nil {
 		return nil
 	}
+	createChan := make(chan struct{})
 	iopipe, err := ctr.openFifos(spec.Process.Terminal)
 	if err != nil {
 		return err
 	}
+
+	// we need to delay stdin closure after container start or else "stdin close"
+	// event will be rejected by containerd.
+	// stdin closure happens in AttachStreams
+	stdin := iopipe.Stdin
+	iopipe.Stdin = ioutils.NewWriteCloserWrapper(stdin, func() error {
+		go func() {
+			<-createChan
+			stdin.Close()
+		}()
+		return nil
+	})
 
 	r := &containerd.CreateContainerRequest{
 		Id:         ctr.containerID,
@@ -85,16 +99,20 @@ func (ctr *container) start() error {
 	}
 	ctr.client.appendContainer(ctr)
 
-	resp, err := ctr.client.remote.apiClient.CreateContainer(context.Background(), r)
-	if err != nil {
+	if err := ctr.client.backend.AttachStreams(ctr.containerID, *iopipe); err != nil {
+		close(createChan)
 		ctr.closeFifos(iopipe)
 		return err
 	}
 
-	if err := ctr.client.backend.AttachStreams(ctr.containerID, *iopipe); err != nil {
+	resp, err := ctr.client.remote.apiClient.CreateContainer(context.Background(), r)
+	if err != nil {
+		close(createChan)
+		ctr.closeFifos(iopipe)
 		return err
 	}
 	ctr.systemPid = systemPid(resp.Container)
+	close(createChan)
 
 	return ctr.client.backend.StateChanged(ctr.containerID, StateInfo{
 		CommonStateInfo: CommonStateInfo{
