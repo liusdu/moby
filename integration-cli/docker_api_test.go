@@ -95,7 +95,7 @@ func (s *DockerSuite) TestApiDockerApiVersion(c *check.C) {
 
 	c.Assert(svrVersion, check.Equals, "/vxxx/version")
 
-	if !strings.Contains(out, "API version:  xxx") {
+	if !strings.Contains(out, "API version:    xxx") {
 		c.Fatalf("Out didn't have 'xxx' for the API version, had:\n%s", out)
 	}
 }

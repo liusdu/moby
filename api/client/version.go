@@ -16,22 +16,24 @@ import (
 )
 
 var versionTemplate = `Client:
- Version:      {{.Client.Version}}
- API version:  {{.Client.APIVersion}}
- Go version:   {{.Client.GoVersion}}
- Git commit:   {{.Client.GitCommit}}
- Built:        {{.Client.BuildTime}}
- OS/Arch:      {{.Client.Os}}/{{.Client.Arch}}{{if .Client.Experimental}}
- Experimental: {{.Client.Experimental}}{{end}}{{if .ServerOK}}
+ Version:        {{.Client.Version}}
+ UnicornVersion: {{.Client.UnicornVersion}}
+ API version:    {{.Client.APIVersion}}
+ Go version:     {{.Client.GoVersion}}
+ Git commit:     {{.Client.GitCommit}}
+ Built:          {{.Client.BuildTime}}
+ OS/Arch:        {{.Client.Os}}/{{.Client.Arch}}{{if .Client.Experimental}}
+ Experimental:   {{.Client.Experimental}}{{end}}{{if .ServerOK}}
 
 Server:
- Version:      {{.Server.Version}}
- API version:  {{.Server.APIVersion}}
- Go version:   {{.Server.GoVersion}}
- Git commit:   {{.Server.GitCommit}}
- Built:        {{.Server.BuildTime}}
- OS/Arch:      {{.Server.Os}}/{{.Server.Arch}}{{if .Server.Experimental}}
- Experimental: {{.Server.Experimental}}{{end}}{{end}}`
+ Version:        {{.Server.Version}}
+ UnicornVersion: {{.Server.UnicornVersion}}
+ API version:    {{.Server.APIVersion}}
+ Go version:     {{.Server.GoVersion}}
+ Git commit:     {{.Server.GitCommit}}
+ Built:          {{.Server.BuildTime}}
+ OS/Arch:        {{.Server.Os}}/{{.Server.Arch}}{{if .Server.Experimental}}
+ Experimental:   {{.Server.Experimental}}{{end}}{{end}}`
 
 // CmdVersion shows Docker version information.
 //
@@ -58,14 +60,15 @@ func (cli *DockerCli) CmdVersion(args ...string) (err error) {
 
 	vd := types.VersionResponse{
 		Client: &types.Version{
-			Version:      dockerversion.Version,
-			APIVersion:   cli.client.ClientVersion(),
-			GoVersion:    runtime.Version(),
-			GitCommit:    dockerversion.GitCommit,
-			BuildTime:    dockerversion.BuildTime,
-			Os:           runtime.GOOS,
-			Arch:         runtime.GOARCH,
-			Experimental: utils.ExperimentalBuild(),
+			Version:        dockerversion.Version,
+			UnicornVersion: dockerversion.UnicornVersion,
+			APIVersion:     cli.client.ClientVersion(),
+			GoVersion:      runtime.Version(),
+			GitCommit:      dockerversion.GitCommit,
+			BuildTime:      dockerversion.BuildTime,
+			Os:             runtime.GOOS,
+			Arch:           runtime.GOARCH,
+			Experimental:   utils.ExperimentalBuild(),
 		},
 	}
 

@@ -77,6 +77,7 @@ DEFAULT_BUNDLES=(
 )
 
 VERSION=$(< ./VERSION)
+VERSION_UNICORN=$(< ./VERSION-UNICORN)
 if command -v git &> /dev/null && git rev-parse &> /dev/null; then
 	GITCOMMIT=$(git rev-parse --short HEAD)
 	if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
