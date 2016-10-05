@@ -12,7 +12,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/errors"
-	"github.com/docker/docker/libcontainerd"
 	"github.com/docker/docker/runconfig"
 	containertypes "github.com/docker/engine-api/types/container"
 )
@@ -74,23 +73,23 @@ func (daemon *Daemon) ContainerStart(name string, hostConfig *containertypes.Hos
 		return err
 	}
 
-	return daemon.containerStart(container)
+	return daemon.containerStart(container, true)
 }
 
 // Start starts a container
 func (daemon *Daemon) Start(container *container.Container) error {
-	return daemon.containerStart(container)
+	return daemon.containerStart(container, true)
 }
 
 // containerStart prepares the container to run by setting up everything the
 // container needs, such as storage and networking, as well as links
 // between containers. The container is left waiting for a signal to
 // begin running.
-func (daemon *Daemon) containerStart(container *container.Container) (err error) {
+func (daemon *Daemon) containerStart(container *container.Container, resetRestartManager bool) (err error) {
 	container.Lock()
 	defer container.Unlock()
 
-	if container.Running {
+	if resetRestartManager && container.Running { // skip this check if already in restarting step and resetRestartManager==false
 		return nil
 	}
 
@@ -135,7 +134,11 @@ func (daemon *Daemon) containerStart(container *container.Container) (err error)
 		return err
 	}
 
-	if err := daemon.containerd.Create(container.ID, *spec, libcontainerd.WithRestartManager(container.RestartManager(true))); err != nil {
+	if resetRestartManager {
+		container.ResetRestartManager(true)
+	}
+
+	if err := daemon.containerd.Create(container.ID, *spec); err != nil {
 		errDesc := grpc.ErrorDesc(err)
 		logrus.Errorf("Create container failed with error: %s", errDesc)
 		// if we receive an internal error from the initial start of a container then lets
@@ -154,6 +157,7 @@ func (daemon *Daemon) containerStart(container *container.Container) (err error)
 		// start event is logged even on error
 		daemon.LogContainerEvent(container, "start")
 		return fmt.Errorf("%s", errDesc)
+
 	}
 
 	return nil

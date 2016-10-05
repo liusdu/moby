@@ -300,9 +300,11 @@ func (daemon *Daemon) restore() error {
 		wg.Add(1)
 		go func(c *container.Container) {
 			defer wg.Done()
+
 			if c.IsRunning() || c.IsPaused() {
-				if err := daemon.containerd.Restore(c.ID, libcontainerd.WithRestartManager(c.RestartManager(true))); err != nil {
-					logrus.Errorf("Failed to restore with containerd: %q", err)
+				c.RestartManager().Cancel() // manually start containers because some need to wait for swarm networking
+				if err := daemon.containerd.Restore(c.ID); err != nil {
+					logrus.Errorf("Failed to restore %s with containerd: %s", c.ID, err)
 					return
 				}
 
@@ -319,8 +321,10 @@ func (daemon *Daemon) restore() error {
 					if err := daemon.Unmount(c); err != nil {
 						logrus.Warnf("Failed to umount container on getting BaseFs path %v: %v", c.ID, err)
 					}
+
 				}
 
+				c.ResetRestartManager(false)
 				if !c.HostConfig.NetworkMode.IsContainer() && c.IsRunning() {
 					options, err := daemon.buildSandboxOptions(c)
 					if err != nil {
@@ -333,7 +337,7 @@ func (daemon *Daemon) restore() error {
 			}
 			// fixme: only if not running
 			// get list of containers we need to restart
-			if daemon.configStore.AutoRestart && !c.IsRunning() && !c.IsPaused() && c.ShouldRestartOnBoot() {
+			if daemon.configStore.AutoRestart && !c.IsRunning() && !c.IsPaused() && c.ShouldRestart() {
 				mapLock.Lock()
 				restartContainers[c] = make(chan struct{})
 				mapLock.Unlock()
@@ -398,7 +402,7 @@ func (daemon *Daemon) restore() error {
 
 			// Make sure networks are available before starting
 			daemon.waitForNetworks(c)
-			if err := daemon.containerStart(c); err != nil {
+			if err := daemon.containerStart(c, true); err != nil {
 				logrus.Errorf("Failed to start container %s: %s", c.ID, err)
 			}
 			close(chNotify)
