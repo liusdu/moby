@@ -127,4 +127,6 @@ clone git google.golang.org/cloud dae7e3d993bc3812a2185af60552bb6b847e52a0 https
 
 # containerd
 clone git github.com/docker/containerd 9dc2b3273db42c75368988a3885a3afd770069d9
+clone git github.com/tonistiigi/fifo 8c56881ce5e63e19e2dfc495c8af0fb90916467d
+
 clean
