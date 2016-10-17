@@ -9,12 +9,15 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
 
 	"github.com/docker/docker/daemon/graphdriver"
+	"github.com/docker/docker/daemon/graphdriver/overlayutils"
 	"github.com/docker/docker/pkg/archive"
+	"github.com/docker/docker/pkg/fsutils"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/locker"
 	"github.com/opencontainers/runc/libcontainer/label"
@@ -88,11 +91,12 @@ func (d *naiveDiffDriverWithApply) ApplyDiff(id, parent string, diff archive.Rea
 
 // Driver contains information about the home directory and the list of active mounts that are created using this driver.
 type Driver struct {
-	home    string
-	uidMaps []idtools.IDMap
-	gidMaps []idtools.IDMap
-	ctr     *graphdriver.RefCounter
-	locker  *locker.Locker
+	home          string
+	uidMaps       []idtools.IDMap
+	gidMaps       []idtools.IDMap
+	ctr           *graphdriver.RefCounter
+	locker        *locker.Locker
+	supportsDType bool
 }
 
 var backingFs = "<unknown>"
@@ -146,12 +150,22 @@ func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (grap
 		return nil, err
 	}
 
+	supportsDType, err := fsutils.SupportsDType(home)
+	if err != nil {
+		return nil, err
+	}
+	if !supportsDType {
+		// not a fatal error until v1.16 (#27443)
+		logrus.Warn(overlayutils.ErrDTypeNotSupported("overlay", backingFs))
+	}
+
 	d := &Driver{
-		home:    home,
-		uidMaps: uidMaps,
-		gidMaps: gidMaps,
-		ctr:     graphdriver.NewRefCounter(graphdriver.NewFsChecker(graphdriver.FsMagicOverlay)),
-		locker:  locker.New(),
+		home:          home,
+		uidMaps:       uidMaps,
+		gidMaps:       gidMaps,
+		ctr:           graphdriver.NewRefCounter(graphdriver.NewFsChecker(graphdriver.FsMagicOverlay)),
+		locker:        locker.New(),
+		supportsDType: supportsDType,
 	}
 
 	return NaiveDiffDriverWithApply(d, uidMaps, gidMaps), nil
@@ -187,6 +201,7 @@ func (d *Driver) String() string {
 func (d *Driver) Status() [][2]string {
 	return [][2]string{
 		{"Backing Filesystem", backingFs},
+		{"Supports d_type", strconv.FormatBool(d.supportsDType)},
 	}
 }
 
