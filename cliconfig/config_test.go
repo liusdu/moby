@@ -1,12 +1,14 @@
 package cliconfig
 
 import (
+	"encoding/base64"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/docker/docker/aes"
 	"github.com/docker/docker/pkg/homedir"
 	"github.com/docker/engine-api/types"
 )
@@ -143,6 +145,31 @@ email`: "Invalid auth configuration file",
 	}
 }
 
+func getAESKey(dir string) ([]byte, error) {
+	if dir == "" {
+		dir = homedir.Get()
+	}
+	aes.InitAESKey(dir)
+
+	if aesKey, err := ioutil.ReadFile(filepath.Join(dir, ".docker/aeskey")); err != nil {
+		return nil, err
+	} else {
+		return aesKey, nil
+	}
+}
+
+func getEncryptedString(message string) (string, error) {
+	aesKey, err := getAESKey("/root")
+	if err != nil {
+		return "", err
+	}
+	encryptedAuth, err := aes.AESEncrypt([]byte(message), aesKey)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(encryptedAuth), nil
+}
+
 func TestOldValidAuth(t *testing.T) {
 	tmpHome, err := ioutil.TempDir("", "config-test")
 	if err != nil {
@@ -180,16 +207,21 @@ func TestOldValidAuth(t *testing.T) {
 	// Now save it and make sure it shows up in new form
 	configStr := saveConfigAndValidateNewFormat(t, config, tmpHome)
 
+	encryptedAuthBase64, err := getEncryptedString("am9lam9lOmhlbGxv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	expConfStr := `{
 	"auths": {
 		"https://index.docker.io/v1/": {
-			"auth": "am9lam9lOmhlbGxv"
+			"auth": "` + string(encryptedAuthBase64) + `"
 		}
 	}
 }`
 
-	if configStr != expConfStr {
-		t.Fatalf("Should have save in new form: \n%s\n not \n%s", configStr, expConfStr)
+	if configStr == expConfStr {
+		t.Fatalf("Should not have the encrypted credential the same because of the random IV: \n%s\n should not \n%s", configStr, expConfStr)
 	}
 }
 
@@ -233,6 +265,12 @@ func TestOldJson(t *testing.T) {
 	os.Setenv(homeKey, tmpHome)
 
 	fn := filepath.Join(tmpHome, oldConfigfile)
+
+	encryptedAuthBase64, err := getEncryptedString("am9lam9lOmhlbGxv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	js := `{"https://index.docker.io/v1/":{"auth":"am9lam9lOmhlbGxv","email":"user@example.com"}}`
 	if err := ioutil.WriteFile(fn, []byte(js), 0600); err != nil {
 		t.Fatal(err)
@@ -254,14 +292,14 @@ func TestOldJson(t *testing.T) {
 	expConfStr := `{
 	"auths": {
 		"https://index.docker.io/v1/": {
-			"auth": "am9lam9lOmhlbGxv",
+			"auth": "` + encryptedAuthBase64 + `",
 			"email": "user@example.com"
 		}
 	}
 }`
 
-	if configStr != expConfStr {
-		t.Fatalf("Should have save in new form: \n'%s'\n not \n'%s'\n", configStr, expConfStr)
+	if configStr == expConfStr {
+		t.Fatalf("Should not have the encrypted credential the same because of the random IV: \n%s\n should not \n%s", configStr, expConfStr)
 	}
 }
 
@@ -273,7 +311,13 @@ func TestNewJson(t *testing.T) {
 	defer os.RemoveAll(tmpHome)
 
 	fn := filepath.Join(tmpHome, ConfigFileName)
-	js := ` { "auths": { "https://index.docker.io/v1/": { "auth": "am9lam9lOmhlbGxv" } } }`
+
+	encryptedAuthBase64, err := getEncryptedString("am9lam9lOmhlbGxv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	js := ` { "auths": { "https://index.docker.io/v1/": { "auth": "` + encryptedAuthBase64 + `" } } }`
 	if err := ioutil.WriteFile(fn, []byte(js), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -294,13 +338,13 @@ func TestNewJson(t *testing.T) {
 	expConfStr := `{
 	"auths": {
 		"https://index.docker.io/v1/": {
-			"auth": "am9lam9lOmhlbGxv"
+			"auth": "` + encryptedAuthBase64 + `"
 		}
 	}
 }`
 
-	if configStr != expConfStr {
-		t.Fatalf("Should have save in new form: \n%s\n not \n%s", configStr, expConfStr)
+	if configStr == expConfStr {
+		t.Fatalf("Should not have the encrypted credential the same because of the random IV: \n%s\n should not \n%s", configStr, expConfStr)
 	}
 }
 
@@ -311,8 +355,13 @@ func TestNewJsonNoEmail(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpHome)
 
+	encryptedAuthBase64, err := getEncryptedString("am9lam9lOmhlbGxv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	fn := filepath.Join(tmpHome, ConfigFileName)
-	js := ` { "auths": { "https://index.docker.io/v1/": { "auth": "am9lam9lOmhlbGxv" } } }`
+	js := ` { "auths": { "https://index.docker.io/v1/": { "auth": "` + encryptedAuthBase64 + `" } } }`
 	if err := ioutil.WriteFile(fn, []byte(js), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -333,13 +382,13 @@ func TestNewJsonNoEmail(t *testing.T) {
 	expConfStr := `{
 	"auths": {
 		"https://index.docker.io/v1/": {
-			"auth": "am9lam9lOmhlbGxv"
+			"auth": "` + encryptedAuthBase64 + `"
 		}
 	}
 }`
 
-	if configStr != expConfStr {
-		t.Fatalf("Should have save in new form: \n%s\n not \n%s", configStr, expConfStr)
+	if configStr == expConfStr {
+		t.Fatalf("Should not have the encrypted credential the same because of the random IV: \n%s\n should not \n%s", configStr, expConfStr)
 	}
 }
 
@@ -351,8 +400,14 @@ func TestJsonWithPsFormat(t *testing.T) {
 	defer os.RemoveAll(tmpHome)
 
 	fn := filepath.Join(tmpHome, ConfigFileName)
+
+	encryptedAuthBase64, err := getEncryptedString("am9lam9lOmhlbGxv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	js := `{
-		"auths": { "https://index.docker.io/v1/": { "auth": "am9lam9lOmhlbGxv", "email": "user@example.com" } },
+		"auths": { "https://index.docker.io/v1/": { "auth": "` + encryptedAuthBase64 + `", "email": "user@example.com" } },
 		"psFormat": "table {{.ID}}\\t{{.Label \"com.docker.label.cpu\"}}"
 }`
 	if err := ioutil.WriteFile(fn, []byte(js), 0600); err != nil {
@@ -421,7 +476,12 @@ func TestConfigFile(t *testing.T) {
 }
 
 func TestJsonReaderNoFile(t *testing.T) {
-	js := ` { "auths": { "https://index.docker.io/v1/": { "auth": "am9lam9lOmhlbGxv", "email": "user@example.com" } } }`
+	encryptedAuthBase64, err := getEncryptedString("am9lam9lOmhlbGxv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	js := ` { "auths": { "https://index.docker.io/v1/": { "auth": "` + encryptedAuthBase64 + `", "email": "user@example.com" } } }`
 
 	config, err := LoadFromReader(strings.NewReader(js))
 	if err != nil {
@@ -432,7 +492,6 @@ func TestJsonReaderNoFile(t *testing.T) {
 	if ac.Username != "joejoe" || ac.Password != "hello" {
 		t.Fatalf("Missing data from parsing:\n%q", config)
 	}
-
 }
 
 func TestOldJsonReaderNoFile(t *testing.T) {
@@ -450,8 +509,13 @@ func TestOldJsonReaderNoFile(t *testing.T) {
 }
 
 func TestJsonWithPsFormatNoFile(t *testing.T) {
+	encryptedAuthBase64, err := getEncryptedString("am9lam9lOmhlbGxv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	js := `{
-		"auths": { "https://index.docker.io/v1/": { "auth": "am9lam9lOmhlbGxv", "email": "user@example.com" } },
+		"auths": { "https://index.docker.io/v1/": { "auth": "` + encryptedAuthBase64 + `", "email": "user@example.com" } },
 		"psFormat": "table {{.ID}}\\t{{.Label \"com.docker.label.cpu\"}}"
 }`
 	config, err := LoadFromReader(strings.NewReader(js))
@@ -466,8 +530,19 @@ func TestJsonWithPsFormatNoFile(t *testing.T) {
 }
 
 func TestJsonSaveWithNoFile(t *testing.T) {
+	tmpHome, err := ioutil.TempDir("", "config-test")
+	if err != nil {
+		t.Fatalf("Failed to create a temp dir: %q", err)
+	}
+	defer os.RemoveAll(tmpHome)
+
+	encryptedAuthBase64, err := getEncryptedString("am9lam9lOmhlbGxv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	js := `{
-		"auths": { "https://index.docker.io/v1/": { "auth": "am9lam9lOmhlbGxv" } },
+		"auths": { "https://index.docker.io/v1/": { "auth": "` + encryptedAuthBase64 + `" } },
 		"psFormat": "table {{.ID}}\\t{{.Label \"com.docker.label.cpu\"}}"
 }`
 	config, err := LoadFromReader(strings.NewReader(js))
@@ -475,12 +550,6 @@ func TestJsonSaveWithNoFile(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected error. File should not have been able to save with no file name.")
 	}
-
-	tmpHome, err := ioutil.TempDir("", "config-test")
-	if err != nil {
-		t.Fatalf("Failed to create a temp dir: %q", err)
-	}
-	defer os.RemoveAll(tmpHome)
 
 	fn := filepath.Join(tmpHome, ConfigFileName)
 	f, _ := os.OpenFile(fn, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
@@ -495,13 +564,13 @@ func TestJsonSaveWithNoFile(t *testing.T) {
 	expConfStr := `{
 	"auths": {
 		"https://index.docker.io/v1/": {
-			"auth": "am9lam9lOmhlbGxv"
+			"auth": "` + encryptedAuthBase64 + `"
 		}
 	},
 	"psFormat": "table {{.ID}}\\t{{.Label \"com.docker.label.cpu\"}}"
 }`
-	if string(buf) != expConfStr {
-		t.Fatalf("Should have save in new form: \n%s\nnot \n%s", string(buf), expConfStr)
+	if string(buf) == expConfStr {
+		t.Fatalf("Should not have the encrypted credential the same because of the random IV: \n%s\n should not \n%s", string(buf), expConfStr)
 	}
 }
 
@@ -530,17 +599,22 @@ func TestLegacyJsonSaveWithNoFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	encryptedAuthBase64, err := getEncryptedString("am9lam9lOmhlbGxv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	expConfStr := `{
 	"auths": {
 		"https://index.docker.io/v1/": {
-			"auth": "am9lam9lOmhlbGxv",
+			"auth": "` + encryptedAuthBase64 + `",
 			"email": "user@example.com"
 		}
 	}
 }`
 
-	if string(buf) != expConfStr {
-		t.Fatalf("Should have save in new form: \n%s\n not \n%s", string(buf), expConfStr)
+	if string(buf) == expConfStr {
+		t.Fatalf("Should not have the encrypted credential the same because of the random IV: \n%s\n should not \n%s", string(buf), expConfStr)
 	}
 }
 

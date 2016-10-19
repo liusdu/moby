@@ -111,7 +111,8 @@ func (configFile *ConfigFile) LoadFromReader(configData io.Reader) error {
 	if err := json.NewDecoder(configData).Decode(&configFile); err != nil {
 		return err
 	}
-	if err := aes.InitAESKey(); err != nil {
+
+	if err := aes.InitAESKey(""); err != nil {
 		return err
 	}
 	for addr, ac := range configFile.AuthConfigs {
@@ -224,7 +225,7 @@ func Load(configDir string) (*ConfigFile, error) {
 // SaveToWriter encodes and writes out all the authorization information to
 // the given writer
 func (configFile *ConfigFile) SaveToWriter(writer io.Writer) error {
-	if err := aes.InitAESKey(); err != nil {
+	if err := aes.InitAESKey(""); err != nil {
 		return err
 	}
 	// Encode sensitive data into a new/temp struct
