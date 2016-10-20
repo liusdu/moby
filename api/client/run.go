@@ -71,14 +71,16 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 
 	// These are flags not stored in Config/HostConfig
 	var (
-		flAutoRemove = cmd.Bool([]string{"-rm"}, false, "Automatically remove the container when it exits")
-		flDetach     = cmd.Bool([]string{"d", "-detach"}, false, "Run container in background and print container ID")
-		flSigProxy   = cmd.Bool([]string{"-sig-proxy"}, true, "Proxy received signals to the process")
-		flName       = cmd.String([]string{"-name"}, "", "Assign a name to the container")
-		flDetachKeys = cmd.String([]string{"-detach-keys"}, "", "Override the key sequence for detaching a container")
-		flAttach     *opts.ListOpts
+		flAutoRemove   = cmd.Bool([]string{"-rm"}, false, "Automatically remove the container when it exits")
+		flDetach       = cmd.Bool([]string{"d", "-detach"}, false, "Run container in background and print container ID")
+		flSigProxy     = cmd.Bool([]string{"-sig-proxy"}, true, "Proxy received signals to the process")
+		flName         = cmd.String([]string{"-name"}, "", "Assign a name to the container")
+		flDetachKeys   = cmd.String([]string{"-detach-keys"}, "", "Override the key sequence for detaching a container")
+		flAttachOutput = cmd.String([]string{"-attach-output"}, "", "Attach the output stream of a container")
+		flAttach       *opts.ListOpts
 
 		ErrConflictAttachDetach               = fmt.Errorf("Conflicting options: -a and -d")
+		ErrConflictAttachOutputDetach         = fmt.Errorf("Conflicting options: --attach-output and -d")
 		ErrConflictRestartPolicyAndAutoRemove = fmt.Errorf("Conflicting options: --restart and --rm")
 		ErrConflictDetachAutoRemove           = fmt.Errorf("Conflicting options: --rm and -d")
 	)
@@ -128,6 +130,14 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 			return ErrConflictDetachAutoRemove
 		}
 
+		// Technically `--attach-output` can live with `-d`, because it
+		// attaches another container's output, but we don't want it be
+		// complicated or confusing because people usually don't want
+		// we mess up with the stdout when they want to be detached.
+		if *flAttachOutput != "" {
+			return ErrConflictAttachOutputDetach
+		}
+
 		config.AttachStdin = false
 		config.AttachStdout = false
 		config.AttachStderr = false
@@ -159,6 +169,7 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 	var (
 		waitDisplayID chan struct{}
 		errCh         chan error
+		errCh2        chan error
 	)
 	if !config.AttachStdout && !config.AttachStderr {
 		// Make this asynchronous to allow the client to write to stdin before having to read the ID
@@ -217,6 +228,41 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 		errCh = promise.Go(func() error {
 			return cli.holdHijackedConnection(config.Tty, in, out, stderr, resp)
 		})
+
+		if *flAttachOutput != "" {
+			c, err := cli.client.ContainerInspect(context.Background(), *flAttachOutput)
+			if err != nil {
+				return err
+			}
+			options2 := types.ContainerAttachOptions{
+				ContainerID: c.ID,
+				Stream:      true,
+				Stdin:       false,
+				Stdout:      true,
+				Stderr:      true,
+				DetachKeys:  cli.configFile.DetachKeys,
+			}
+			resp2, err := cli.client.ContainerAttach(context.Background(), options2)
+			if err != nil {
+				return err
+			}
+			errCh2 = promise.Go(func() error {
+				return cli.holdHijackedConnection(config.Tty, nil, out, stderr, resp2)
+			})
+			defer func() {
+				resp2.Close()
+				if errCh2 != nil {
+					if err := <-errCh2; err != nil {
+						logrus.Debugf("Error hijack2: %s", err)
+					}
+				}
+			}()
+		}
+
+	} else {
+		if *flAttachOutput != "" {
+			return fmt.Errorf("Can not attach a container's output without IO streams enabled.")
+		}
 	}
 
 	if *flAutoRemove {

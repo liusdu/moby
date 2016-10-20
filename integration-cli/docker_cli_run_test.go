@@ -1619,6 +1619,16 @@ func (s *DockerSuite) TestRunAttachStdOutAndErrTTYMode(c *check.C) {
 	}
 }
 
+func (s *DockerSuite) TestRunAttachOutputWithStdOutAndTTYMode(c *check.C) {
+	out, _ := dockerCmd(c, "run", "-d", "busybox", "top")
+	id := strings.TrimSpace(out)
+
+	_, exitCode := dockerCmd(c, "run", "-t", "-a", "stdout", "--attach-output", id, "busybox", "true")
+	if exitCode != 0 {
+		c.Fatalf("Container should have exited with error code 0")
+	}
+}
+
 // Test for #10388 - this will run the same test as TestRunAttachStdOutAndErrTTYMode
 // but using --attach instead of -a to make sure we read the flag correctly
 func (s *DockerSuite) TestRunAttachWithDetach(c *check.C) {
@@ -1628,6 +1638,19 @@ func (s *DockerSuite) TestRunAttachWithDetach(c *check.C) {
 		c.Fatal("Container should have exited with error code different than 0")
 	} else if !strings.Contains(stderr, "Conflicting options: -a and -d") {
 		c.Fatal("Should have been returned an error with conflicting options -a and -d")
+	}
+}
+
+func (s *DockerSuite) TestRunAttachOutputWithDetach(c *check.C) {
+	out, _ := dockerCmd(c, "run", "-d", "busybox", "top")
+	id := strings.TrimSpace(out)
+
+	cmd := exec.Command(dockerBinary, "run", "-d", "--attach-output", id, "busybox", "true")
+	_, stderr, _, err := runCommandWithStdoutStderr(cmd)
+	if err == nil {
+		c.Fatal("Container should have exited with error code different than 0")
+	} else if !strings.Contains(stderr, "Conflicting options: --attach-output and -d") {
+		c.Fatal("Should have been returned an error with conflicting options --attach-output and -d, got err: %v", stderr)
 	}
 }
 
