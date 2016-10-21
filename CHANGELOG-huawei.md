@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.11.2.4 (2016-10-21)
+
++ Add support for --pid=container:<id>
++ Add support for --attach-output
++ Add unicorn version in docker version command
++ Add support for arm64
+- Fix flaky test TestRunExitOnStdinClose
+- Fix unit test
+
 ## v1.11.2.3 (2016-09-05)
 
 - Fix original version in spec
