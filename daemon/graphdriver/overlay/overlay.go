@@ -388,6 +388,10 @@ func (d *Driver) Get(id string, mountLabel string) (s string, err error) {
 func (d *Driver) Put(id string) error {
 	d.locker.Lock(id)
 	defer d.locker.Unlock(id)
+	// If id has a root, just return
+	if _, err := os.Stat(path.Join(d.dir(id), "root")); err == nil {
+		return nil
+	}
 	mountpoint := path.Join(d.dir(id), "merged")
 	if count := d.ctr.Decrement(mountpoint); count > 0 {
 		return nil
