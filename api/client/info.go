@@ -68,6 +68,10 @@ func (cli *DockerCli) CmdInfo(args ...string) error {
 		fmt.Fprintf(cli.out, " %s", strings.Join(info.Plugins.Authorization, " "))
 		fmt.Fprintf(cli.out, "\n")
 	}
+	if len(info.Plugins.Accel) != 0 {
+		fmt.Fprintf(cli.out, " Accelerator:")
+		fmt.Fprintf(cli.out, " %s\n", strings.Join(info.Plugins.Accel, " "))
+	}
 
 	ioutils.FprintfIfNotEmpty(cli.out, "Kernel Version: %s\n", info.KernelVersion)
 	ioutils.FprintfIfNotEmpty(cli.out, "Operating System: %s\n", info.OperatingSystem)
