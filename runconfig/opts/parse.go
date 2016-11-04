@@ -58,6 +58,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		flStorageOpt        = opts.NewListOpts(nil)
 		flLabelsFile        = opts.NewListOpts(nil)
 		flLoggingOpts       = opts.NewListOpts(nil)
+		flHugetlb           = NewHugetlbOpt(ValidateHugetlb)
 		flPrivileged        = cmd.Bool([]string{"-privileged"}, false, "Give extended privileges to this container")
 		flPidMode           = cmd.String([]string{"-pid"}, "", "PID namespace to use")
 		flUTSMode           = cmd.String([]string{"-uts"}, "", "UTS namespace to use")
@@ -131,6 +132,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 	cmd.Var(&flStorageOpt, []string{"-storage-opt"}, "Set storage driver options per container")
 	cmd.Var(flUlimits, []string{"-ulimit"}, "Ulimit options")
 	cmd.Var(&flLoggingOpts, []string{"-log-opt"}, "Log driver options")
+	cmd.Var(&flHugetlb, []string{"-hugetlb-limit"}, "Huge page limit (format: [size:]<limit>, e.g. --hugetlb-limit 2MB:32MB)")
 
 	cmd.Require(flag.Min, 1)
 
@@ -349,6 +351,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 
 	resources := container.Resources{
 		CgroupParent:         *flCgroupParent,
+		Hugetlbs:             flHugetlb.GetAll(),
 		Memory:               flMemory,
 		MemoryReservation:    MemoryReservation,
 		MemorySwap:           memorySwap,

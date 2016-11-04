@@ -42,6 +42,12 @@ var (
 		},
 		"Test requires pids limit enabled.",
 	}
+	hugetlbLimitSupport = testRequirement{
+		func() bool {
+			return SysInfo.HugetlbLimit
+		},
+		"Test requires an environment that supports cgroup hugetlb limit.",
+	}
 	kernelMemorySupport = testRequirement{
 		func() bool {
 			return SysInfo.KernelMemory

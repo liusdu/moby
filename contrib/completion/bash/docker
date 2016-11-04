@@ -1645,6 +1645,7 @@ _docker_run() {
 		--external-rootfs
 		--group-add
 		--hook-spec
+		--hugetlb-limit
 		--hostname -h
 		--ip
 		--ip6

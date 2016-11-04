@@ -264,6 +264,14 @@ type Resources struct {
 	BlkioIOps   uint64 // Maximum IOps for the container system drive
 	BlkioBps    uint64 // Maximum Bytes per second for the container system drive
 	SandboxSize uint64 // System drive will be expanded to at least this size (in bytes)
+
+	// Hugetlb setting
+	Hugetlbs []Hugetlb
+}
+
+type Hugetlb struct {
+	PageSize string
+	Limit    uint64
 }
 
 // UpdateConfig holds the mutable attributes of a Container.
