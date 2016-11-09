@@ -12,6 +12,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
@@ -93,12 +94,16 @@ type Driver struct {
 	ctr           *graphdriver.RefCounter
 	quotaCtl      *quota.Control
 	options       overlayOptions
+	naiveDiff     graphdriver.DiffDriver
 	supportsDType bool
 }
 
 var (
 	backingFs             = "<unknown>"
 	projectQuotaSupported = false
+
+	useNaiveDiffLock sync.Once
+	useNaiveDiffOnly bool
 )
 
 func init() {
@@ -175,6 +180,8 @@ func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (grap
 		supportsDType: supportsDType,
 	}
 
+	d.naiveDiff = graphdriver.NewNaiveDiffDriver(d, uidMaps, gidMaps)
+
 	if backingFs == "xfs" {
 		// Try to enable project quota support over xfs.
 		if d.quotaCtl, err = quota.NewControl(home); err == nil {
@@ -230,6 +237,16 @@ func supportsOverlay() error {
 	return graphdriver.ErrNotSupported
 }
 
+func useNaiveDiff(home string) bool {
+	useNaiveDiffLock.Do(func() {
+		if err := hasOpaqueCopyUpBug(home); err != nil {
+			logrus.Warnf("Not using native diff for overlay2: %v", err)
+			useNaiveDiffOnly = true
+		}
+	})
+	return useNaiveDiffOnly
+}
+
 func (d *Driver) String() string {
 	return driverName
 }
@@ -240,6 +257,7 @@ func (d *Driver) Status() [][2]string {
 	return [][2]string{
 		{"Backing Filesystem", backingFs},
 		{"Supports d_type", strconv.FormatBool(d.supportsDType)},
+		{"Native Overlay Diff", strconv.FormatBool(!useNaiveDiff(d.home))},
 	}
 }
 
@@ -576,12 +594,19 @@ func (d *Driver) getDiffPath(id string) string {
 // and its parent and returns the size in bytes of the changes
 // relative to its base filesystem directory.
 func (d *Driver) DiffSize(id, parent string) (size int64, err error) {
+	if useNaiveDiff(d.home) {
+		return d.naiveDiff.DiffSize(id, parent)
+	}
 	return directory.Size(d.getDiffPath(id))
 }
 
 // Diff produces an archive of the changes between the specified
 // layer and its parent layer which may be "".
 func (d *Driver) Diff(id, parent string) (archive.Archive, error) {
+	if useNaiveDiff(d.home) {
+		return d.naiveDiff.Diff(id, parent)
+	}
+
 	diffPath := d.getDiffPath(id)
 	logrus.Debugf("Tar with options on %s", diffPath)
 	return archive.TarWithOptions(diffPath, &archive.TarOptions{
@@ -597,6 +622,9 @@ func (d *Driver) Diff(id, parent string) (archive.Archive, error) {
 func (d *Driver) Changes(id, parent string) ([]archive.Change, error) {
 	// Overlay doesn't have snapshots, so we need to get changes from all parent
 	// layers.
+	if useNaiveDiff(d.home) {
+		return d.naiveDiff.Changes(id, parent)
+	}
 	diffPath := d.getDiffPath(id)
 	layers, err := d.getLowerDirs(id)
 	if err != nil {
