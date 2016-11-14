@@ -30,7 +30,7 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 
 		c.Lock()
 		defer c.Unlock()
-		c.Wait()
+		c.StreamConfig.Wait()
 		c.Reset(false)
 
 		restart, wait, err := c.RestartManager().ShouldRestart(e.ExitCode, false, time.Since(c.StartedAt))
@@ -76,7 +76,7 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 			ec := int(e.ExitCode)
 			execConfig.ExitCode = &ec
 			execConfig.Running = false
-			execConfig.Wait()
+			execConfig.StreamConfig.Wait()
 			if err := execConfig.CloseStreams(); err != nil {
 				logrus.Errorf("failed to cleanup exec %s streams: %s", c.ID, err)
 			}
