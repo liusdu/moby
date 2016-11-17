@@ -38,6 +38,7 @@ docker-run - Run a command in a new container
 [**-h**|**--hostname**[=*HOSTNAME*]]
 [**--help**]
 [**-i**|**--interactive**]
+[**--hook-spec**[=*HOOKFILE*]]
 [**--ip**[=*IPv4-ADDRESS*]]
 [**--ip6**[=*IPv6-ADDRESS*]]
 [**--ipc**[=*IPC*]]
@@ -293,6 +294,34 @@ of the external rootfs is exactly the same with remap user.
 
 **--help**
   Print usage statement
+
+**--hook-spec**=""
+  Add custom hooks for container
+
+  With this flag, user can specify a file containing custom hook, an example hook file can be like this:
+
+```
+{
+        "prestart": [
+            {   
+                "path": "/usr/libexec/oci/hooks.d/oci-systemd-hook",
+                "args": ["oci-systemd-hook", "prestart"],
+                "env": ["container=runc"]
+            }
+        ],  
+        "poststop":[
+            {   
+                "path": "/usr/libexec/oci/hooks.d/oci-systemd-hook",
+                "args": ["oci-systemd-hook", "poststop"],
+                "env": ["container=runc"]
+            }
+        ]   
+}
+```
+
+  currently it supports three hooks: "prestart", "poststart", "poststop". 
+  See OCI spec definition for more information about "hooks".
+
 
 **-i**, **--interactive**=*true*|*false*
    Keep STDIN open even if not attached. The default is *false*.

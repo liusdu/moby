@@ -6,6 +6,7 @@
 package daemon
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -1468,6 +1469,11 @@ func (daemon *Daemon) setHostConfig(container *container.Container, hostConfig *
 		hostConfig.Links = []string{}
 	}
 
+	// register hooks to container
+	if err := daemon.registerHooks(container, hostConfig); err != nil {
+		return err
+	}
+
 	container.HostConfig = hostConfig
 	return container.ToDisk()
 }
@@ -1807,4 +1813,22 @@ func copyBlkioEntry(entries []*containerd.BlkioStatsEntry) []types.BlkioStatEntr
 		}
 	}
 	return out
+}
+
+func (daemon *Daemon) registerHooks(container *container.Container, hostConfig *containertypes.HostConfig) error {
+	if hostConfig.HookSpec == "" {
+		return nil
+	}
+
+	// the hook spec has already been sanitized, so no need for validation again
+	f, err := os.Open(hostConfig.HookSpec)
+	if err != nil {
+		return fmt.Errorf("open hook spec file error: %v", err)
+	}
+	defer f.Close()
+
+	if err = json.NewDecoder(f).Decode(&container.Hooks); err != nil {
+		return fmt.Errorf("malformed hook spec, is your spec file in json format? error: %v", err)
+	}
+	return nil
 }

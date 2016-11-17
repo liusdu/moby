@@ -4437,3 +4437,50 @@ func (s *DockerSuite) TestRunUseExternalRootfs(c *check.C) {
 		c.Assert(out, checker.Contains, msg)
 	}
 }
+
+func (s *DockerSuite) TestRunWithHookSpec(c *check.C) {
+	testRequires(c, DaemonIsLinux)
+	homePath := randomTmpDirPath("test1", daemonPlatform)
+	hookDir := "testHook"
+
+	hookStr := `
+{
+	"prestart": [
+		{
+			"path": "/bin/mkdir",
+			"args": ["mkdir", "%v"]
+		}
+	],
+	"poststop":[
+		{
+			"path": "/bin/rmdir",
+			"args": ["rmdir", "%v"]
+		}
+	]
+}
+	`
+
+	hookStr = fmt.Sprintf(hookStr, filepath.Join(homePath, hookDir), filepath.Join(homePath, hookDir))
+	hookSpecFile := filepath.Join(homePath, "hookspec.json")
+
+	// create temp dir first
+	c.Assert(os.MkdirAll(homePath, 0755), checker.IsNil)
+	defer os.RemoveAll(homePath)
+
+	// write hook spec file
+	file, err := os.OpenFile(hookSpecFile, os.O_RDWR|os.O_CREATE, 0644)
+	c.Assert(err, checker.IsNil)
+	n, err := file.Write([]byte(hookStr))
+	c.Assert(err, checker.IsNil)
+	c.Assert(n, checker.Equals, len([]byte(hookStr)))
+
+	// if the hook works, before CMD of container executed, prestart hook
+	// should already finish its work of making new dir "/someplace/testHook"
+	// and "ls" should work fine without error
+	dockerCmd(c, "run", "-v", homePath+":/someplace", "--hook-spec="+hookSpecFile, "busybox", "ls", filepath.Join("/someplace", hookDir))
+
+	// after container exits, poststop hook works, new dir should be removed.
+	_, err = os.Stat(filepath.Join(homePath, hookDir))
+	c.Assert(err, checker.NotNil)
+	c.Assert(os.IsNotExist(err), checker.True)
+}

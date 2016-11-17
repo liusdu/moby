@@ -46,6 +46,7 @@ parent = "smn_cli"
       --group-add=[]                Add additional groups to run as
       -h, --hostname=""             Container host name
       --help                        Print usage
+      --hook-spec                   file containing hook definition(prestart, poststart, poststop)
       -i, --interactive             Keep STDIN open even if not attached
       --ip=""                       Container IPv4 address (e.g. 172.30.100.104)
       --ip6=""                      Container IPv6 address (e.g. 2001:db8::33)

@@ -547,6 +547,20 @@ func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *containertypes.
 			return warnings, fmt.Errorf("cgroup-parent for systemd cgroup should be a valid slice named as \"xxx.slice\"")
 		}
 	}
+
+	if hostConfig.HookSpec != "" {
+		hostConfig.HookSpec = filepath.Clean(hostConfig.HookSpec)
+		if !filepath.IsAbs(hostConfig.HookSpec) {
+			return warnings, fmt.Errorf("Hook spec file must be an absolute path")
+		}
+		fi, err := os.Stat(hostConfig.HookSpec)
+		if err != nil {
+			return warnings, fmt.Errorf("stat hook spec file failed: %v", err)
+		}
+		if !fi.Mode().IsRegular() {
+			return warnings, fmt.Errorf("Hook spec file must be a regular text file")
+		}
+	}
 	return warnings, nil
 }
 
