@@ -304,6 +304,7 @@ Create a container
              "DnsOptions": [""],
              "DnsSearch": [""],
              "ExtraHosts": null,
+             "ExternalRootfs":"",
              "VolumesFrom": ["parent", "other:ro"],
              "CapAdd": ["NET_ADMIN"],
              "CapDrop": ["MKNOD"],
@@ -418,6 +419,7 @@ Json Parameters:
     -   **DnsSearch** - A list of DNS search domains
     -   **ExtraHosts** - A list of hostnames/IP mappings to add to the
         container's `/etc/hosts` file. Specified in the form `["hostname:IP"]`.
+    -   **ExternalRootfs** - A string to specify a external rootfs path.
     -   **VolumesFrom** - A list of volumes to inherit from another container.
           Specified in the form `<container name>[:<ro|rw>]`
     -   **CapAdd** - A list of kernel capabilities to add to the container.

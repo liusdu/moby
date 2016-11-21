@@ -1642,6 +1642,7 @@ _docker_run() {
 		--env -e
 		--env-file
 		--expose
+		--external-rootfs
 		--group-add
 		--hostname -h
 		--ip

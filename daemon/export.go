@@ -17,6 +17,10 @@ func (daemon *Daemon) ContainerExport(name string, out io.Writer) error {
 		return err
 	}
 
+	if container.HostConfig.ExternalRootfs != "" {
+		return fmt.Errorf("can't export content of container with external rootfs")
+	}
+
 	data, err := daemon.containerExport(container)
 	if err != nil {
 		return fmt.Errorf("Error exporting container %s: %v", name, err)

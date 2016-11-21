@@ -42,6 +42,7 @@ parent = "smn_cli"
       --entrypoint=""               Overwrite the default ENTRYPOINT of the image
       --env-file=[]                 Read in a file of environment variables
       --expose=[]                   Expose a port or a range of ports
+      --external-rootfs             Set external rootfs for container
       --group-add=[]                Add additional groups to run as
       -h, --hostname=""             Container host name
       --help                        Print usage

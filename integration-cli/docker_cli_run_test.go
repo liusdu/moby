@@ -4378,3 +4378,62 @@ func (s *DockerSuite) TestRunTooLongHostname(c *check.C) {
 	hostname3 := "this-is-a-hostname-with-64-bytes-so-will-not-give-an-error.local"
 	dockerCmd(c, "run", "--hostname", hostname3, "busybox", "echo", "test")
 }
+
+func (s *DockerSuite) TestRunUseExternalRootfs(c *check.C) {
+	// skip this test if enable user namespace because
+	// we can't make sure if the ownship of the external rootfs
+	// is same with the remap user. If user want to use external rootfs
+	// when enable user namespace, user should make sure the ownship of external rootfs
+	// are exactly the same with the remap.
+	testRequires(c, DaemonIsLinux, NotUserNamespace)
+	tempFile, err := ioutil.TempDir("", "test-externalrootfs-")
+	c.Assert(err, checker.IsNil)
+	defer os.RemoveAll(tempFile)
+
+	tarFile := filepath.Join(tempFile, "busybox.tar")
+	rootfsDir := filepath.Join(tempFile, "rootfs")
+
+	err = os.Mkdir(rootfsDir, 0644)
+	c.Assert(err, checker.IsNil)
+
+	dockerCmd(c, "create", "--name", "test", "busybox")
+	dockerCmd(c, "export", "-o", tarFile, "test")
+
+	cmd := exec.Command(
+		"tar",
+		"-xf",
+		tarFile,
+		"-C",
+		rootfsDir)
+	err = cmd.Run()
+	c.Assert(err, checker.IsNil)
+
+	testFile := filepath.Join(rootfsDir, "home", "test")
+	err = ioutil.WriteFile(testFile, []byte("Hello world"), 0644)
+	c.Assert(err, checker.IsNil)
+
+	// run a container use external rootfs
+	// we use busybox as the image, but actually the rootfs should be
+	// the rootfs we create above
+	out, _ := dockerCmd(c, "run", "-i", "--external-rootfs", rootfsDir, "busybox", "/bin/cat", "/home/test")
+	c.Assert(out, checker.Contains, "Hello world")
+
+	// test docker cp/commit/export/diff will fail if use external rootfs
+	// and test use a relative path, use a not exist path, use a file will also fail.
+	dockerCmd(c, "run", "-d", "--name", "testContainer", "--external-rootfs", rootfsDir, "busybox", "top")
+	c.Assert(waitRun("testContainer"), check.IsNil)
+	cmds := map[string][]string{
+		"can't copy file from a container with external rootfs":                           []string{"cp", "testContainer:/home", "."},
+		"can't commit a container with external rootfs":                                   []string{"commit", "testContainer"},
+		"can't diff a container with external rootfs":                                     []string{"diff", "testContainer"},
+		"can't export content of container with external rootfs":                          []string{"export", "-o", filepath.Join(tempFile, "testtar"), "testContainer"},
+		"external rootfs tmp/rootfs is not a absolute path":                               []string{"run", "--external-rootfs", "tmp/rootfs", "busybox", "ls"},
+		fmt.Sprintf("stat external rootfs %s with error", filepath.Join(tempFile, "tmp")): []string{"run", "--external-rootfs", filepath.Join(tempFile, "tmp"), "busybox", "ls"},
+		fmt.Sprintf("external rootfs %s is not a directory", testFile):                    []string{"run", "--external-rootfs", testFile, "busybox", "ls"},
+	}
+	for msg, subcmd := range cmds {
+		out, _, err := dockerCmdWithError(subcmd...)
+		c.Assert(err, checker.NotNil)
+		c.Assert(out, checker.Contains, msg)
+	}
+}
