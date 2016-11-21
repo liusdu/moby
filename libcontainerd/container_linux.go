@@ -96,10 +96,14 @@ func (ctr *container) start(attachStdio StdioCallback) error {
 			go func() {
 				select {
 				case <-ready:
+				case <-ctx.Done():
+				}
+				select {
+				case <-ready:
 					if err := ctr.sendCloseStdin(); err != nil {
 						logrus.Warnf("failed to close stdin: %+v")
 					}
-				case <-ctx.Done():
+				default:
 				}
 			}()
 		})
