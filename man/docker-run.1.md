@@ -33,6 +33,7 @@ docker-run - Run a command in a new container
 [**--entrypoint**[=*ENTRYPOINT*]]
 [**--env-file**[=*[]*]]
 [**--expose**[=*[]*]]
+[**--external-rootfs**[=*[]*]]
 [**--group-add**[=*[]*]]
 [**-h**|**--hostname**[=*HOSTNAME*]]
 [**--help**]
@@ -262,6 +263,25 @@ ENTRYPOINT.
 that the container listens on the specified network ports at runtime. Docker
 uses this information to interconnect containers using links and to set up port
 redirection on the host system.
+
+**--external-rootfs**=[]
+   Specify a external rootfs to use, and ignore the rootfs of the image. The rootfs
+path MUST be a absolute path and exist. The docker cp/commit/diff/export can't work
+when using a external rootfs. When use external rootfs, we recommand to use a empty image.
+A fake image is an image only has configuraton but not rootfs. To generate a empty image,
+the following Dockerfile is recommend:
+```
+FROM scratch
+
+MAINTAINER yourname
+```
+
+```
+$ docker run -ti --external-rootfs /tmp/rootfs emptyimage bash
+root@570c73332dc3:/#
+```
+NOTE: if use external rootfs when enable user namepsace, user should make sure the ownship
+of the external rootfs is exactly the same with remap user.
 
 **--group-add**=[]
    Add additional groups to run as
@@ -954,4 +974,5 @@ April 2014, Originally compiled by William Henry (whenry at redhat dot com)
 based on docker.com source material and internal work.
 June 2014, updated by Sven Dowideit <SvenDowideit@home.org.au>
 July 2014, updated by Sven Dowideit <SvenDowideit@home.org.au>
+
 November 2015, updated by Sally O'Malley <somalley@redhat.com>

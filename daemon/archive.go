@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -29,6 +30,10 @@ func (daemon *Daemon) ContainerCopy(name string, res string) (io.ReadCloser, err
 		return nil, err
 	}
 
+	if container.HostConfig.ExternalRootfs != "" {
+		return nil, fmt.Errorf("can't copy file from a container with external rootfs")
+	}
+
 	if res[0] == '/' || res[0] == '\\' {
 		res = res[1:]
 	}
@@ -44,6 +49,10 @@ func (daemon *Daemon) ContainerStatPath(name string, path string) (stat *types.C
 		return nil, err
 	}
 
+	if container.HostConfig.ExternalRootfs != "" {
+		return nil, fmt.Errorf("can't copy file from a container with external rootfs")
+	}
+
 	return daemon.containerStatPath(container, path)
 }
 
@@ -54,6 +63,10 @@ func (daemon *Daemon) ContainerArchivePath(name string, path string) (content io
 	container, err := daemon.GetContainer(name)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if container.HostConfig.ExternalRootfs != "" {
+		return nil, nil, fmt.Errorf("can't copy file from a container with external rootfs")
 	}
 
 	return daemon.containerArchivePath(container, path)
@@ -69,6 +82,9 @@ func (daemon *Daemon) ContainerExtractToDir(name, path string, noOverwriteDirNon
 	container, err := daemon.GetContainer(name)
 	if err != nil {
 		return err
+	}
+	if container.HostConfig.ExternalRootfs != "" {
+		return fmt.Errorf("can't copy file from a container with external rootfs")
 	}
 
 	return daemon.containerExtractToDir(container, path, noOverwriteDirNonDir, content)

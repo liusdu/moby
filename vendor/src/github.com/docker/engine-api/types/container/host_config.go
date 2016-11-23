@@ -308,6 +308,7 @@ type HostConfig struct {
 	UsernsMode      UsernsMode        // The user namespace to use for the container
 	ShmSize         int64             // Total shm memory usage
 	Sysctls         map[string]string `json:",omitempty"` // List of Namespaced sysctls used for the container
+	ExternalRootfs  string            // External rootfs to use for container
 
 	// Applicable to Windows
 	ConsoleSize [2]int    // Initial console size

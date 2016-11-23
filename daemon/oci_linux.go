@@ -575,8 +575,21 @@ func (daemon *Daemon) populateCommonSpec(s *specs.Spec, c *container.Container) 
 	if err != nil {
 		return err
 	}
+	rootfs := c.BaseFS
+	if c.HostConfig.ExternalRootfs != "" {
+		if !filepath.IsAbs(c.HostConfig.ExternalRootfs) {
+			return fmt.Errorf("external rootfs %s is not a absolute path", c.HostConfig.ExternalRootfs)
+		}
+		if st, err := os.Stat(c.HostConfig.ExternalRootfs); err != nil {
+			return fmt.Errorf("stat external rootfs %s with error %v", c.HostConfig.ExternalRootfs, err)
+		} else if !st.IsDir() {
+			return fmt.Errorf("external rootfs %s is not a directory", c.HostConfig.ExternalRootfs)
+		}
+		rootfs = c.HostConfig.ExternalRootfs
+	}
+
 	s.Root = specs.Root{
-		Path:     c.BaseFS,
+		Path:     rootfs,
 		Readonly: c.HostConfig.ReadonlyRootfs,
 	}
 	rootUID, rootGID := daemon.GetRemappedUIDGID()

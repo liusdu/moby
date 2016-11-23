@@ -104,6 +104,9 @@ func (daemon *Daemon) Commit(name string, c *types.ContainerCommitConfig) (strin
 		return "", err
 	}
 
+	if container.HostConfig.ExternalRootfs != "" {
+		return "", fmt.Errorf("can't commit a container with external rootfs")
+	}
 	// It is not possible to commit a running container on Windows
 	if runtime.GOOS == "windows" && container.IsRunning() {
 		return "", fmt.Errorf("Windows does not support commit of a running container")
