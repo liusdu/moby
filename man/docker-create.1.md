@@ -35,6 +35,7 @@ docker-create - Create a new container
 [**--group-add**[=*[]*]]
 [**-h**|**--hostname**[=*HOSTNAME*]]
 [**--help**]
+[**--hook-spec**[=*HOOKFILE*]]
 [**-i**|**--interactive**]
 [**--ip**[=*IPv4-ADDRESS*]]
 [**--ip6**[=*IPv6-ADDRESS*]]

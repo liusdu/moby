@@ -97,6 +97,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		flIsolation         = cmd.String([]string{"-isolation"}, "", "Container isolation technology")
 		flShmSize           = cmd.String([]string{"-shm-size"}, "", "Size of /dev/shm, default value is 64MB")
 		flExternalRootfs    = cmd.String([]string{"-external-rootfs"}, "", "Set external rootfs for container")
+		flHookSpec          = cmd.String([]string{"-hook-spec"}, "", "file containing hook definition(prestart, poststart, poststop)")
 	)
 
 	cmd.Var(&flAttach, []string{"a", "-attach"}, "Attach to STDIN, STDOUT or STDERR")
@@ -424,6 +425,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		Resources:      resources,
 		Tmpfs:          tmpfs,
 		ExternalRootfs: *flExternalRootfs,
+		HookSpec:       *flHookSpec,
 	}
 
 	// When allocating stdin in attached mode, close stdin at client disconnect

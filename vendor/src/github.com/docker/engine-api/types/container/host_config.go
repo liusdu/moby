@@ -313,6 +313,7 @@ type HostConfig struct {
 	// Applicable to Windows
 	ConsoleSize [2]int    // Initial console size
 	Isolation   Isolation // Isolation technology of the container (eg default, hyperv)
+	HookSpec    string    // specification file containing custom hook definition
 
 	// Contains container's resources (cgroups, ulimits)
 	Resources

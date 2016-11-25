@@ -690,6 +690,12 @@ func (daemon *Daemon) createSpec(c *container.Container) (*libcontainerd.Spec, e
 		}
 	}
 
+	// apppend user custom hooks after system hooks
+	// make sure docker's predefined hooks are executed before custom hooks
+	s.Hooks.Prestart = append(s.Hooks.Prestart, c.Hooks.Prestart...)
+	s.Hooks.Poststart = append(s.Hooks.Poststart, c.Hooks.Poststart...)
+	s.Hooks.Poststop = append(s.Hooks.Poststop, c.Hooks.Poststop...)
+
 	if apparmor.IsEnabled() {
 		appArmorProfile := "docker-default"
 		if len(c.AppArmorProfile) > 0 {

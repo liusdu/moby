@@ -38,6 +38,7 @@ import (
 	"github.com/docker/libnetwork/options"
 	"github.com/docker/libnetwork/types"
 	"github.com/opencontainers/runc/libcontainer/label"
+	"github.com/opencontainers/specs/specs-go"
 )
 
 const configFileName = "config.v2.json"
@@ -80,6 +81,7 @@ type CommonContainer struct {
 	LogCopier      *logger.Copier `json:"-"`
 	restartManager restartmanager.RestartManager
 	attachContext  *attachContext
+	Hooks          specs.Hooks
 }
 
 // NewBaseContainer creates a new container with its
