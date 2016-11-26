@@ -518,6 +518,12 @@ Docker supports the following restart policies:
         to a stopped state before.
       </td>
     </tr>
+    <tr>
+      <td><strong>on-reboot[:signal]</strong></td>
+      <td>
+        Restart container if the exit status is 129.
+      </td>
+    </tr>
   </tbody>
 </table>
 

@@ -220,6 +220,10 @@ func (rp *RestartPolicy) IsSame(tp *RestartPolicy) bool {
 	return rp.Name == tp.Name && rp.MaximumRetryCount == tp.MaximumRetryCount
 }
 
+func (rp *RestartPolicy) IsOnReboot() bool {
+	return rp.Name == "on-reboot"
+}
+
 // LogConfig represents the logging configuration of the container.
 type LogConfig struct {
 	Type   string

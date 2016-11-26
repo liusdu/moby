@@ -309,7 +309,7 @@ unit, `b` is used. Set LIMIT to `-1` to enable unlimited swap.
    Mount the container's root filesystem as read only.
 
 **--restart**="*no*"
-   Restart policy to apply when a container exits (no, on-failure[:max-retry], always, unless-stopped).
+   Restart policy to apply when a container exits (no, on-failure[:max-retry], always, unless-stopped, on-reboot).
 
 **--shm-size**=""
    Size of `/dev/shm`. The format is `<number><unit>`. `number` must be greater than `0`.

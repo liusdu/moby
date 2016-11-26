@@ -92,6 +92,8 @@ func (rm *restartManager) ShouldRestart(exitCode uint32, hasBeenManuallyStopped 
 		if max := rm.policy.MaximumRetryCount; max == 0 || rm.failureCount <= max {
 			restart = exitCode != 0
 		}
+	case rm.policy.IsOnReboot():
+		restart = exitCode == 129
 	}
 
 	if !restart {
