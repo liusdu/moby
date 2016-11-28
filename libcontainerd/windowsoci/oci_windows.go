@@ -1,7 +1,7 @@
 package windowsoci
 
 // This file contains the Windows spec for a container. At the time of
-// writing, Windows does not have a spec defined in opencontainers/specs,
+// writing, Windows does not have a spec defined in opencontainers/runtime-spec,
 // hence this is an interim workaround. TODO Windows: FIXME @jhowardmsft
 
 import (

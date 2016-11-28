@@ -4,7 +4,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/opencontainers/specs/specs-go"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 func sPtr(s string) *string      { return &s }
@@ -78,7 +78,7 @@ func DefaultSpec() specs.Spec {
 		"CAP_AUDIT_WRITE",
 	}
 
-	s.Linux = specs.Linux{
+	s.Linux = &specs.Linux{
 		MaskedPaths: []string{
 			"/proc/kcore",
 			"/proc/latency_stats",
