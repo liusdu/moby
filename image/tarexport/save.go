@@ -225,7 +225,9 @@ func (s *saveSession) saveImage(id image.ID) error {
 	var parent digest.Digest
 	var layers []string
 	for i := range img.RootFS.DiffIDs {
-		v1Img := image.V1Image{}
+		v1Img := image.V1Image{
+			Created: img.Created,
+		}
 		if i == len(img.RootFS.DiffIDs)-1 {
 			v1Img = img.V1Image
 		}
