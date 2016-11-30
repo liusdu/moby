@@ -247,3 +247,17 @@ func (s *DockerSuite) TestRestartContainerwithRestartPolicy(c *check.C) {
 	dockerCmd(c, "start", id1)
 	dockerCmd(c, "start", id2)
 }
+
+func (s *DockerSuite) TestOnRebootRestartPolicy(c *check.C) {
+	// test use default exit status 129
+	out1, _ := dockerCmd(c, "run", "-d", "--restart=on-reboot", "busybox", "sh", "-c", "sleep 10 && exit 129")
+	id1 := strings.TrimSpace(string(out1))
+	err := waitInspect(id1, "{{ .State.Running}}", "true", 30*time.Second)
+	c.Assert(err, checker.IsNil)
+
+	time.Sleep(time.Second * 12)
+	err = waitInspect(id1, "{{ .State.Running}}", "true", 30*time.Second)
+	c.Assert(err, checker.IsNil)
+	err = waitInspect(id1, "{{.RestartCount}}", "1", 5*time.Second)
+	c.Assert(err, checker.IsNil)
+}

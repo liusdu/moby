@@ -506,7 +506,7 @@ to write files anywhere.  By specifying the `--read-only` flag the container wil
 its root filesystem mounted as read only prohibiting any writes.
 
 **--restart**="*no*"
-   Restart policy to apply when a container exits (no, on-failure[:max-retry], always, unless-stopped).
+   Restart policy to apply when a container exits (no, on-failure[:max-retry], always, unless-stopped, on-reboot).
 
 **--rm**=*true*|*false*
    Automatically remove the container when it exits (incompatible with -d). The default is *false*.
