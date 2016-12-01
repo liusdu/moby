@@ -68,6 +68,7 @@ docker-create - Create a new container
 [**--security-opt**[=*[]*]]
 [**--stop-signal**[=*SIGNAL*]]
 [**--shm-size**[=*[]*]]
+[**--system-container**]
 [**-t**|**--tty**]
 [**--tmpfs**[=*[CONTAINER-DIR[:<OPTIONS>]*]]
 [**-u**|**--user**[=*USER*]]
@@ -330,6 +331,9 @@ unit, `b` is used. Set LIMIT to `-1` to enable unlimited swap.
 
 **--stop-signal**=*SIGTERM*
   Signal to stop a container. Default is SIGTERM.
+
+**--system-container**=*true*|*false*
+  Extend some features only needed by running system container. The default is *false*.
 
 **-t**, **--tty**=*true*|*false*
    Allocate a pseudo-TTY. The default is *false*.

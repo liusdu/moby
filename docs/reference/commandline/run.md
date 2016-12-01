@@ -85,6 +85,7 @@ parent = "smn_cli"
       --security-opt=[]             Security Options
       --sig-proxy=true              Proxy received signals to the process
       --stop-signal="SIGTERM"       Signal to stop a container
+      --system-container	    Extend some features only needed by running system container
       -t, --tty                     Allocate a pseudo-TTY
       -u, --user=""                 Username or UID (format: <name|uid>[:<group|gid>])
       --userns=""                   Container user namespace

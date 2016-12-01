@@ -98,6 +98,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		flShmSize           = cmd.String([]string{"-shm-size"}, "", "Size of /dev/shm, default value is 64MB")
 		flExternalRootfs    = cmd.String([]string{"-external-rootfs"}, "", "Set external rootfs for container")
 		flHookSpec          = cmd.String([]string{"-hook-spec"}, "", "file containing hook definition(prestart, poststart, poststop)")
+		flSystemContainer   = cmd.Bool([]string{"-system-container"}, false, "Extend some features only needed by running system container")
 	)
 
 	cmd.Var(&flAttach, []string{"a", "-attach"}, "Attach to STDIN, STDOUT or STDERR")
@@ -402,30 +403,31 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		// but pre created containers can still have those nil values.
 		// See https://github.com/docker/docker/pull/17779
 		// for a more detailed explanation on why we don't want that.
-		DNS:            flDNS.GetAllOrEmpty(),
-		DNSSearch:      flDNSSearch.GetAllOrEmpty(),
-		DNSOptions:     flDNSOptions.GetAllOrEmpty(),
-		ExtraHosts:     flExtraHosts.GetAll(),
-		VolumesFrom:    flVolumesFrom.GetAll(),
-		NetworkMode:    container.NetworkMode(*flNetMode),
-		IpcMode:        ipcMode,
-		PidMode:        pidMode,
-		UTSMode:        utsMode,
-		UsernsMode:     usernsMode,
-		CapAdd:         strslice.StrSlice(flCapAdd.GetAll()),
-		CapDrop:        strslice.StrSlice(flCapDrop.GetAll()),
-		GroupAdd:       flGroupAdd.GetAll(),
-		RestartPolicy:  restartPolicy,
-		SecurityOpt:    securityOpts,
-		ReadonlyRootfs: *flReadonlyRootfs,
-		LogConfig:      container.LogConfig{Type: *flLoggingDriver, Config: loggingOpts},
-		VolumeDriver:   *flVolumeDriver,
-		Isolation:      container.Isolation(*flIsolation),
-		ShmSize:        shmSize,
-		Resources:      resources,
-		Tmpfs:          tmpfs,
-		ExternalRootfs: *flExternalRootfs,
-		HookSpec:       *flHookSpec,
+		DNS:             flDNS.GetAllOrEmpty(),
+		DNSSearch:       flDNSSearch.GetAllOrEmpty(),
+		DNSOptions:      flDNSOptions.GetAllOrEmpty(),
+		ExtraHosts:      flExtraHosts.GetAll(),
+		VolumesFrom:     flVolumesFrom.GetAll(),
+		NetworkMode:     container.NetworkMode(*flNetMode),
+		IpcMode:         ipcMode,
+		PidMode:         pidMode,
+		UTSMode:         utsMode,
+		UsernsMode:      usernsMode,
+		CapAdd:          strslice.StrSlice(flCapAdd.GetAll()),
+		CapDrop:         strslice.StrSlice(flCapDrop.GetAll()),
+		GroupAdd:        flGroupAdd.GetAll(),
+		RestartPolicy:   restartPolicy,
+		SecurityOpt:     securityOpts,
+		ReadonlyRootfs:  *flReadonlyRootfs,
+		LogConfig:       container.LogConfig{Type: *flLoggingDriver, Config: loggingOpts},
+		VolumeDriver:    *flVolumeDriver,
+		Isolation:       container.Isolation(*flIsolation),
+		ShmSize:         shmSize,
+		Resources:       resources,
+		Tmpfs:           tmpfs,
+		ExternalRootfs:  *flExternalRootfs,
+		HookSpec:        *flHookSpec,
+		SystemContainer: *flSystemContainer,
 	}
 
 	// When allocating stdin in attached mode, close stdin at client disconnect

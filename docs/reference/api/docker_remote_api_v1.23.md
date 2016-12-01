@@ -317,6 +317,7 @@ Create a container
              "SecurityOpt": [],
              "CgroupParent": "",
              "VolumeDriver": "",
+             "SystemContainer": false,
              "ShmSize": 67108864
           },
           "NetworkingConfig": {
@@ -453,6 +454,7 @@ Json Parameters:
           `json-file` logging driver.
     -   **CgroupParent** - Path to `cgroups` under which the container's `cgroup` is created. If the path is not absolute, the path is considered to be relative to the `cgroups` path of the init process. Cgroups are created if they do not already exist.
     -   **VolumeDriver** - Driver that this container users to mount volumes.
+    -   **SystemContainer** - Extend some features only needed by running system container.
     -   **ShmSize** - Size of `/dev/shm` in bytes. The size must be greater than 0.  If omitted the system uses 64MB.
 
 Query Parameters:
