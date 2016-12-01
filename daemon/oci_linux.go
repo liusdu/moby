@@ -218,6 +218,10 @@ func setCapabilities(s *specs.Spec, c *container.Container) error {
 	if c.HostConfig.Privileged {
 		caplist = caps.GetAllCapabilities()
 	} else {
+		if c.HostConfig.SystemContainer {
+			cap := []string{"CAP_SYS_BOOT", "CAP_AUDIT_CONTROL"}
+			s.Process.Capabilities = append(s.Process.Capabilities, cap...)
+		}
 		caplist, err = caps.TweakCapabilities(s.Process.Capabilities, c.HostConfig.CapAdd, c.HostConfig.CapDrop)
 		if err != nil {
 			return err
