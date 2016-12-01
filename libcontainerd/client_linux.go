@@ -510,7 +510,7 @@ func (clnt *client) Restore(containerID string, options ...CreateOption) error {
 		if err != nil {
 			logrus.Warnf("libcontainerd: failed to retrieve container %s state: %v", containerID, err)
 		}
-		if ev != nil && ev.Pid != InitFriendlyName || ev.Type != StateExit {
+		if ev != nil && (ev.Pid != InitFriendlyName || ev.Type != StateExit) {
 			// Wait a while for the exit event
 			timeout := time.NewTimer(10 * time.Second)
 			tick := time.NewTicker(100 * time.Millisecond)
