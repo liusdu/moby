@@ -58,6 +58,7 @@ BuildRequires: docker-runc
 # required packages on install
 Requires: /bin/sh
 Requires: iptables
+Requires: sqlite
 %if !0%{?suse_version}
 Requires: libcgroup
 %else
