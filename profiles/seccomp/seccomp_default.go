@@ -33,6 +33,36 @@ func arches() []types.Arch {
 	}
 }
 
+// UnblockedSystemCalls defines the whitelist syscalls need to apend to
+// the default seccomp profile if we run system container.
+var UnblockedSystemCalls = []*types.Syscall{
+	{
+		Name:   "mount",
+		Action: types.ActAllow,
+		Args:   []*types.Arg{},
+	},
+	{
+		Name:   "umount2",
+		Action: types.ActAllow,
+		Args:   []*types.Arg{},
+	},
+	{
+		Name:   "reboot",
+		Action: types.ActAllow,
+		Args:   []*types.Arg{},
+	},
+	{
+		Name:   "name_to_handle_at",
+		Action: types.ActAllow,
+		Args:   []*types.Arg{},
+	},
+	{
+		Name:   "unshare",
+		Action: types.ActAllow,
+		Args:   []*types.Arg{},
+	},
+}
+
 // DefaultProfile defines the whitelist for the default seccomp profile.
 var DefaultProfile = &types.Seccomp{
 	DefaultAction: types.ActErrno,

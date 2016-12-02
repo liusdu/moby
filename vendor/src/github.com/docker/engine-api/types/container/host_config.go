@@ -313,6 +313,7 @@ type HostConfig struct {
 	ShmSize         int64             // Total shm memory usage
 	Sysctls         map[string]string `json:",omitempty"` // List of Namespaced sysctls used for the container
 	ExternalRootfs  string            // External rootfs to use for container
+	SystemContainer bool              // Running system container
 
 	// Applicable to Windows
 	ConsoleSize [2]int    // Initial console size

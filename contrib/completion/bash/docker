@@ -1690,6 +1690,7 @@ _docker_run() {
 		--privileged
 		--publish-all -P
 		--read-only
+		--system-container
 		--tty -t
 	"
 

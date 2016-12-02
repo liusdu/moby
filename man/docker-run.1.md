@@ -72,6 +72,7 @@ docker-run - Run a command in a new container
 [**--stop-signal**[=*SIGNAL*]]
 [**--shm-size**[=*[]*]]
 [**--sig-proxy**[=*true*]]
+[**--system-container**]
 [**-t**|**--tty**]
 [**--tmpfs**[=*[CONTAINER-DIR[:<OPTIONS>]*]]
 [**-u**|**--user**[=*USER*]]
@@ -537,6 +538,9 @@ its root filesystem mounted as read only prohibiting any writes.
 
 **--sig-proxy**=*true*|*false*
    Proxy received signals to the process (non-TTY mode only). SIGCHLD, SIGSTOP, and SIGKILL are not proxied. The default is *true*.
+
+**--system-container**=*true*|*false*
+   Extend some features only needed by running system container. The default is *false*.
 
 **--memory-swappiness**=""
    Tune a container's memory swappiness behavior. Accepts an integer between 0 and 100.

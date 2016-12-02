@@ -17,6 +17,37 @@ func GetDefaultProfile() (*specs.Seccomp, error) {
 	return setupSeccomp(DefaultProfile)
 }
 
+// GetDefaultProfileForSystemContainer returns the default seccomp profile for system container
+func GetDefaultProfileForSystemContainer() (*specs.Seccomp, error) {
+	newConfig, err := GetDefaultProfile()
+	if err != nil {
+		return nil, err
+	}
+	// append unblock syscalls for system container
+	for _, call := range UnblockedSystemCalls {
+		newCall := specs.Syscall{
+			Name:   call.Name,
+			Action: specs.Action(call.Action),
+		}
+
+		// Loop through all the arguments of the syscall and convert them
+		for _, arg := range call.Args {
+			newArg := specs.Arg{
+				Index:    arg.Index,
+				Value:    arg.Value,
+				ValueTwo: arg.ValueTwo,
+				Op:       specs.Operator(arg.Op),
+			}
+
+			newCall.Args = append(newCall.Args, newArg)
+		}
+
+		newConfig.Syscalls = append(newConfig.Syscalls, newCall)
+	}
+
+	return newConfig, nil
+}
+
 // LoadProfile takes a file path and decodes the seccomp profile.
 func LoadProfile(body string) (*specs.Seccomp, error) {
 	var config types.Seccomp
