@@ -1493,3 +1493,19 @@ func waitForGoroutines(expected int) error {
 		}
 	}
 }
+
+// daemonHookDir provides the hookDir path on the daemon host
+func daemonHookDir(c *check.C) string {
+	status, body, err := sockRequest("GET", "/info", nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(status, check.Equals, http.StatusOK)
+
+	type infoJSON struct {
+		DockerRootDir string
+	}
+	var info infoJSON
+	err = json.Unmarshal(body, &info)
+	c.Assert(err, check.IsNil, check.Commentf("unable to unmarshal GET /info response"))
+
+	return filepath.Join(info.DockerRootDir, "hooks")
+}

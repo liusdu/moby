@@ -4440,27 +4440,29 @@ func (s *DockerSuite) TestRunUseExternalRootfs(c *check.C) {
 
 func (s *DockerSuite) TestRunWithHookSpec(c *check.C) {
 	testRequires(c, DaemonIsLinux)
+	hookDir := daemonHookDir(c)
 	homePath := randomTmpDirPath("test1", daemonPlatform)
-	hookDir := "testHook"
+	testDir := "testHook"
 
+	c.Assert(os.Symlink("/bin/mkdir", filepath.Join(hookDir, "mkdir")), checker.IsNil, check.Commentf("hookdir: %v", hookDir))
+	c.Assert(os.Symlink("/bin/rmdir", filepath.Join(hookDir, "rmdir")), checker.IsNil, check.Commentf("hookdir: %v", hookDir))
 	hookStr := `
 {
 	"prestart": [
 		{
-			"path": "/bin/mkdir",
-			"args": ["mkdir", "%v"]
+			"path": "` + filepath.Join(hookDir, "mkdir") + `",
+			"args": ["mkdir", "` + filepath.Join(homePath, testDir) + `"]
 		}
 	],
 	"poststop":[
 		{
-			"path": "/bin/rmdir",
-			"args": ["rmdir", "%v"]
+			"path": "` + filepath.Join(hookDir, "rmdir") + `",
+			"args": ["rmdir", "` + filepath.Join(homePath, testDir) + `"]
 		}
 	]
 }
 	`
 
-	hookStr = fmt.Sprintf(hookStr, filepath.Join(homePath, hookDir), filepath.Join(homePath, hookDir))
 	hookSpecFile := filepath.Join(homePath, "hookspec.json")
 
 	// create temp dir first
@@ -4477,10 +4479,51 @@ func (s *DockerSuite) TestRunWithHookSpec(c *check.C) {
 	// if the hook works, before CMD of container executed, prestart hook
 	// should already finish its work of making new dir "/someplace/testHook"
 	// and "ls" should work fine without error
-	dockerCmd(c, "run", "-v", homePath+":/someplace", "--hook-spec="+hookSpecFile, "busybox", "ls", filepath.Join("/someplace", hookDir))
+	dockerCmd(c, "run", "-v", homePath+":/someplace", "--hook-spec="+hookSpecFile, "busybox", "ls", filepath.Join("/someplace", testDir))
 
 	// after container exits, poststop hook works, new dir should be removed.
-	_, err = os.Stat(filepath.Join(homePath, hookDir))
+	_, err = os.Stat(filepath.Join(homePath, testDir))
 	c.Assert(err, checker.NotNil)
 	c.Assert(os.IsNotExist(err), checker.True)
+}
+
+func (s *DockerSuite) TestRunWithInvalidHookSpecPath(c *check.C) {
+	testRequires(c, DaemonIsLinux)
+	homePath := randomTmpDirPath("test1", daemonPlatform)
+	testDir := "testHook"
+
+	hookStr := `
+{
+	"prestart": [
+		{
+			"path": "/bin/mkdir",
+			"args": ["mkdir", "` + filepath.Join(homePath, testDir) + `"]
+		}
+	],
+	"poststop":[
+		{
+			"path": "/bin/rmdir",
+			"args": ["rmdir", "` + filepath.Join(homePath, testDir) + `"]
+		}
+	]
+}
+	`
+
+	hookSpecFile := filepath.Join(homePath, "hookspec.json")
+
+	// create temp dir first
+	c.Assert(os.MkdirAll(homePath, 0755), checker.IsNil)
+	defer os.RemoveAll(homePath)
+
+	// write hook spec file
+	file, err := os.OpenFile(hookSpecFile, os.O_RDWR|os.O_CREATE, 0644)
+	c.Assert(err, checker.IsNil)
+	n, err := file.Write([]byte(hookStr))
+	c.Assert(err, checker.IsNil)
+	c.Assert(n, checker.Equals, len([]byte(hookStr)))
+
+	// hook path is not subdir of "/var/lib/docker/hooks", so this `docker run` is
+	// expected to fail and should return error
+	_, _, err = dockerCmdWithError("run", "-v", homePath+":/someplace", "--hook-spec="+hookSpecFile, "busybox", "ls", filepath.Join("/someplace", testDir))
+	c.Assert(err, checker.NotNil)
 }

@@ -121,6 +121,7 @@ type Daemon struct {
 	volumes                   *store.VolumeStore
 	discoveryWatcher          discoveryReloader
 	root                      string
+	hookStore                 string
 	seccompEnabled            bool
 	shutdown                  bool
 	uidMaps                   []idtools.IDMap
@@ -830,6 +831,11 @@ func NewDaemon(config *Config, registryService *registry.Service, containerdRemo
 		return nil, fmt.Errorf("Devices cgroup isn't mounted")
 	}
 
+	hookDir := filepath.Join(config.Root, "hooks")
+	if err := idtools.MkdirAllAs(hookDir, 0700, rootUID, rootGID); err != nil && !os.IsExist(err) {
+		return nil, err
+	}
+
 	d.ID = trustKey.PublicKey().KeyID()
 	d.repository = daemonRepo
 	d.containers = container.NewMemoryStore()
@@ -854,6 +860,7 @@ func NewDaemon(config *Config, registryService *registry.Service, containerdRemo
 	d.nameIndex = registrar.NewRegistrar()
 	d.linkIndex = newLinkIndex()
 	d.containerdRemote = containerdRemote
+	d.hookStore = hookDir
 
 	go d.execCommandGC()
 
@@ -1829,6 +1836,43 @@ func (daemon *Daemon) registerHooks(container *container.Container, hostConfig *
 
 	if err = json.NewDecoder(f).Decode(&container.Hooks); err != nil {
 		return fmt.Errorf("malformed hook spec, is your spec file in json format? error: %v", err)
+	}
+
+	// hook path must be absolute and must be subdir of XXX
+	if err = daemon.validateHook(container); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (daemon *Daemon) validateHook(container *container.Container) error {
+	for _, v := range container.Hooks.Prestart {
+		if err := daemon.validateHookPath(v.Path); err != nil {
+			return err
+		}
+	}
+	for _, v := range container.Hooks.Poststart {
+		if err := daemon.validateHookPath(v.Path); err != nil {
+			return err
+		}
+	}
+	for _, v := range container.Hooks.Poststop {
+		if err := daemon.validateHookPath(v.Path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (daemon *Daemon) validateHookPath(path string) error {
+	// hook path must be absolute and must be subdir of XXX
+	path = filepath.Clean(path)
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("Hook path %q must be an absolute path", path)
+	}
+
+	if !filepath.HasPrefix(path, daemon.hookStore) {
+		return fmt.Errorf("hook program must be put under %q", daemon.hookStore)
 	}
 	return nil
 }
