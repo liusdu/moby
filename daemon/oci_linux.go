@@ -694,6 +694,34 @@ func (daemon *Daemon) createSpec(c *container.Container) (*libcontainerd.Spec, e
 		}
 	}
 
+	// append oci-systemd-hook if run system container
+	if c.HostConfig.SystemContainer {
+		configPath, err := c.ConfigPath()
+		if err != nil {
+			return nil, err
+		}
+
+		ociSystemdHook := "/usr/libexec/oci/hooks.d/oci-systemd-hook"
+		if _, err := os.Stat(ociSystemdHook); err != nil {
+			if os.IsNotExist(err) {
+				return nil, fmt.Errorf("systemd hook %q does not exist", ociSystemdHook)
+			}
+			return nil, err
+		}
+		s.Hooks.Prestart = append(s.Hooks.Prestart, specs.Hook{
+			Path: ociSystemdHook,
+			Args: []string{ociSystemdHook, "prestart", configPath},
+			Env:  []string{"container=docker"},
+		},
+		)
+		s.Hooks.Poststop = append(s.Hooks.Poststop, specs.Hook{
+			Path: ociSystemdHook,
+			Args: []string{ociSystemdHook, "poststop", configPath},
+			Env:  []string{"container=docker"},
+		},
+		)
+	}
+
 	// apppend user custom hooks after system hooks
 	// make sure docker's predefined hooks are executed before custom hooks
 	s.Hooks.Prestart = append(s.Hooks.Prestart, c.Hooks.Prestart...)
