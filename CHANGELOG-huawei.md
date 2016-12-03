@@ -1,5 +1,18 @@
 # Changelog
 
+ ## v1.11.2.5-IT (2016-12-03)
+
++ Add exec oci-systemd-hook for system container
++ Add new option '--system-container' to support for running system container
+- Re-vendor syslog log driver to fix a potential dead lock problem
+- Fixes the experimental tests from hanging
++ Implement on-reboot restart policy to restat container if exit code is 129
++ Add '--hook-spec' to support hooks for docker
++ Add external rootfs support
+- Update runc to the latest version and rewrite console to fix tty issues (runc)
+
+<We fork here for IT>
+
 ## v1.11.2.4 (2016-10-21)
 
 + Add support for --pid=container:<id>
