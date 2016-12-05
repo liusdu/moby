@@ -105,7 +105,7 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 		return nil, err
 	}
 
-	if container, err = daemon.newContainer(params.Name, params.Config, imgID); err != nil {
+	if container, err = daemon.newContainer(params.Name, params.Config, params.HostConfig, imgID); err != nil {
 		return nil, err
 	}
 	defer func() {
