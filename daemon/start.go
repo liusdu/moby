@@ -106,6 +106,8 @@ func (daemon *Daemon) containerStart(container *container.Container) (err error)
 				container.ExitCode = 128
 			}
 			container.ToDisk()
+			container.Reset(false)
+
 			daemon.Cleanup(container)
 			attributes := map[string]string{
 				"exitCode": fmt.Sprintf("%d", container.ExitCode),
@@ -146,8 +148,6 @@ func (daemon *Daemon) containerStart(container *container.Container) (err error)
 			container.ExitCode = 126
 			err = fmt.Errorf("Container command '%s' could not be invoked.", container.Path)
 		}
-
-		container.Reset(false)
 
 		// start event is logged even on error
 		daemon.LogContainerEvent(container, "start")
