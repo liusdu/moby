@@ -2,8 +2,10 @@ package daemon
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/docker/docker/volume"
 	"github.com/docker/engine-api/types/container"
 )
 
@@ -49,10 +51,12 @@ func (daemon *Daemon) update(name string, hostConfig *container.HostConfig) erro
 
 	restoreConfig := false
 	backupHostConfig := *container.HostConfig
+	backupMountPoints := container.MountPoints
 	defer func() {
 		if restoreConfig {
 			container.Lock()
 			container.HostConfig = &backupHostConfig
+			container.MountPoints = backupMountPoints
 			container.ToDisk()
 			container.Unlock()
 		}
@@ -64,6 +68,46 @@ func (daemon *Daemon) update(name string, hostConfig *container.HostConfig) erro
 
 	if container.IsRunning() && hostConfig.KernelMemory != 0 {
 		return errCannotUpdate(container.ID, fmt.Errorf("Can not update kernel memory to a running container, please stop it first."))
+	}
+
+	// Verify Device From Client.
+	for _, device := range hostConfig.Resources.Devices {
+		if _, _, err := getDevicesFromPath(device); err != nil {
+			return errCannotUpdate(container.ID, err)
+		}
+	}
+
+	container.Lock()
+	// Remove binds from MountPoints.
+	Mps := make(map[string]*volume.MountPoint)
+	for k, v := range container.MountPoints {
+		Mps[k] = v
+	}
+	for _, oldBinds := range container.HostConfig.Binds {
+		found := false
+		oldArr := strings.Split(oldBinds, ":")
+		for _, bind := range hostConfig.Binds {
+			bindArr := strings.Split(bind, ":")
+			if oldArr[0] == bindArr[0] && oldArr[1] == bindArr[1] {
+				found = true
+			}
+		}
+		if !found {
+			mp, err := volume.ParseMountSpec(oldBinds, "")
+			if err != nil {
+				container.Unlock()
+				return errCannotUpdate(container.ID, err)
+			}
+			delete(Mps, mp.Destination)
+		}
+	}
+	container.MountPoints = Mps
+	container.Unlock()
+
+	// Add new binds to MountPoints.
+	if err := daemon.registerMountPoints(container, hostConfig); err != nil {
+		restoreConfig = true
+		return errCannotUpdate(container.ID, err)
 	}
 
 	if err := container.UpdateContainer(hostConfig); err != nil {

@@ -1993,6 +1993,8 @@ _docker_unpause() {
 
 _docker_update() {
 	local options_with_args="
+		--add-device
+		--add-path
 		--blkio-weight
 		--cpu-period
 		--cpu-quota
@@ -2003,6 +2005,8 @@ _docker_update() {
 		--memory -m
 		--memory-reservation
 		--memory-swap
+		--remove-device
+		--remove-path
 		--restart
 	"
 
