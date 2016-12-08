@@ -170,6 +170,8 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 		waitDisplayID chan struct{}
 		errCh         chan error
 		errCh2        chan error
+		cancelFun     context.CancelFunc
+		ctx           context.Context
 	)
 	if !config.AttachStdout && !config.AttachStderr {
 		// Make this asynchronous to allow the client to write to stdin before having to read the ID
@@ -182,8 +184,8 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 	if *flAutoRemove && (hostConfig.RestartPolicy.IsAlways() || hostConfig.RestartPolicy.IsOnFailure()) {
 		return ErrConflictRestartPolicyAndAutoRemove
 	}
-
-	if config.AttachStdin || config.AttachStdout || config.AttachStderr {
+	attach := config.AttachStdin || config.AttachStdout || config.AttachStderr
+	if attach {
 		var (
 			out, stderr io.Writer
 			in          io.ReadCloser
@@ -219,14 +221,9 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 		if err != nil {
 			return err
 		}
-		if in != nil && config.Tty {
-			if err := cli.setRawTerminal(); err != nil {
-				return err
-			}
-			defer cli.restoreTerminal(in)
-		}
+		ctx, cancelFun = context.WithCancel(context.Background())
 		errCh = promise.Go(func() error {
-			return cli.holdHijackedConnection(config.Tty, in, out, stderr, resp)
+			return cli.holdHijackedConnection(ctx, config.Tty, in, out, stderr, resp)
 		})
 
 		if *flAttachOutput != "" {
@@ -247,7 +244,7 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 				return err
 			}
 			errCh2 = promise.Go(func() error {
-				return cli.holdHijackedConnection(config.Tty, nil, out, stderr, resp2)
+				return cli.holdHijackedConnection(ctx, config.Tty, nil, out, stderr, resp2)
 			})
 			defer func() {
 				resp2.Close()
@@ -275,6 +272,14 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 
 	//start the container
 	if err := cli.client.ContainerStart(context.Background(), createResponse.ID); err != nil {
+		// If we have holdHijackedConnection, we should notify
+		// holdHijackedConnection we are going to exit and wait
+		// to avoid the terminal are not restored.
+		if attach {
+			cancelFun()
+			<-errCh
+		}
+
 		cmd.ReportError(err.Error(), false)
 		return runStartContainerErr(err)
 	}
