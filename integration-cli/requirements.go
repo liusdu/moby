@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -184,6 +185,28 @@ var (
 			return true
 		},
 		"Test cannot be run when remapping root",
+	}
+	SetupFakeOciSystemdHook = testRequirement{
+		func() bool {
+			file := "/usr/libexec/oci/hooks.d/oci-systemd-hook"
+			content := []byte(`#!/bin/sh
+			exit 0
+			`)
+			if _, err := os.Stat(file); err == nil {
+				os.Remove(file)
+			}
+			err := os.MkdirAll(filepath.Dir(file), 0644)
+			if err != nil {
+				return false
+			}
+			err = ioutil.WriteFile(file, content, 0755)
+			if err != nil {
+				return false
+			}
+			return true
+
+		},
+		"Test cannot be run without ociSystemdHook",
 	}
 )
 

@@ -6,4 +6,8 @@ WORKDIR /usr/src/
 
 RUN gcc -g -Wall -static userns.c -o /usr/bin/userns-test \
 	&& gcc -g -Wall -static ns.c -o /usr/bin/ns-test \
-	&& gcc -g -Wall -static acct.c -o /usr/bin/acct-test
+	&& gcc -g -Wall -static acct.c -o /usr/bin/acct-test \
+	&& gcc -g -Wall -static reboot.c -o /usr/bin/reboot-test \
+	&& gcc -g -Wall -static umount2.c -o /usr/bin/umount2-test \
+	&& gcc -g -Wall -static mount.c -o /usr/bin/mount-test \
+	&& gcc -g -Wall -static name_to_handle_at.c -o /usr/bin/name_to_handle_at-test
