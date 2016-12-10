@@ -281,6 +281,9 @@ func (container *Container) UpdateContainer(hostConfig *containertypes.HostConfi
 	if resources.KernelMemory != 0 {
 		cResources.KernelMemory = resources.KernelMemory
 	}
+	// hostConfig Device and Binds has changed to be latest
+	cResources.Devices = resources.Devices
+	container.HostConfig.Binds = hostConfig.Binds
 
 	// update HostConfig of container
 	if hostConfig.RestartPolicy.Name != "" {
