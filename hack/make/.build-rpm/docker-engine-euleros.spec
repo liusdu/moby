@@ -1,4 +1,4 @@
-%global _version 1.11.6.5.it
+%global _version 1.11.2.6.it
 %global _release 0.0.20161210.005653.gite03cfa1
 %global _origversion 1.11.2
 
