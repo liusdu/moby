@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.11.2.6.IT (2016-12-10)
+
++ add options for 'docker update' to update config file only
+- Fix docker save with empty timestamp of layer created time
+- Clean up the console.sock if start failed (issue 95)
+- cli: move setRawTerminal and restoreTerminal to holdHijackedConnection, fix dts DTS2016120802950
+- fix fail to attach a container if this container start failed and then start success next time (issue 93).
+- Fix overlay test running on overlay
+
  ## v1.11.2.5-IT (2016-12-03)
 
 + Add exec oci-systemd-hook for system container
