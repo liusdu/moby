@@ -4528,11 +4528,41 @@ func (s *DockerSuite) TestRunWithInvalidHookSpecPath(c *check.C) {
 	c.Assert(err, checker.NotNil)
 }
 
+func setupFakeOciSystemdHook() error {
+	file := "/usr/libexec/oci/hooks.d/oci-systemd-hook"
+	content := []byte(`#!/bin/sh
+	exit 0
+        `)
+	if _, err := os.Stat(file); err == nil {
+		os.Remove(file)
+	}
+	err := os.MkdirAll(filepath.Dir(file), 0644)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(file, content, 0755)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func removeFakeOciSystemdHook() {
+	file := "/usr/libexec/oci/hooks.d/oci-systemd-hook"
+	if _, err := os.Stat(file); err == nil {
+		os.Remove(file)
+	}
+}
+
 // TestRunAddCapWithSystemContainer checks that 'docker run --system-container busybox'
 // adds SYS_BOOT and AUDIT_CONTROL capabilites
 func (s *DockerSuite) TestRunAddCapWithSystemContainer(c *check.C) {
-	testRequires(c, DaemonIsLinux, SetupFakeOciSystemdHook)
+	testRequires(c, DaemonIsLinux)
 
+	if err := setupFakeOciSystemdHook(); err != nil {
+		c.Skip(fmt.Sprintf("Test cannot be run without ociSystemdHook, setup ociSystemdHook failed with error: %v", err))
+	}
+	defer removeFakeOciSystemdHook()
 	runCmd := exec.Command(dockerBinary, "run", "--system-container", "busybox", "sh", "-c", "cat /proc/1/status | grep CapEff")
 	out, _, err := runCommandWithOutput(runCmd)
 	c.Assert(err, checker.IsNil)
@@ -4543,8 +4573,12 @@ func (s *DockerSuite) TestRunAddCapWithSystemContainer(c *check.C) {
 // TestRunUnblockSyscallRebootWithSystemContainer checks that 'docker run --system-container syscall-test'
 // allows calling reboot syscall.
 func (s *DockerSuite) TestRunUnblockSyscallRebootWithSystemContainer(c *check.C) {
-	testRequires(c, DaemonIsLinux, seccompEnabled, SetupFakeOciSystemdHook)
+	testRequires(c, DaemonIsLinux, seccompEnabled)
 
+	if err := setupFakeOciSystemdHook(); err != nil {
+		c.Skip(fmt.Sprintf("Test cannot be run without ociSystemdHook, setup ociSystemdHook failed with error: %v", err))
+	}
+	defer removeFakeOciSystemdHook()
 	runCmd := exec.Command(dockerBinary, "run", "--system-container", "syscall-test", "reboot-test")
 	if out, _, err := runCommandWithOutput(runCmd); err == nil || !strings.Contains(err.Error(), "exit status 129") {
 		c.Fatalf("expected call reboot syscall with --system-container to succeed, got %s: %v", out, err)
@@ -4554,8 +4588,12 @@ func (s *DockerSuite) TestRunUnblockSyscallRebootWithSystemContainer(c *check.C)
 // TestRunUnblockSyscallUnshareWithSystemContainer checks that 'docker run --system-container debian:jessie'
 // allows calling unshare syscall
 func (s *DockerSuite) TestRunUnblockSyscallUnshareWithSystemContainer(c *check.C) {
-	testRequires(c, DaemonIsLinux, seccompEnabled, NotUserNamespace, SetupFakeOciSystemdHook)
+	testRequires(c, DaemonIsLinux, seccompEnabled, NotUserNamespace)
 
+	if err := setupFakeOciSystemdHook(); err != nil {
+		c.Skip(fmt.Sprintf("Test cannot be run without ociSystemdHook, setup ociSystemdHook failed with error: %v", err))
+	}
+	defer removeFakeOciSystemdHook()
 	runCmd := exec.Command(dockerBinary, "run", "--system-container", "debian:jessie", "unshare", "--map-root-user", "--user", "sh", "-c", "whoami")
 	out, _, err := runCommandWithOutput(runCmd)
 	c.Assert(err, checker.IsNil)
@@ -4565,8 +4603,12 @@ func (s *DockerSuite) TestRunUnblockSyscallUnshareWithSystemContainer(c *check.C
 // TestRunUnblockSyscallNameToHandleAtWithSystemContainer checks that 'docker run --system-container syscall-test'
 // allows calling name_to_handle_at syscall.
 func (s *DockerSuite) TestRunUnblockSyscallNameToHandleAtWithSystemContainer(c *check.C) {
-	testRequires(c, DaemonIsLinux, seccompEnabled, SetupFakeOciSystemdHook)
+	testRequires(c, DaemonIsLinux, seccompEnabled)
 
+	if err := setupFakeOciSystemdHook(); err != nil {
+		c.Skip(fmt.Sprintf("Test cannot be run without ociSystemdHook, setup ociSystemdHook failed with error: %v", err))
+	}
+	defer removeFakeOciSystemdHook()
 	runCmd := exec.Command(dockerBinary, "run", "--system-container", "syscall-test", "name_to_handle_at-test", "/etc/resolv.conf")
 	if out, _, err := runCommandWithOutput(runCmd); err != nil {
 		c.Fatalf("expected call name_to_handle_at syscall with --system-container to succeed, got %s: %v", out, err)
@@ -4576,8 +4618,12 @@ func (s *DockerSuite) TestRunUnblockSyscallNameToHandleAtWithSystemContainer(c *
 // TestRunUnblockSyscallUmount2WithSystemContainer checks that 'docker run --system-container syscall-test'
 // allows calling umount2 syscall.
 func (s *DockerSuite) TestRunUnblockSyscallUmount2WithSystemContainer(c *check.C) {
-	testRequires(c, DaemonIsLinux, seccompEnabled, SetupFakeOciSystemdHook)
+	testRequires(c, DaemonIsLinux, seccompEnabled)
 
+	if err := setupFakeOciSystemdHook(); err != nil {
+		c.Skip(fmt.Sprintf("Test cannot be run without ociSystemdHook, setup ociSystemdHook failed with error: %v", err))
+	}
+	defer removeFakeOciSystemdHook()
 	runCmd := exec.Command(dockerBinary, "run", "--cap-add=SYS_ADMIN", "--system-container", "syscall-test", "umount2-test", "/etc/resolv.conf")
 	if out, _, err := runCommandWithOutput(runCmd); err != nil {
 		c.Fatalf("expected call umount2 syscall with --system-container to succeed, got %s: %v", out, err)
@@ -4587,8 +4633,12 @@ func (s *DockerSuite) TestRunUnblockSyscallUmount2WithSystemContainer(c *check.C
 // TestRunUnblockSyscallMountWithSystemContainer checks that 'docker run --system-container syscall-test'
 // allows calling mount syscall.
 func (s *DockerSuite) TestRunUnblockSyscallMountWithSystemContainer(c *check.C) {
-	testRequires(c, DaemonIsLinux, seccompEnabled, SetupFakeOciSystemdHook)
+	testRequires(c, DaemonIsLinux, seccompEnabled)
 
+	if err := setupFakeOciSystemdHook(); err != nil {
+		c.Skip(fmt.Sprintf("Test cannot be run without ociSystemdHook, setup ociSystemdHook failed with error: %v", err))
+	}
+	defer removeFakeOciSystemdHook()
 	runCmd := exec.Command(dockerBinary, "run", "--cap-add=SYS_ADMIN", "--system-container", "syscall-test", "mount-test")
 	if out, _, err := runCommandWithOutput(runCmd); err != nil {
 		c.Fatalf("expected call mount syscall with --system-container to succeed, got %s: %v", out, err)
