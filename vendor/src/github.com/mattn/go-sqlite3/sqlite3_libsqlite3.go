@@ -8,6 +8,6 @@ package sqlite3
 
 /*
 #cgo CFLAGS: -DUSE_LIBSQLITE3
-#cgo LDFLAGS: -lsqlite3
+#cgo LDFLAGS: -lsqlite3 -lpthread
 */
 import "C"
