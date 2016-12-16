@@ -116,7 +116,9 @@ func (daemon *Daemon) update(name string, hostConfig *container.HostConfig) erro
 	}
 
 	// if Restart Policy changed, we need to update container monitor
-	container.UpdateMonitor(hostConfig.RestartPolicy)
+	if hostConfig.RestartPolicy.Name != "" {
+		container.UpdateMonitor(hostConfig.RestartPolicy)
+	}
 
 	// if container is restarting, wait 5 seconds until it's running
 	if container.IsRestarting() {
