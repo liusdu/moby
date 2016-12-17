@@ -1,6 +1,15 @@
 # Changelog
 
-## v1.11.2.6.IT (2016-12-10)
+## v1.11.2.7.it (2016-12-16)
+
+- Fix docker update clear restart policy of monitor
+- Fix flaky test TestEventsTimestampFormats
+- Fix rpm package name
+- [containerd] Remove SIGCHLD reaper from containerd process to fix SIGCHLD race issue
+- [containerd] Better error msg
+- [containerd] Set CONTAINER_ACTION env to support rebooting host in hook
+
+## v1.11.2.6.it (2016-12-10)
 
 + add options for 'docker update' to update config file only
 - Fix docker save with empty timestamp of layer created time
@@ -9,7 +18,7 @@
 - fix fail to attach a container if this container start failed and then start success next time (issue 93).
 - Fix overlay test running on overlay
 
- ## v1.11.2.5-IT (2016-12-03)
+## v1.11.2.5.it (2016-12-03)
 
 + Add exec oci-systemd-hook for system container
 + Add new option '--system-container' to support for running system container
