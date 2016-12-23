@@ -117,6 +117,7 @@ func (ctr *container) start() error {
 // equivalent to (in the linux containerd world) where events come in for
 // state change notifications from containerd.
 func (ctr *container) waitExit(pid uint32, processFriendlyName string, isFirstProcessToStart bool) error {
+	var waitRestart chan error
 	logrus.Debugln("waitExit on pid", pid)
 
 	// Block indefinitely for the process to exit.
@@ -181,19 +182,7 @@ func (ctr *container) waitExit(pid uint32, processFriendlyName string, isFirstPr
 			} else if restart {
 				si.State = StateRestart
 				ctr.restarting = true
-				go func() {
-					err := <-wait
-					ctr.restarting = false
-					if err != nil {
-						si.State = StateExit
-						if err := ctr.client.backend.StateChanged(ctr.containerID, si); err != nil {
-							logrus.Error(err)
-						}
-						logrus.Error(err)
-					} else {
-						ctr.client.Create(ctr.containerID, ctr.ociSpec, ctr.options...)
-					}
-				}()
+				waitRestart = wait
 			}
 		}
 
@@ -209,7 +198,24 @@ func (ctr *container) waitExit(pid uint32, processFriendlyName string, isFirstPr
 	if err := ctr.client.backend.StateChanged(ctr.containerID, si); err != nil {
 		logrus.Error(err)
 	}
-
+	if si.State == StateRestart {
+		go func() {
+			err := <-waitRestart
+			ctr.restarting = false
+			ctr.client.deleteContainer(ctr.friendlyName)
+			if err == nil {
+				if err = ctr.client.Create(ctr.containerID, ctr.ociSpec, ctr.options...); err != nil {
+					logrus.Errorf("libcontainerd: error restarting %v", err)
+				}
+			}
+			if err != nil {
+				si.State = StateExit
+				if err := ctr.client.backend.StateChanged(ctr.containerID, si); err != nil {
+					logrus.Error(err)
+				}
+			}
+		}()
+	}
 	logrus.Debugln("waitExit() completed OK")
 	return nil
 }
