@@ -6,8 +6,6 @@ docker-update - Update configuration of one or more containers
 
 # SYNOPSIS
 **docker update**
-[**--add-device**[=*[]*]]
-[**--add-path**[=*[]*]]
 [**--blkio-weight**[=*[BLKIO-WEIGHT]*]]
 [**--cpu-shares**[=*0*]]
 [**--cpu-period**[=*0*]]
@@ -19,8 +17,6 @@ docker-update - Update configuration of one or more containers
 [**-m**|**--memory**[=*MEMORY*]]
 [**--memory-reservation**[=*MEMORY-RESERVATION*]]
 [**--memory-swap**[=*MEMORY-SWAP*]]
-[**--remove-device**[=*[]*]]
-[**--remove-path**[=*[]*]]
 [**--restart**[=*""*]]
 CONTAINER [CONTAINER...]
 
@@ -43,12 +39,6 @@ new restart policy will take effect instantly after you run `docker update`
 on a container.
 
 # OPTIONS
-**--add-device**=[]
-   Add a host device to the container (e.g. --add-device=/dev/sdc:/dev/xvdc:rwm)
-
-**--add-path**=[]
-   Add a host path to the container (e.g. --add-path=/opt/data:/data:rw)
-
 **--blkio-weight**=0
    Block IO weight (relative weight) accepts a weight value between 10 and 1000.
 
@@ -72,13 +62,6 @@ on a container.
 
 **--kernel-memory**=""
    Kernel memory limit (format: `<number>[<unit>]`, where unit = b, k, m or g)
-
-**--remove-device**=[]
-   Remove a host device to the container (e.g. --add-device=/dev/sdc:/dev/xvdc:rwm)
-
-**--remove-path**=[]
-   Remove a host path to the container (e.g. --add-path=/opt/data:/data:rw)
-
 
    Note that you can not update kernel memory to a running container, it can only
 be updated to a stopped container, and affect after it's started.
