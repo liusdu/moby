@@ -272,7 +272,6 @@ type UpdateConfig struct {
 	// Contains container's resources (cgroups, ulimits)
 	Resources
 	RestartPolicy RestartPolicy
-	Binds         []string
 }
 
 // HostConfig the non-portable Config structure of a container.
