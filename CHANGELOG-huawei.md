@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.2.8.it (2016-12-24)
+
+- Fix can't remove a restarting container (issue 106)
+- Fix `docker exec -u` issue after docker daemon restart (issue 101)
+- Revert "add options for 'docker update' to update config file only
+
 ## v1.11.2.7.it (2016-12-16)
 
 - Fix docker update clear restart policy of monitor
