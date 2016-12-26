@@ -4660,3 +4660,18 @@ func (s *DockerSuite) TestRunConflictRestartPolicyAndAutoRemove(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(out, checker.Contains, expected)
 }
+
+// TestRunAddEnvWithSystemContainer checks that 'docker run --system-container debian:jessie' override or append ENV (container=docker)
+func (s *DockerSuite) TestRunAddEnvWithSystemContainer(c *check.C) {
+	testRequires(c, DaemonIsLinux, seccompEnabled, NotUserNamespace)
+
+	if err := setupFakeOciSystemdHook(); err != nil {
+		c.Skip(fmt.Sprintf("Test cannot be run without ociSystemdHook, setup ociSystemdHook failed with error: %v", err))
+	}
+	defer removeFakeOciSystemdHook()
+	out, _ := dockerCmd(c, "run", "--system-container", "busybox", "cat", "/proc/1/environ")
+	expected := "container=docker"
+	if !strings.Contains(out, expected) {
+		c.Fatalf("Expected output to contain %q, got %q instead", expected, out)
+	}
+}
