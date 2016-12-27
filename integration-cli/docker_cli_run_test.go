@@ -4644,3 +4644,19 @@ func (s *DockerSuite) TestRunUnblockSyscallMountWithSystemContainer(c *check.C) 
 		c.Fatalf("expected call mount syscall with --system-container to succeed, got %s: %v", out, err)
 	}
 }
+
+func (s *DockerSuite) TestRunConflictRestartPolicyAndAutoRemove(c *check.C) {
+	expected := "Conflicting options: --restart and --rm"
+
+	out, _, err := dockerCmdWithError("run", "--rm", "--restart=on-reboot", "busybox", "echo", "test")
+	c.Assert(err, check.NotNil)
+	c.Assert(out, checker.Contains, expected)
+
+	out, _, err = dockerCmdWithError("run", "--rm", "--restart=always", "busybox", "echo", "test")
+	c.Assert(err, check.NotNil)
+	c.Assert(out, checker.Contains, expected)
+
+	out, _, err = dockerCmdWithError("run", "--rm", "--restart=on-failure", "busybox", "echo", "test")
+	c.Assert(err, check.NotNil)
+	c.Assert(out, checker.Contains, expected)
+}

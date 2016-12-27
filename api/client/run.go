@@ -181,7 +181,7 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 			fmt.Fprintf(cli.out, "%s\n", createResponse.ID)
 		}()
 	}
-	if *flAutoRemove && (hostConfig.RestartPolicy.IsAlways() || hostConfig.RestartPolicy.IsOnFailure()) {
+	if *flAutoRemove && (hostConfig.RestartPolicy.IsAlways() || hostConfig.RestartPolicy.IsOnFailure() || hostConfig.RestartPolicy.IsOnReboot()) {
 		return ErrConflictRestartPolicyAndAutoRemove
 	}
 	attach := config.AttachStdin || config.AttachStdout || config.AttachStderr
