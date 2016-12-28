@@ -17,6 +17,7 @@ import (
 	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/stringutils"
 	"github.com/docker/docker/pkg/symlink"
+	"github.com/docker/docker/utils"
 	"github.com/docker/docker/volume"
 	containertypes "github.com/docker/engine-api/types/container"
 	"github.com/opencontainers/runc/libcontainer/apparmor"
@@ -607,6 +608,9 @@ func (daemon *Daemon) populateCommonSpec(s *specs.Spec, c *container.Container) 
 	s.Process.Args = append([]string{c.Path}, c.Args...)
 	s.Process.Cwd = cwd
 	s.Process.Env = c.CreateDaemonEnvironment(linkedEnv)
+	if c.HostConfig.SystemContainer {
+		s.Process.Env = utils.ReplaceOrAppendEnvValues(s.Process.Env, []string{"container=docker"})
+	}
 	s.Process.Terminal = c.Config.Tty
 	s.Hostname = c.FullHostname()
 
