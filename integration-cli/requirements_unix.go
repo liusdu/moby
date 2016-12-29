@@ -3,6 +3,9 @@
 package main
 
 import (
+	"bytes"
+	"os/exec"
+
 	"github.com/docker/docker/pkg/sysinfo"
 )
 
@@ -98,6 +101,17 @@ var (
 			return !SysInfo.BridgeNFCallIP6TablesDisabled
 		},
 		"Test requires that bridge-nf-call-ip6tables support be enabled in the daemon.",
+	}
+	overlayFSSupported = testRequirement{
+		func() bool {
+			cmd := exec.Command(dockerBinary, "run", "--rm", "busybox", "/bin/sh", "-c", "cat /proc/filesystems")
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				return false
+			}
+			return bytes.Contains(out, []byte("overlay\n"))
+		},
+		"Test requires host support overlay fs",
 	}
 )
 
