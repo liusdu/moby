@@ -41,6 +41,9 @@ var (
 	defaultUdevSyncOverride            = false
 	maxDeviceID                        = 0xffffff // 24 bit, pool limit
 	deviceIDMapSz                      = (maxDeviceID + 1) / 8
+	// The default timeout is 30s from `man systemd-udevd`, we use 35
+	// just to make sure the timeout really happened in systemd-udevd
+	defaultUdevWaitTimeout = 35
 	// We retry device removal so many a times that even error messages
 	// will fill up console during normal operation. So only log Fatal
 	// messages by default.
@@ -1961,7 +1964,9 @@ func (devices *DeviceSet) issueDiscard(info *devInfo) error {
 // Should be called with devices.Lock() held.
 func (devices *DeviceSet) deleteDevice(info *devInfo, syncDelete bool) error {
 	if devices.doBlkDiscard {
-		devices.issueDiscard(info)
+		if err := devices.issueDiscard(info); err != nil {
+			return err
+		}
 	}
 
 	// Try to deactivate device in case it is active.
@@ -2464,6 +2469,7 @@ func NewDeviceSet(root string, doInit bool, options []string, uidMaps, gidMaps [
 	}
 
 	foundBlkDiscard := false
+	udevWaitTimeout := int64(defaultUdevWaitTimeout)
 	for _, option := range options {
 		key, val, err := parsers.ParseKeyValueOpt(option)
 		if err != nil {
@@ -2552,10 +2558,16 @@ func NewDeviceSet(root string, doInit bool, options []string, uidMaps, gidMaps [
 			}
 
 			devices.minFreeSpacePercent = uint32(minFreeSpacePercent)
+		case "dm.udev_wait_timeout":
+			udevWaitTimeout, err = strconv.ParseInt(val, 10, 32)
+			if err != nil {
+				return nil, err
+			}
 		default:
 			return nil, fmt.Errorf("devmapper: Unknown option %s\n", key)
 		}
 	}
+	devicemapper.SetUdevWaitTimtout(udevWaitTimeout)
 
 	// By default, don't do blk discard hack on raw devices, its rarely useful and is expensive
 	if !foundBlkDiscard && (devices.dataDevice != "" || devices.thinPoolDevice != "") {

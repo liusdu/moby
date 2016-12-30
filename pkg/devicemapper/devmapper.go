@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/Sirupsen/logrus"
@@ -62,6 +63,7 @@ var (
 	ErrNilCookie            = errors.New("cookie ptr can't be nil")
 	ErrGetBlockSize         = errors.New("Can't get block size")
 	ErrUdevWait             = errors.New("wait on udev cookie failed")
+	ErrUdevWaitTimeout      = errors.New("wait on udev cookie time out")
 	ErrSetDevDir            = errors.New("dm_set_dev_dir failed")
 	ErrGetLibraryVersion    = errors.New("dm_get_library_version failed")
 	ErrCreateRemoveTask     = errors.New("Can't create task of type deviceRemove")
@@ -73,9 +75,10 @@ var (
 )
 
 var (
-	dmSawBusy  bool
-	dmSawExist bool
-	dmSawEnxio bool // No Such Device or Address
+	dmSawBusy         bool
+	dmSawExist        bool
+	dmSawEnxio        bool // No Such Device or Address
+	dmUdevWaitTimeout int64
 )
 
 type (
@@ -256,11 +259,34 @@ func (t *Task) getNextTarget(next unsafe.Pointer) (nextPtr unsafe.Pointer, start
 
 // UdevWait waits for any processes that are waiting for udev to complete the specified cookie.
 func UdevWait(cookie *uint) error {
-	if res := DmUdevWait(*cookie); res != 1 {
-		logrus.Debugf("devicemapper: Failed to wait on udev cookie %d", *cookie)
-		return ErrUdevWait
+	chError := make(chan error)
+	go func() {
+		if res := DmUdevWait(*cookie); res != 1 {
+			logrus.Debugf("Failed to wait on udev cookie %d", *cookie)
+			chError <- ErrUdevWait
+		}
+		chError <- nil
+	}()
+	select {
+	case err := <-chError:
+		return err
+	case <-time.After(time.Second * time.Duration(dmUdevWaitTimeout)):
+		logrus.Errorf("Failed to wait on udev cookie %d: timeout %v", *cookie, dmUdevWaitTimeout)
+		if res := DmUdevComplete(*cookie); res != 1 {
+			// This is bad to return here
+			logrus.Errorf("Failed to complete udev cookie %d on udev wait timeout", *cookie)
+			return ErrUdevWaitTimeout
+		}
+		// wait DmUdevWait return after DmUdevComplete
+		<-chError
+		return ErrUdevWaitTimeout
 	}
 	return nil
+}
+
+// SetUdevWaitTimtout sets udev wait timeout
+func SetUdevWaitTimtout(t int64) {
+	dmUdevWaitTimeout = t
 }
 
 // LogInitVerbose is an interface to initialize the verbose logger for the device mapper library.
@@ -332,17 +358,17 @@ func RemoveDevice(name string) error {
 	if err := task.setCookie(&cookie, 0); err != nil {
 		return fmt.Errorf("devicemapper: Can not set cookie: %s", err)
 	}
-	defer UdevWait(&cookie)
 
 	dmSawBusy = false // reset before the task is run
 	if err = task.run(); err != nil {
+		UdevWait(&cookie)
 		if dmSawBusy {
 			return ErrBusy
 		}
 		return fmt.Errorf("devicemapper: Error running RemoveDevice %s", err)
 	}
 
-	return nil
+	return UdevWait(&cookie)
 }
 
 // RemoveDeviceDeferred is a useful helper for cleaning up a device, but deferred.
@@ -456,13 +482,13 @@ func CreatePool(poolName string, dataFile, metadataFile *os.File, poolBlockSize 
 	if err := task.setCookie(&cookie, flags); err != nil {
 		return fmt.Errorf("devicemapper: Can't set cookie %s", err)
 	}
-	defer UdevWait(&cookie)
 
 	if err := task.run(); err != nil {
+		UdevWait(&cookie)
 		return fmt.Errorf("devicemapper: Error running deviceCreate (CreatePool) %s", err)
 	}
 
-	return nil
+	return UdevWait(&cookie)
 }
 
 // ReloadPool is the programmatic example of "dmsetup reload".
@@ -642,13 +668,13 @@ func ResumeDevice(name string) error {
 	if err := task.setCookie(&cookie, 0); err != nil {
 		return fmt.Errorf("devicemapper: Can't set cookie %s", err)
 	}
-	defer UdevWait(&cookie)
 
 	if err := task.run(); err != nil {
+		UdevWait(&cookie)
 		return fmt.Errorf("devicemapper: Error running deviceResume %s", err)
 	}
 
-	return nil
+	return UdevWait(&cookie)
 }
 
 // CreateDevice creates a device with the specified poolName with the specified device id.
@@ -741,13 +767,12 @@ func activateDevice(poolName string, name string, deviceID int, size uint64, ext
 		return fmt.Errorf("devicemapper: Can't set cookie %s", err)
 	}
 
-	defer UdevWait(&cookie)
-
 	if err := task.run(); err != nil {
+		UdevWait(&cookie)
 		return fmt.Errorf("devicemapper: Error running deviceCreate (ActivateDevice) %s", err)
 	}
 
-	return nil
+	return UdevWait(&cookie)
 }
 
 // CreateSnapDevice creates a snapshot based on the device identified by the baseName and baseDeviceId,
