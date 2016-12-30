@@ -464,6 +464,10 @@ func (d *Daemon) getIDByName(name string) (string, error) {
 	return d.inspectFieldWithError(name, "Id")
 }
 
+func (d *Daemon) InspectField(name, filter string) (string, error) {
+	return d.inspectFilter(name, filter)
+}
+
 func (d *Daemon) inspectFilter(name, filter string) (string, error) {
 	format := fmt.Sprintf("{{%s}}", filter)
 	out, err := d.Cmd("inspect", "-f", format, name)
