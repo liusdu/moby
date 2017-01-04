@@ -277,9 +277,7 @@ func (container *Container) GetRootResourcePath(path string) (string, error) {
 // ExitOnNext signals to the monitor that it should not restart the container
 // after we send the kill signal.
 func (container *Container) ExitOnNext() {
-	if container.restartManager != nil {
-		container.restartManager.Cancel()
-	}
+	container.RestartManager().Cancel()
 }
 
 // HostConfigPath returns the path to the container's JSON hostconfig
@@ -518,9 +516,9 @@ func copyEscapable(dst io.Writer, src io.ReadCloser, keys []byte) (written int64
 	return written, err
 }
 
-// ShouldRestartOnBoot decides whether the daemon should restart the container or not.
+// ShouldRestart decides whether the daemon should restart the container or not.
 // This is based on the container's restart policy.
-func (container *Container) ShouldRestartOnBoot() bool {
+func (container *Container) ShouldRestart() bool {
 	return container.HostConfig.RestartPolicy.Name == "always" ||
 		(container.HostConfig.RestartPolicy.Name == "unless-stopped" && !container.HasBeenManuallyStopped) ||
 		(container.HostConfig.RestartPolicy.Name == "on-failure" && container.ExitCode != 0)
@@ -894,7 +892,7 @@ func (container *Container) UpdateMonitor(restartPolicy containertypes.RestartPo
 		SetPolicy(containertypes.RestartPolicy)
 	}
 
-	if rm, ok := container.RestartManager(false).(policySetter); ok {
+	if rm, ok := container.RestartManager().(policySetter); ok {
 		rm.SetPolicy(restartPolicy)
 	}
 }
@@ -908,16 +906,23 @@ func (container *Container) FullHostname() string {
 	return fullHostname
 }
 
-// RestartManager returns the current restartmanager instace connected to container.
-func (container *Container) RestartManager(reset bool) restartmanager.RestartManager {
-	if reset {
-		container.RestartCount = 0
-		container.restartManager = nil
-	}
+// RestartManager returns the current restartmanager instance connected to container.
+func (container *Container) RestartManager() restartmanager.RestartManager {
 	if container.restartManager == nil {
 		container.restartManager = restartmanager.New(container.HostConfig.RestartPolicy)
 	}
 	return container.restartManager
+}
+
+// ResetRestartManager initializes new restartmanager based on container config
+func (container *Container) ResetRestartManager(resetCount bool) {
+	if container.restartManager != nil {
+		container.restartManager.Cancel()
+	}
+	if resetCount {
+		container.RestartCount = 0
+	}
+	container.restartManager = nil
 }
 
 type attachContext struct {

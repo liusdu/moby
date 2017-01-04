@@ -79,7 +79,6 @@ func (ctr *container) start() error {
 		}
 		return err
 	}
-	ctr.startedAt = time.Now()
 
 	// Convert io.ReadClosers to io.Readers
 	if stdout != nil {
@@ -117,7 +116,6 @@ func (ctr *container) start() error {
 // equivalent to (in the linux containerd world) where events come in for
 // state change notifications from containerd.
 func (ctr *container) waitExit(pid uint32, processFriendlyName string, isFirstProcessToStart bool) error {
-	var waitRestart chan error
 	logrus.Debugln("waitExit on pid", pid)
 
 	// Block indefinitely for the process to exit.
@@ -175,17 +173,6 @@ func (ctr *container) waitExit(pid uint32, processFriendlyName string, isFirstPr
 		ctr.client.lock(ctr.containerID)
 		defer ctr.client.unlock(ctr.containerID)
 
-		if si.State == StateExit && ctr.restartManager != nil {
-			restart, wait, err := ctr.restartManager.ShouldRestart(uint32(exitCode), false, time.Since(ctr.startedAt))
-			if err != nil {
-				logrus.Error(err)
-			} else if restart {
-				si.State = StateRestart
-				ctr.restarting = true
-				waitRestart = wait
-			}
-		}
-
 		// Remove process from list if we have exited
 		// We need to do so here in case the Message Handler decides to restart it.
 		if si.State == StateExit {
@@ -197,24 +184,6 @@ func (ctr *container) waitExit(pid uint32, processFriendlyName string, isFirstPr
 	logrus.Debugf("waitExit() calling backend.StateChanged %v", si)
 	if err := ctr.client.backend.StateChanged(ctr.containerID, si); err != nil {
 		logrus.Error(err)
-	}
-	if si.State == StateRestart {
-		go func() {
-			err := <-waitRestart
-			ctr.restarting = false
-			ctr.client.deleteContainer(ctr.friendlyName)
-			if err == nil {
-				if err = ctr.client.Create(ctr.containerID, ctr.ociSpec, ctr.options...); err != nil {
-					logrus.Errorf("libcontainerd: error restarting %v", err)
-				}
-			}
-			if err != nil {
-				si.State = StateExit
-				if err := ctr.client.backend.StateChanged(ctr.containerID, si); err != nil {
-					logrus.Error(err)
-				}
-			}
-		}()
 	}
 	logrus.Debugln("waitExit() completed OK")
 	return nil
