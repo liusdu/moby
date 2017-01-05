@@ -508,15 +508,15 @@ the issue.
 Example use:: `docker daemon --storage-opt dm.min_free_space=10%`
 
 #### dm.udev_wait_timeout
- 
+
 By default, the udev wait timeout is 30s from `man systemd-udevd` of EulerOS, if user
 change the udevd event timeout, please also set the timeout here. The value
 use number only and the unit is second.
 
 	$ docker daemon --storage-opt dm.udev_wait_timeout=60
- 
+
 **Note**: This is very important, if you change the timeout, you must config the timeout here.
- 
+
 
 ## ZFS options
 
