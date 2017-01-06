@@ -2567,7 +2567,7 @@ func NewDeviceSet(root string, doInit bool, options []string, uidMaps, gidMaps [
 			return nil, fmt.Errorf("devmapper: Unknown option %s\n", key)
 		}
 	}
-	devicemapper.SetUdevWaitTimtout(udevWaitTimeout)
+	devicemapper.SetUdevWaitTimeout(udevWaitTimeout)
 
 	// By default, don't do blk discard hack on raw devices, its rarely useful and is expensive
 	if !foundBlkDiscard && (devices.dataDevice != "" || devices.thinPoolDevice != "") {

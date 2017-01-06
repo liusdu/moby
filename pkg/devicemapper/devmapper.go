@@ -46,6 +46,10 @@ const (
 	addNodeOnCreate
 )
 
+const (
+	Success = 1
+)
+
 // List of errors returned when using devicemapper.
 var (
 	ErrTaskRun              = errors.New("dm_task_run failed")
@@ -261,7 +265,7 @@ func (t *Task) getNextTarget(next unsafe.Pointer) (nextPtr unsafe.Pointer, start
 func UdevWait(cookie *uint) error {
 	chError := make(chan error)
 	go func() {
-		if res := DmUdevWait(*cookie); res != 1 {
+		if res := DmUdevWait(*cookie); res != Success {
 			logrus.Debugf("Failed to wait on udev cookie %d", *cookie)
 			chError <- ErrUdevWait
 		}
@@ -272,7 +276,7 @@ func UdevWait(cookie *uint) error {
 		return err
 	case <-time.After(time.Second * time.Duration(dmUdevWaitTimeout)):
 		logrus.Errorf("Failed to wait on udev cookie %d: timeout %v", *cookie, dmUdevWaitTimeout)
-		if res := DmUdevComplete(*cookie); res != 1 {
+		if res := DmUdevComplete(*cookie); res != Success {
 			// This is bad to return here
 			logrus.Errorf("Failed to complete udev cookie %d on udev wait timeout", *cookie)
 			return ErrUdevWaitTimeout
@@ -284,8 +288,8 @@ func UdevWait(cookie *uint) error {
 	return nil
 }
 
-// SetUdevWaitTimtout sets udev wait timeout
-func SetUdevWaitTimtout(t int64) {
+// SetUdevWaitTimeout sets udev wait timeout
+func SetUdevWaitTimeout(t int64) {
 	dmUdevWaitTimeout = t
 }
 
