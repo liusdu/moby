@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.11.2.9.it (2017-01-06)
+
+- Update go-check to print the timed out test case name (mr 209)
+- Log and print original error for `start` to help debug (mr 217)
+- make option `--restart=on-reboot` conflict with optioni `--rm` (issue 115 dts DTS2016122702180)
+- Override or append 'container=docker' ENV when running --system-container (issue 113)
+- Add bash completion for --hook-spec
+- Fix failed to remove container after daemon restart (issue 117 dts DTS2016122704192)
+- Add udev event time out to fix docker stuck on udev wait (issue 58)
+- Remove restartmanager from libcontainerd (issue 118 119)
+- update test TestUpdateNotAffectMonitorRestartPolicy (mr 231)
+- Fix typo and magic number (mr 230)
+- bump runc
+  - Fix setup cgroup before prestart hook (runc mr 22)
+  - support jenkins ci for runc (runc mr 20)
+- bump containerd
+  - support jenkins ci for containerd (containerd mr 28)
+
+
 ## v1.11.2.8.it (2016-12-24)
 
 - Fix can't remove a restarting container (issue 106)
