@@ -5,7 +5,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/kr/pty"
+	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/pkg/integration/checker"
 	"github.com/docker/engine-api/types"
@@ -209,4 +212,37 @@ func (s *DockerSuite) TestUpdateStats(c *check.C) {
 
 	c.Assert(preMemLimit, checker.Equals, curMemLimit)
 
+}
+
+func (s *DockerSuite) TestUpdateNotAffectMonitorRestartPolicy(c *check.C) {
+	testRequires(c, DaemonIsLinux, cpuShare)
+
+	out, _ := dockerCmd(c, "run", "-id", "--restart=always", "busybox", "sh")
+	id := strings.TrimSpace(string(out))
+	c.Assert(waitRun(id), check.IsNil)
+	dockerCmd(c, "update", "--cpu-shares", "512", id)
+
+	cpty, tty, err := pty.Open()
+	c.Assert(err, check.IsNil)
+	defer cpty.Close()
+
+	cmd := exec.Command(dockerBinary, "attach", id)
+	cmd.Stdin = tty
+
+	c.Assert(cmd.Start(), checker.IsNil)
+	defer cmd.Process.Kill()
+
+	_, err = cpty.Write([]byte("exit\n"))
+	c.Assert(err, checker.IsNil)
+
+	c.Assert(cmd.Wait(), checker.IsNil)
+
+	// container should restart again and keep running
+	err = waitInspect(id, "{{.RestartCount}}", "1", 30*time.Second)
+	c.Assert(err, checker.IsNil)
+	err = waitInspect(id, "{{.State.Restarting}}", "false", 30*time.Second)
+	c.Assert(err, checker.IsNil)
+	c.Assert(waitRun(id), checker.IsNil)
+
+	dockerCmd(c, "kill", id)
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os/exec"
 	"strings"
 	"time"
 
@@ -29,27 +28,4 @@ func (s *DockerSuite) TestUpdateRestartPolicy(c *check.C) {
 
 	maximumRetryCount := inspectField(c, id, "HostConfig.RestartPolicy.MaximumRetryCount")
 	c.Assert(maximumRetryCount, checker.Equals, "5")
-}
-
-func (s *DockerSuite) TestUpdateNotAffectMonitorRestartPolicy(c *check.C) {
-	testRequires(c, cpuShare)
-
-	out, _ := dockerCmd(c, "run", "-tid", "--restart=always", "busybox", "sh")
-	id := strings.TrimSpace(string(out))
-	dockerCmd(c, "update", "--cpu-shares", "512", id)
-
-	cmd := exec.Command(dockerBinary, "attach", id)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		c.Fatal(err)
-	}
-	defer stdin.Close()
-	c.Assert(cmd.Start(), check.IsNil)
-	defer cmd.Process.Kill()
-
-	_, err = stdin.Write([]byte("exit\n"))
-	c.Assert(err, check.IsNil)
-
-	// container should restart again
-	c.Assert(waitRun(id), checker.IsNil)
 }
