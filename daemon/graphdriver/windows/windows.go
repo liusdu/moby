@@ -122,7 +122,11 @@ func (d *Driver) Exists(id string) bool {
 }
 
 // Create creates a new layer with the given id.
-func (d *Driver) Create(id, parent, mountLabel string) error {
+func (d *Driver) Create(id, parent, mountLabel string, storageOpt map[string]string) error {
+	if len(storageOpt) != 0 {
+		return fmt.Errorf("--storage-opt is not supported for windows")
+	}
+
 	rPId, err := d.resolveID(parent)
 	if err != nil {
 		return err
@@ -463,7 +467,7 @@ func (d *Driver) GetCustomImageInfos() ([]CustomImageInfo, error) {
 		h := sha512.Sum384([]byte(folderName))
 		id := fmt.Sprintf("%x", h[:32])
 
-		if err := d.Create(id, "", ""); err != nil {
+		if err := d.Create(id, "", "", nil); err != nil {
 			return nil, err
 		}
 		// Create the alternate ID file.
