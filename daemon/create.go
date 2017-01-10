@@ -74,8 +74,8 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 	}
 	defer func() {
 		if retErr != nil {
-			if err := daemon.ContainerRm(container.ID, &types.ContainerRmConfig{ForceRemove: true}); err != nil {
-				logrus.Errorf("Clean up Error! Cannot destroy container %s: %v", container.ID, err)
+			if err := daemon.cleanupContainer(container, true, true); err != nil {
+				logrus.Errorf("failed to cleanup container on create error: %v", err)
 			}
 		}
 	}()
@@ -89,9 +89,6 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 		return nil, err
 	}
 
-	if err := daemon.Register(container); err != nil {
-		return nil, err
-	}
 	rootUID, rootGID, err := idtools.GetRootUIDGID(daemon.uidMaps, daemon.gidMaps)
 	if err != nil {
 		return nil, err
@@ -103,13 +100,6 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 	if err := daemon.setHostConfig(container, params.HostConfig); err != nil {
 		return nil, err
 	}
-	defer func() {
-		if retErr != nil {
-			if err := daemon.removeMountPoints(container, true); err != nil {
-				logrus.Error(err)
-			}
-		}
-	}()
 
 	if err := daemon.createContainerPlatformSpecificSettings(container, params.Config, params.HostConfig); err != nil {
 		return nil, err
@@ -124,8 +114,11 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 		return nil, err
 	}
 
-	if err := container.ToDiskLocking(); err != nil {
+	if err := container.ToDisk(); err != nil {
 		logrus.Errorf("Error saving new container to disk: %v", err)
+		return nil, err
+	}
+	if err := daemon.Register(container); err != nil {
 		return nil, err
 	}
 	daemon.LogContainerEvent(container, "create")
