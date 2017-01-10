@@ -833,6 +833,20 @@ set like this:
     /usr/local/bin/docker daemon -D -g /var/lib/docker -H unix:// > /var/lib/docker-machine/docker.log 2>&1
 
 
+Docker clients <= 1.9.1 used an invalid Host header when making request to the
+daemon. Docker > 1.11.2.9.it is built using golang 1.7 which is now checking the validity
+of the Host header and as such clients <= 1.9.1 can't talk anymore to the daemon via /var/run/docker.sock.
+Docker supports overcoming this issue via a Docker daemon
+environment variable. In case you are seeing this error when contacting the
+daemon:
+
+    Error response from daemon: 400 Bad Request: malformed Host header
+
+The `DOCKER_HTTP_HOST_COMPAT` can be set like this:
+
+    DOCKER_HTTP_HOST_COMPAT=1 /usr/local/bin/docker daemon ...
+
+
 ## Default cgroup parent
 
 The `--cgroup-parent` option allows you to set the default cgroup parent
