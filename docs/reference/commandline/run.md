@@ -86,6 +86,7 @@ parent = "smn_cli"
       --sig-proxy=true              Proxy received signals to the process
       --stop-signal="SIGTERM"       Signal to stop a container
       --system-container	    Extend some features only needed by running system container
+      --storage-opt=[]              Set storage driver options per container
       -t, --tty                     Allocate a pseudo-TTY
       -u, --user=""                 Username or UID (format: <name|uid>[:<group|gid>])
       --userns=""                   Container user namespace
@@ -169,6 +170,13 @@ flag exists to allow special use-cases, like running Docker within Docker.
 
 The `-w` lets the command being executed inside directory given, here
 `/path/to/dir/`. If the path does not exists it is created inside the container.
+
+### Set storage driver options per container
+
+    $ docker create -it --storage-opt size=120G fedora /bin/bash
+
+This (size) will allow to set the container rootfs size to 120G at creation time. 
+User cannot pass a size less than the Default BaseFS Size.
 
 ### Mount tmpfs (--tmpfs)
 

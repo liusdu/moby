@@ -1,4 +1,4 @@
-<!--[metadata]>
+		<!--[metadata]>
 +++
 title = "Remote API"
 description = "API Documentation for Docker"
@@ -111,10 +111,14 @@ Running `docker rmi` emits an **untag** event when removing an image name.  The 
 
 This section lists each version from latest to oldest.  Each listing includes a link to the full documentation set and the changes relevant in that release.
 
+
+
+
 ### v1.23 API changes
 
 [Docker Remote API v1.23](docker_remote_api_v1.23.md) documentation
 
+* `POST /containers/create` now takes `StorageOpt` field.
 * `GET /containers/json` returns the state of the container, one of `created`, `restarting`, `running`, `paused`, `exited` or `dead`.
 * `GET /containers/json` returns the mount points for the container.
 * `GET /networks/(name)` now returns an `Internal` field showing whether the network is internal or not.
