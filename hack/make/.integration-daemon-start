@@ -33,9 +33,9 @@ if [ -n "$DOCKER_STORAGE_OPTS" ]; then
 fi
 
 # example usage: DOCKER_STORAGE_OPTS="dm.basesize=20G,dm.loopdatasize=200G"
-extra_params=""
+extra_params="--insecure-registry index.docker.io --insecure-registry rnd-dockerhub.huawei.com"
 if [ "$DOCKER_REMAP_ROOT" ]; then
-	extra_params="--userns-remap $DOCKER_REMAP_ROOT"
+	extra_params="$extra_params --userns-remap $DOCKER_REMAP_ROOT"
 fi
 
 if [ -z "$DOCKER_TEST_HOST" ]; then
