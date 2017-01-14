@@ -137,6 +137,21 @@ func getBlkioWeightDevices(config containertypes.Resources) ([]specs.WeightDevic
 	return blkioWeightDevices, nil
 }
 
+func getHugetlbResources(config containertypes.Resources) []specs.HugepageLimit {
+	var hpLimits []specs.HugepageLimit
+
+	for _, hpl := range config.Hugetlbs {
+		size := hpl.PageSize
+		limit := uint64(hpl.Limit)
+		hpLimits = append(hpLimits, specs.HugepageLimit{
+			Pagesize: &size,
+			Limit:    &limit,
+		})
+	}
+
+	return hpLimits
+}
+
 func parseSecurityOpt(container *container.Container, config *containertypes.HostConfig) error {
 	var (
 		labelOpts []string
@@ -458,6 +473,21 @@ func verifyContainerResources(resources *containertypes.Resources, sysInfo *sysi
 		warnings = append(warnings, "Your kernel does not support Block write limit in IO per second.")
 		logrus.Warnf("Your kernel does not support Block I/O write limit in IO per second. --device-write-iops discarded.")
 		resources.BlkioDeviceWriteIOps = []*pblkiodev.ThrottleDevice{}
+	}
+
+	// hugetlb size checks
+	if len(resources.Hugetlbs) > 0 && !sysInfo.HugetlbLimit {
+		warnings = append(warnings, "Your kernel does not support hugetlb limit.")
+		logrus.Warnf("Your kernel does not support hugetlb limit. --hugetlb-limit discarded.")
+		resources.Hugetlbs = []containertypes.Hugetlb{}
+	}
+	for i, hpl := range resources.Hugetlbs {
+		size, warning, err := sysInfo.ValidateHugetlb(hpl.PageSize, hpl.Limit)
+		warnings = append(warnings, warning...)
+		if err != nil {
+			return warnings, err
+		}
+		resources.Hugetlbs[i].PageSize = size
 	}
 
 	return warnings, nil

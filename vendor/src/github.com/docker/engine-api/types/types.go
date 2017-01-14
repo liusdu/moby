@@ -233,6 +233,7 @@ type Info struct {
 	ExecutionDriver    string
 	LoggingDriver      string
 	CgroupDriver       string
+	HugetlbPageSize    string
 	NEventsListener    int
 	KernelVersion      string
 	OperatingSystem    string
