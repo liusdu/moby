@@ -726,6 +726,14 @@ func (daemon *Daemon) createSpec(c *container.Container) (*libcontainerd.Spec, e
 			Env:  []string{"container=docker"},
 		},
 		)
+
+		// remove /proc/sys from s.Linux.ReadonlyPaths
+		for i, path := range s.Linux.ReadonlyPaths {
+			if path == "/proc/sys" {
+				s.Linux.ReadonlyPaths = append(s.Linux.ReadonlyPaths[:i], s.Linux.ReadonlyPaths[i+1:]...)
+				break
+			}
+		}
 	}
 
 	// apppend user custom hooks after system hooks

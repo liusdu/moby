@@ -4675,3 +4675,25 @@ func (s *DockerSuite) TestRunAddEnvWithSystemContainer(c *check.C) {
 		c.Fatalf("Expected output to contain %q, got %q instead", expected, out)
 	}
 }
+
+func (s *DockerSuite) TestRunRwProcSysWithSystemContainer(c *check.C) {
+	testRequires(c, DaemonIsLinux, NotUserNamespace)
+	if err := setupFakeOciSystemdHook(); err != nil {
+		c.Skip(fmt.Sprintf("Test cannot be run without ociSystemdHook, setup ociSystemdHook failed with error: %v", err))
+	}
+	defer removeFakeOciSystemdHook()
+
+	expected := "/sys /proc/sys ro"
+	out, _, err := dockerCmdWithError("run", "--system-container", "busybox", "sh", "-c", "cat /proc/1/mountinfo | grep /proc/sys")
+	c.Assert(err, check.IsNil)
+	if strings.Contains(out, expected) {
+		c.Fatalf("Exptected output not contain %q, got %q", expected, out)
+	}
+
+	out, _, err = dockerCmdWithError("run", "busybox", "sh", "-c", "cat /proc/1/mountinfo | grep /proc/sys")
+	c.Assert(err, check.IsNil)
+
+	if !strings.Contains(out, expected) {
+		c.Fatalf("Expected output to contain %q, got %q instead", expected, out)
+	}
+}
