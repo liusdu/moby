@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.11.2.10.it (2017-01-23)
+
+- fixes races between list and create (mr 243)
+- bugfix: report "destroy" after all volumes of container destroy (mr 243)
++ CLI flag for docker create(run) to change block device size (mr 245)
+- bump go version to v1.7.4
++ Add hugetlb-limit option to docker run/create command (mr 239)
++ Make /proc/sys rw once enable --system-container (mr 247)
+- bump containerd
+  - bump go version to 1.7.4
+  - Ignore `does not exit` error on deleting container from runtime (DTS2017010504340)
+- bump runc
+  - Set init processes as non-dumpable (issue 82)
+  - bump go to 1.7.4
+  - fix make validate failure
+  - Fix cpuset issue with cpuset.cpu_exclusive (issue 80)
+  - Fix leftover cgroup directory issue (issue 81)
+  - Do not create cgroup dir name from combining subsystems (issue 148)
+
 ## v1.11.2.9.it (2017-01-06)
 
 - Update go-check to print the timed out test case name (mr 209)
