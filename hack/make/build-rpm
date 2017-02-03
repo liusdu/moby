@@ -91,19 +91,19 @@ set -e
 		EOF
 
 		# get the RUNC and CONTAINERD commit from the root Dockerfile, this keeps the commits in sync
-		awk '$1 == "ENV" && $2 == "RUNC_COMMIT" { print; exit }' Dockerfile >> "$DEST/$version/Dockerfile.build"
-		awk '$1 == "ENV" && $2 == "CONTAINERD_COMMIT" { print; exit }' Dockerfile >> "$DEST/$version/Dockerfile.build"
+		awk '$1 == "ENV" && $2 == "RUNC_COMMIT" { print; exit }' Dockerfile.huawei >> "$DEST/$version/Dockerfile.build"
+		awk '$1 == "ENV" && $2 == "CONTAINERD_COMMIT" { print; exit }' Dockerfile.huawei >> "$DEST/$version/Dockerfile.build"
 
 		# add runc and containerd compile and install
 		cat >> "$DEST/$version/Dockerfile.build" <<-EOF
 			# Install runc
-			RUN git clone git://github.com/opencontainers/runc.git "/go/src/github.com/opencontainers/runc" \
+			RUN git clone http://code.huawei.com/docker/runc.git "/go/src/github.com/opencontainers/runc" \
 					&& cd "/go/src/github.com/opencontainers/runc" \
 					&& git checkout -q "\$RUNC_COMMIT"
 			RUN set -x && export GOPATH="/go" && cd "/go/src/github.com/opencontainers/runc" \
 					&& make BUILDTAGS="\$RUNC_BUILDTAGS" && make install
 			# Install containerd
-			RUN git clone git://github.com/docker/containerd.git "/go/src/github.com/docker/containerd" \
+			RUN git clone http://code.huawei.com/docker/containerd.git "/go/src/github.com/docker/containerd" \
 					&& cd "/go/src/github.com/docker/containerd" \
 					&& git checkout -q "\$CONTAINERD_COMMIT"
 			RUN set -x && export GOPATH="/go" && cd "/go/src/github.com/docker/containerd" && make && make install
@@ -144,7 +144,7 @@ set -e
 			EOF
 		fi
 		tempImage="docker-temp/build-rpm:$version"
-		( set -x && docker build -t "$tempImage" -f $DEST/$version/Dockerfile.build . )
+		( set -x && docker build ${DOCKER_BUILD_ARGS} -t "$tempImage" -f $DEST/$version/Dockerfile.build . )
 		docker run --rm "$tempImage" bash -c 'cd /root/rpmbuild && tar -c *RPMS' | tar -xvC "$DEST/$version"
 		docker rmi "$tempImage"
 	done
