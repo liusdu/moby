@@ -1,3 +1,5 @@
+// +build accdrv
+
 package fakefpga
 
 import (

@@ -130,6 +130,12 @@ if [ "$DOCKER_EXPERIMENTAL" ]; then
 	DOCKER_BUILDTAGS+=" experimental"
 fi
 
+if [ "$LIBACC_BUILTIN_DRIVER" ]; then
+	echo >&2 '# WARNING! LIBACC_BUILTIN_DRIVER is set: building builtin accelerator drivers'
+	echo >&2
+	DOCKER_BUILDTAGS+=" accdrv"
+fi
+
 if [ -z "$DOCKER_CLIENTONLY" ]; then
 	DOCKER_BUILDTAGS+=" daemon"
 	if pkg-config 'libsystemd >= 209' 2> /dev/null ; then
