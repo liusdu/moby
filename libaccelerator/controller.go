@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/docker/docker/libaccelerator/datastore"
 	"github.com/docker/docker/libaccelerator/driverapi"
 	"github.com/docker/docker/libaccelerator/drvregistry"
 	"github.com/docker/docker/libaccelerator/types"
@@ -47,6 +48,9 @@ type AcceleratorController interface {
 
 	// WalkDrivers uses the provided function to walk the Driver(s) managed by this controller.
 	WalkDrivers(walker drvregistry.DriverWalkFunc)
+
+	// CleanupSlots do cleanup by syncing with driver first, then call user-provided `cleaner` fucntion
+	CleanupSlots(cleaner SlotWalker)
 }
 
 // SlotWalker defines the handler type used to walk throught all the slot
@@ -55,7 +59,7 @@ type SlotWalker func(s Slot) bool
 type controller struct {
 	id          string
 	drvRegistry *drvregistry.DrvRegistry
-	stores      map[string]([]*slot)
+	stores      []datastore.DataStore
 	sync.Mutex
 }
 
@@ -65,16 +69,15 @@ func New(rootPath string) (AcceleratorController, error) {
 		id: stringid.GenerateRandomID(),
 	}
 
+	if err := c.initStore(rootPath); err != nil {
+		return nil, err
+	}
+
 	drvRegistry, err := drvregistry.New(nil, nil, c.RegisterDriver)
 	if err != nil {
 		return nil, err
 	}
 	c.drvRegistry = drvRegistry
-
-	stores := make(map[string]([]*slot))
-	stores[ContainerScope] = make([]*slot, 16)
-	stores[GlobalScope] = make([]*slot, 16)
-	c.stores = stores
 
 	return c, nil
 }
@@ -175,11 +178,10 @@ func (c *controller) allocateSlot(s *slot) (retS *slot, retErr error) {
 		return nil, err
 	}
 
-	// add to store
-	c.Lock()
-	cs := c.stores[s.Scope()]
-	c.stores[s.Scope()] = append(cs, s)
-	c.Unlock()
+	// update to KV store
+	if err = c.updateToStore(s); err != nil {
+		return nil, err
+	}
 
 	return s, nil
 }
@@ -255,6 +257,7 @@ func (c *controller) SlotById(sid string) (Slot, error) {
 
 // Stop is used to accelerator controller
 func (c *controller) Stop() {
+	c.closeStores()
 }
 
 // WalkDrivers uses the provided function to walk the Driver(s) managed by this controller.
@@ -280,31 +283,4 @@ func (c *controller) loadDriver(driverName string) error {
 	}
 
 	return nil
-}
-
-func (c *controller) getSlot(sid string) (*slot, error) {
-	c.Lock()
-	slots := append(c.stores[GlobalScope], c.stores[ContainerScope]...)
-	c.Unlock()
-
-	for _, s := range slots {
-		if s.ID() == sid {
-			return s, nil
-		}
-	}
-
-	return nil, ErrNoSuchSlot(sid)
-}
-
-func (c *controller) getSlotsForScope(scope string) ([]*slot, error) {
-	c.Lock()
-	defer c.Unlock()
-	return c.stores[scope], nil
-}
-
-func (c *controller) getSlots() ([]*slot, error) {
-	c.Lock()
-	slots := append(c.stores[GlobalScope], c.stores[ContainerScope]...)
-	c.Unlock()
-	return slots, nil
 }

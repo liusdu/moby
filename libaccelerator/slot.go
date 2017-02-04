@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/docker/docker/libaccelerator/datastore"
 	"github.com/docker/docker/libaccelerator/driverapi"
 )
 
@@ -139,6 +140,9 @@ func (s *slot) SetOwner(owner string) {
 	s.Lock()
 	s.owner = owner
 	s.Unlock()
+	if err := s.ctrlr.updateToStore(s); err != nil {
+		log.Errorf("error set owner to slot %s: %v", s.id, err)
+	}
 }
 
 // State returns the state of the slot
@@ -173,6 +177,7 @@ func (s *slot) Release() error {
 
 func (s *slot) release(force bool) error {
 	s.Lock()
+	c := s.ctrlr
 	id := s.id
 	s.Unlock()
 
@@ -193,6 +198,90 @@ func (s *slot) release(force bool) error {
 		}
 		log.Debugf("driver failed to delete stale slot %s: %v", id, err)
 	}
+
+	if err = c.deleteFromStore(s); err != nil {
+		return fmt.Errorf("error deleting slot from store: %v", err)
+	}
+
+	return nil
+}
+
+/* datastore.KVObject Interface */
+func (s *slot) Key() []string {
+	s.Lock()
+	defer s.Unlock()
+	return []string{datastore.SlotKeyPrefix, s.id}
+}
+
+func (s *slot) KeyPrefix() []string {
+	return []string{datastore.SlotKeyPrefix}
+}
+
+func (s *slot) Value() []byte {
+	s.Lock()
+	defer s.Unlock()
+	b, err := json.Marshal(s)
+	if err != nil {
+		return nil
+	}
+	return b
+}
+
+func (s *slot) SetValue(value []byte) error {
+	return json.Unmarshal(value, s)
+}
+
+func (s *slot) Index() uint64 {
+	s.Lock()
+	defer s.Unlock()
+	return s.dbIndex
+}
+
+func (s *slot) SetIndex(index uint64) {
+	s.Lock()
+	s.dbIndex = index
+	s.dbExists = true
+	s.Unlock()
+}
+
+func (s *slot) Exists() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.dbExists
+}
+
+func (s *slot) DataScope() string {
+	return s.Scope()
+}
+
+func (s *slot) Skip() bool { return false }
+
+/* Begin datastore.KVConstructor interface */
+func (s *slot) New() datastore.KVObject {
+	s.Lock()
+	defer s.Unlock()
+
+	return &slot{
+		ctrlr: s.ctrlr,
+		scope: s.scope,
+	}
+}
+
+func (s *slot) CopyTo(o datastore.KVObject) error {
+	s.Lock()
+	defer s.Unlock()
+
+	dstS := o.(*slot)
+	dstS.name = s.name
+	dstS.id = s.id
+	dstS.scope = s.scope
+	dstS.driverName = s.driverName
+	dstS.runtime = s.runtime
+	dstS.options = s.options
+	dstS.owner = s.owner
+	dstS.state = s.state
+	dstS.dbIndex = s.dbIndex
+	dstS.dbExists = s.dbExists
 
 	return nil
 }
@@ -295,6 +384,9 @@ func (s *slot) markInDelete() error {
 	s.Lock()
 	s.state = s.state | SLOT_STATE_INDELETE
 	s.Unlock()
+	if err := s.ctrlr.updateToStore(s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -311,6 +403,9 @@ func (s *slot) markBadDriver() error {
 	s.Lock()
 	s.state = s.state | SLOT_STATE_BADDRIVER
 	s.Unlock()
+	if err := s.ctrlr.updateToStore(s); err != nil {
+		return err
+	}
 	return nil
 }
 func (s *slot) unmarkBadDriver() error {
@@ -320,6 +415,9 @@ func (s *slot) unmarkBadDriver() error {
 	s.Lock()
 	s.state = s.state &^ SLOT_STATE_BADDRIVER
 	s.Unlock()
+	if err := s.ctrlr.updateToStore(s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -337,6 +435,9 @@ func (s *slot) markNoDev() error {
 	s.Lock()
 	s.state = s.state | SLOT_STATE_NODEV
 	s.Unlock()
+	if err := s.ctrlr.updateToStore(s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -347,5 +448,8 @@ func (s *slot) unmarkNoDev() error {
 	s.Lock()
 	s.state = s.state &^ SLOT_STATE_NODEV
 	s.Unlock()
+	if err := s.ctrlr.updateToStore(s); err != nil {
+		return err
+	}
 	return nil
 }

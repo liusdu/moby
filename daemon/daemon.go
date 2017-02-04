@@ -274,6 +274,7 @@ func (daemon *Daemon) restore() error {
 	if err != nil {
 		return fmt.Errorf("Error initializing accelerator controller: %v", err)
 	}
+	daemon.accelController.CleanupSlots(nil)
 
 	// migrate any legacy links from sqlite
 	linkdbFile := filepath.Join(daemon.root, "linkgraph.db")
