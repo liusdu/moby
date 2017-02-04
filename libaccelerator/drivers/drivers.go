@@ -2,6 +2,7 @@ package drivers
 
 import (
 	"github.com/docker/docker/libaccelerator/drivers/fakefpga"
+	"github.com/docker/docker/libaccelerator/drivers/remote"
 	"github.com/docker/docker/libaccelerator/drvregistry"
 )
 
@@ -17,6 +18,7 @@ type DriverInitializer struct {
 func GetInitializers() []DriverInitializer {
 	in := []DriverInitializer{
 		{fakefpga.Init, "fakefpga"},
+		{remote.Init, "remote"},
 	}
 	return in
 }
