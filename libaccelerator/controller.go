@@ -7,6 +7,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/docker/libaccelerator/datastore"
 	"github.com/docker/docker/libaccelerator/driverapi"
+	"github.com/docker/docker/libaccelerator/drivers"
 	"github.com/docker/docker/libaccelerator/drvregistry"
 	"github.com/docker/docker/libaccelerator/types"
 	"github.com/docker/docker/pkg/plugins"
@@ -78,6 +79,14 @@ func New(rootPath string) (AcceleratorController, error) {
 		return nil, err
 	}
 	c.drvRegistry = drvRegistry
+
+	for _, i := range drivers.GetInitializers() {
+		var dcfg map[string]interface{}
+		if err := drvRegistry.AddDriver(i.DrvType, i.InitFn, dcfg); err != nil {
+			log.Warnf("Failed to register accelerator driver \"%s\": %v", i.DrvType, err)
+			continue
+		}
+	}
 
 	return c, nil
 }
