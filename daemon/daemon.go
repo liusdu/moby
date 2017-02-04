@@ -44,6 +44,7 @@ import (
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/image/tarexport"
 	"github.com/docker/docker/layer"
+	"github.com/docker/docker/libaccelerator"
 	"github.com/docker/docker/libcontainerd"
 	"github.com/docker/docker/migrate/v1"
 	"github.com/docker/docker/pkg/fileutils"
@@ -111,6 +112,7 @@ type Daemon struct {
 	RegistryService           *registry.Service
 	EventsService             *events.Events
 	netController             libnetwork.NetworkController
+	accelController           libaccelerator.AcceleratorController
 	volumes                   *store.VolumeStore
 	discoveryWatcher          discoveryReloader
 	root                      string
@@ -265,6 +267,12 @@ func (daemon *Daemon) restore() error {
 	daemon.netController, err = daemon.initNetworkController(daemon.configStore, activeSandboxes)
 	if err != nil {
 		return fmt.Errorf("Error initializing network controller: %v", err)
+	}
+
+	// Create libaccelerator controller
+	daemon.accelController, err = libaccelerator.New(daemon.root)
+	if err != nil {
+		return fmt.Errorf("Error initializing accelerator controller: %v", err)
 	}
 
 	// migrate any legacy links from sqlite
@@ -738,6 +746,10 @@ func (daemon *Daemon) Shutdown() error {
 			}
 			logrus.Debugf("container stopped %s", c.ID)
 		})
+	}
+
+	if daemon.accelController != nil {
+		daemon.accelController.Stop()
 	}
 
 	// trigger libnetwork Stop only if it's initialized
