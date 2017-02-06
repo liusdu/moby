@@ -32,6 +32,14 @@ const (
 	tagHeader          = "TAG"
 	digestHeader       = "DIGEST"
 	mountsHeader       = "MOUNTS"
+	scopeHeader        = "SCOPE"
+	descHeader         = "DESCRIPTION"
+	slotIDHeader       = "SLOT ID"
+	runtimeHeader      = "RUNTIME"
+	ownerHeader        = "OWNER"
+	stateHeader        = "STATE"
+	nameHeader         = "NAME"
+	driverHeader       = "DRIVER"
 )
 
 type containerContext struct {
@@ -239,4 +247,68 @@ func stripNamePrefix(ss []string) []string {
 	}
 
 	return ss
+}
+
+type accelContext struct {
+	baseSubContext
+	trunc bool
+	v     types.Accel
+}
+
+// ID returns the id of specified accelerator
+func (c *accelContext) ID() string {
+	c.addHeader(slotIDHeader)
+	if c.trunc {
+		return stringid.TruncateID(c.v.ID)
+	}
+	return c.v.ID
+}
+
+// Name returns the name of specified accelerator
+func (c *accelContext) Name() string {
+	c.addHeader(nameHeader)
+	if c.v.Name == "" {
+		return "--"
+	}
+	return stripNamePrefix([]string{c.v.Name})[0]
+}
+
+// Driver returns the driver of specified accelerator
+func (c *accelContext) Driver() string {
+	c.addHeader(driverHeader)
+	return c.v.Driver
+}
+
+// Runtime returns the runtime of specified accelerator
+func (c *accelContext) Runtime() string {
+	c.addHeader(runtimeHeader)
+	return c.v.Runtime
+}
+
+// Scope returns the scope of specified accelerator
+func (c *accelContext) Scope() string {
+	c.addHeader(scopeHeader)
+	return c.v.Scope
+}
+
+// Owner returns the owner of specified accelerator
+func (c *accelContext) Owner() string {
+	c.addHeader(ownerHeader)
+	if c.v.Owner == "" {
+		return "--"
+	}
+	return stringid.TruncateID(c.v.Owner)
+}
+
+// State returns the state of specified accelerator
+func (c *accelContext) State() string {
+	c.addHeader(stateHeader)
+	if c.v.BadDriver {
+		return "BADDRV"
+	} else if c.v.NoDevice {
+		return "NODEV"
+	} else if c.v.Owner != "" {
+		return "USED"
+	}
+	return "FREE"
 }

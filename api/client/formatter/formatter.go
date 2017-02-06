@@ -20,6 +20,7 @@ const (
 	defaultContainerTableFormat       = "table {{.ID}}\t{{.Image}}\t{{.Command}}\t{{.RunningFor}} ago\t{{.Status}}\t{{.Ports}}\t{{.Names}}"
 	defaultImageTableFormat           = "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}} ago\t{{.Size}}"
 	defaultImageTableFormatWithDigest = "table {{.Repository}}\t{{.Tag}}\t{{.Digest}}\t{{.ID}}\t{{.CreatedSince}} ago\t{{.Size}}"
+	defaultAccelTableFormat           = "table {{.ID}}\t{{.Scope}}\t{{.Runtime}}\t{{.Driver}}\t{{.Owner}}\t{{.State}}\t{{.Name}}"
 	defaultQuietFormat                = "{{.ID}}"
 )
 
@@ -109,6 +110,12 @@ type ImageContext struct {
 	Digest bool
 	// Images
 	Images []types.Image
+}
+
+// AccelContext contains accelerator specific information required by the formater, encapsulate a Context struct.
+type AccelContext struct {
+	Context
+	Accels []*types.Accel
 }
 
 func (ctx ContainerContext) Write() {
@@ -252,4 +259,42 @@ virtual_size: {{.Size}}
 	}
 
 	ctx.postformat(tmpl, &imageContext{})
+}
+
+// Write will display accel information according to specifed format
+func (ctx AccelContext) Write() {
+	switch ctx.Format {
+	case tableFormatKey:
+		ctx.Format = defaultAccelTableFormat
+		if ctx.Quiet {
+			ctx.Format = defaultQuietFormat
+		}
+	case rawFormatKey:
+		if ctx.Quiet {
+			ctx.Format = `accel_id: {{.ID}}`
+		} else {
+			ctx.Format = "accel_id: {{.ID}}\nscope: {{.Scope}}\nruntime: {{.Runtime}}\ndriver: {{.Driver}}\nowner: {{.Owner}}\nname: {{.Name}}"
+		}
+	}
+
+	ctx.buffer = bytes.NewBufferString("")
+	ctx.preformat()
+
+	tmpl, err := ctx.parseFormat()
+	if err != nil {
+		return
+	}
+
+	for _, accel := range ctx.Accels {
+		accelCtx := &accelContext{
+			trunc: ctx.Trunc,
+			v:     *accel,
+		}
+		err = ctx.contextFormat(tmpl, accelCtx)
+		if err != nil {
+			return
+		}
+	}
+
+	ctx.postformat(tmpl, &accelContext{})
 }
