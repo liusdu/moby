@@ -282,6 +282,24 @@ type UpdateConfig struct {
 	RestartPolicy RestartPolicy
 }
 
+// AcceleratorConfig holds the attributes of an Accelerator
+// Configs from cli and image will be merge into this struct
+type AcceleratorConfig struct {
+	// Following fileds will be filled in Cli, and merge with image in create stage
+	Name    string
+	Runtime string
+	Driver  string
+	Options []string
+	// Usually, this filed is filled in start stage. But if Cli use slotname-binding,
+	// it will be filled in create stage.
+	Sid string
+
+	// hack for CloudRAN 18A API
+	AccType  string
+	Device   string
+	Capacity map[string]string
+}
+
 // HostConfig the non-portable Config structure of a container.
 // Here, "non-portable" means "dependent of the host we are running on".
 // Portable information *should* appear in Config.
@@ -327,6 +345,9 @@ type HostConfig struct {
 	ConsoleSize [2]int    // Initial console size
 	Isolation   Isolation // Isolation technology of the container (eg default, hyperv)
 	HookSpec    string    // specification file containing custom hook definition
+
+	// Container's accelerators config
+	Accelerators []AcceleratorConfig // List of accelerators to be used for the container
 
 	// Contains container's resources (cgroups, ulimits)
 	Resources
