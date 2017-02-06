@@ -406,6 +406,67 @@ type VolumeCreateRequest struct {
 	Labels     map[string]string // Labels holds metadata specific to the volume being created.
 }
 
+// Accel represents the configuration of a accelerator for the remote API
+type Accel struct {
+	ID      string   // ID is the slot id of the accelerator
+	Name    string   // Name is the name of the accelerator
+	Driver  string   // Driver is the Driver name used to create the accelerator
+	Device  string   // Device is the device name of the accelerator
+	Options []string // Options is the driver options to create the accelerator
+	Scope   string   // Scope is the accelerator scope, global or container
+	Runtime string   // Runtime is the runtime description of the accelerator
+	State   string   // State is "free" or "used"
+	Owner   string   // Owner is the current user of the accelerator
+
+	// Accelerator Slot State
+	BadDriver bool
+	NoDevice  bool
+}
+
+// AccelsListResponse contains the response for the remote API:
+// GET "/accels"
+type AccelsListResponse struct {
+	Accels   []*Accel // Accels is the list of accelerators being returned
+	Warnings []string // Warnings is a list of warnings that occurred when getting the list from the accelerator drivers
+}
+
+// AccelDriver Defines the accel driver struct used in docker cli
+type AccelDriver struct {
+	//TODO: add AccelDriver struct here
+	Name string //Name is the name of accelerator driver
+	Desc string //Desc is the description of accelerator driver
+}
+
+// AccelDriversResponse defines the data struct used in docker accel drivers response
+type AccelDriversResponse struct {
+	Drivers  []*AccelDriver // AccelDrivers is the list of accelerator drivers being returned
+	Warnings []string       // Warnings is a list of warnings that occurred when getting the list of accelerator drivers
+}
+
+// AccelDevice defines the accel device data struct used in docker cli
+type AccelDevice struct {
+	SupportedRuntimes []string          `json:"supportedAccType"`
+	DeviceIdentify    string            `json:"device"`
+	Capacity          map[string]string `json:"capacity"`
+	Driver            string            `json:"driver"`
+	Status            string            `json:"status"`
+}
+
+// AccelDevicesResponse defines the data struct used to display accel devices
+type AccelDevicesResponse struct {
+	Devices  []AccelDevice
+	Warnings []string
+}
+
+// AccelCreateRequest contains the request for the remote API:
+// POST "/accel/create"
+type AccelCreateRequest struct {
+	Name    string   // Name is the requested name of the accelerator
+	Driver  string   // Driver is the name of the driver that should be used to create the accelerator
+	Runtime string   // Runtime holds specific runtime description to the accelerator being created.
+	Options []string // Options holds specific options to the accelerator plugin driver
+}
+
 // NetworkResource is the body of the "get network" http response message
 type NetworkResource struct {
 	Name       string
