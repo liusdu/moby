@@ -59,6 +59,28 @@ func IsErrNetworkNotFound(err error) bool {
 	return ok
 }
 
+// accelNotFoundError implements an error returned when a accel is not in the docker host.
+type accelNotFoundError struct {
+	accelID string
+}
+
+// NoFound indicates that this error type is of NotFound
+func (e accelNotFoundError) NotFound() bool {
+	return true
+}
+
+// Error returns a string representation of a accelNotFoundError
+func (e accelNotFoundError) Error() string {
+	return fmt.Sprintf("Error: No such accel: %s", e.accelID)
+}
+
+// IsErrAccelNotFound returns true if the error is caused
+// when a accel is not found in the docker host.
+func IsErrAccelNotFound(err error) bool {
+	_, ok := err.(accelNotFoundError)
+	return ok
+}
+
 // volumeNotFoundError implements an error returned when a volume is not in the docker host.
 type volumeNotFoundError struct {
 	volumeID string
