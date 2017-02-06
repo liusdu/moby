@@ -408,19 +408,27 @@ type VolumeCreateRequest struct {
 
 // Accel represents the configuration of a accelerator for the remote API
 type Accel struct {
-	ID      string   // ID is the slot id of the accelerator
-	Name    string   // Name is the name of the accelerator
-	Driver  string   // Driver is the Driver name used to create the accelerator
-	Device  string   // Device is the device name of the accelerator
-	Options []string // Options is the driver options to create the accelerator
-	Scope   string   // Scope is the accelerator scope, global or container
-	Runtime string   // Runtime is the runtime description of the accelerator
-	State   string   // State is "free" or "used"
-	Owner   string   // Owner is the current user of the accelerator
+	ID         string      // ID is the slot id of the accelerator
+	Name       string      // Name is the name of the accelerator
+	Driver     string      // Driver is the Driver name used to create the accelerator
+	Device     string      // Device is the device name of the accelerator
+	Options    []string    // Options is the driver options to create the accelerator
+	Scope      string      // Scope is the accelerator scope, global or container
+	Runtime    string      // Runtime is the runtime description of the accelerator
+	State      string      // State is "free" or "used"
+	Owner      string      // Owner is the current user of the accelerator
+	InjectInfo AccelInject // InjectInfo only vaild for "running" container
 
 	// Accelerator Slot State
 	BadDriver bool
 	NoDevice  bool
+}
+
+// AccelInject defines accelerator information need to be displayed in container inspect
+type AccelInject struct {
+	Bindings     map[string]container.AccelMount `json:",omitempty"`
+	Devices      map[string]string               `json:",omitempty"`
+	Environments map[string]string               `json:",omitempty"`
 }
 
 // AccelsListResponse contains the response for the remote API:

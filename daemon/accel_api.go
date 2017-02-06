@@ -24,6 +24,21 @@ func (daemon *Daemon) AccelInspect(prefixOrName string) (*types.Accel, error) {
 	}
 	info := buildAccelType(slot)
 
+	// fill InjectInfo for running container
+	if info.Owner != "" {
+		container, err := daemon.GetContainer(info.Owner)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get owner: %v", err)
+		}
+		if container.IsRunning() {
+			info.InjectInfo = types.AccelInject{
+				Bindings:     container.HostConfig.AccelBindings,
+				Devices:      container.HostConfig.AccelDevices,
+				Environments: container.HostConfig.AccelEnvironments,
+			}
+		}
+	}
+
 	return info, nil
 }
 
