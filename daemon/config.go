@@ -53,6 +53,7 @@ type CommonTLSOptions struct {
 // It includes json tags to deserialize configuration from a file
 // using the same names that the flags in the command line uses.
 type CommonConfig struct {
+	AccelDriverPlugins   []string            `json:"accel-driver-plugins,omitempty"`  // AccelDriverPlugins holds list of accelerator driver plugins
 	AuthorizationPlugins []string            `json:"authorization-plugins,omitempty"` // AuthorizationPlugins holds list of authorization plugins
 	AutoRestart          bool                `json:"-"`
 	Context              map[string][]string `json:"-"`
@@ -113,6 +114,7 @@ func (config *Config) InstallCommonFlags(cmd *flag.FlagSet, usageFn func(string)
 	config.ServiceOptions.InstallCliFlags(cmd, usageFn)
 
 	cmd.Var(opts.NewNamedListOptsRef("storage-opts", &config.GraphOptions, nil), []string{"-storage-opt"}, usageFn("Set storage driver options"))
+	cmd.Var(opts.NewNamedListOptsRef("accel-driver-plugins", &config.AccelDriverPlugins, nil), []string{"-accel-driver-plugin"}, usageFn("Accelerator driver plugins to load"))
 	cmd.Var(opts.NewNamedListOptsRef("authorization-plugins", &config.AuthorizationPlugins, nil), []string{"-authorization-plugin"}, usageFn("List authorization plugins in order from first evaluator to last"))
 	cmd.Var(opts.NewNamedListOptsRef("exec-opts", &config.ExecOptions, nil), []string{"-exec-opt"}, usageFn("Set runtime execution options"))
 	cmd.StringVar(&config.Pidfile, []string{"p", "-pidfile"}, defaultPidFile, usageFn("Path to use for daemon PID file"))

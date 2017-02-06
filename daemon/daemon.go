@@ -270,11 +270,10 @@ func (daemon *Daemon) restore() error {
 	}
 
 	// Create libaccelerator controller
-	daemon.accelController, err = libaccelerator.New(daemon.root)
+	daemon.accelController, err = daemon.initAccelController(daemon.configStore)
 	if err != nil {
 		return fmt.Errorf("Error initializing accelerator controller: %v", err)
 	}
-	daemon.accelController.CleanupSlots(nil)
 
 	// migrate any legacy links from sqlite
 	linkdbFile := filepath.Join(daemon.root, "linkgraph.db")
