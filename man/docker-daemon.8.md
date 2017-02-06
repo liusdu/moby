@@ -32,6 +32,7 @@ docker-daemon - Enable daemon mode
 [**-g**|**--graph**[=*/var/lib/docker*]]
 [**-H**|**--host**[=*[]*]]
 [**--help**]
+[**--hook-spec**[=*HOOKFILE*]]
 [**--icc**[=*true*]]
 [**--insecure-registry**[=*[]*]]
 [**--ip**[=*0.0.0.0*]]
@@ -156,6 +157,28 @@ unix://[/path/to/socket] to use.
 
 **--help**
   Print usage statement
+
+**--hook-spec**=""
+   Add default hooks for all containers.
+
+   With this flag, user can specify a file containing custom hook, an example hook file can be like this:
+
+ ```
+ {
+         "prestart": [
+             {
+                 "path": "/var/lib/docker/hooks/myhook",
+                 "args": ["myhook", "prestart"],
+                 "env": ["container=runc"]
+             }
+         ]
+ }
+ ```
+
+   Then all the containers will run the default hook `myhook` when start.
+
+   currently it supports three hooks: "prestart", "poststart", "poststop".
+   See OCI spec definition for more information about "hooks".
 
 **--icc**=*true*|*false*
   Allow unrestricted inter\-container and Docker daemon host communication. If disabled, containers can still be linked together using the **--link** option (see **docker-run(1)**). Default is true.

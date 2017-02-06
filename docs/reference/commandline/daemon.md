@@ -41,6 +41,7 @@ weight = -1
       -g, --graph="/var/lib/docker"          Root of the Docker runtime
       -H, --host=[]                          Daemon socket(s) to connect to
       --help                                 Print usage
+      --hook-spec                            Default hook spec file applied to all containers
       --icc=true                             Enable inter-container communication
       --insecure-registry=[]                 Enable insecure registry communication
       --ip=0.0.0.0                           Default IP when binding container ports

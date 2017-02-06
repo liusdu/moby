@@ -64,6 +64,7 @@ type CommonConfig struct {
 	ExecRoot             string              `json:"exec-root,omitempty"`
 	GraphDriver          string              `json:"storage-driver,omitempty"`
 	GraphOptions         []string            `json:"storage-opts,omitempty"`
+	HookSpec             string              `json:"hook-spec,omitempty"`
 	Labels               []string            `json:"labels,omitempty"`
 	Mtu                  int                 `json:"mtu,omitempty"`
 	Pidfile              string              `json:"pidfile,omitempty"`
@@ -131,6 +132,7 @@ func (config *Config) InstallCommonFlags(cmd *flag.FlagSet, usageFn func(string)
 	cmd.StringVar(&config.ClusterAdvertise, []string{"-cluster-advertise"}, "", usageFn("Address or interface name to advertise"))
 	cmd.StringVar(&config.ClusterStore, []string{"-cluster-store"}, "", usageFn("Set the cluster store"))
 	cmd.Var(opts.NewNamedMapOpts("cluster-store-opts", config.ClusterOpts, nil), []string{"-cluster-store-opt"}, usageFn("Set cluster store options"))
+	cmd.StringVar(&config.HookSpec, []string{"-hook-spec"}, "", usageFn("Default hook spec file applied to all containers"))
 }
 
 // IsValueSet returns true if a configuration value

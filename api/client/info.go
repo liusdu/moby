@@ -153,5 +153,8 @@ func (cli *DockerCli) CmdInfo(args ...string) error {
 		fmt.Fprintf(cli.out, "Cluster advertise: %s\n", info.ClusterAdvertise)
 	}
 	fmt.Fprintf(cli.out, "Live Restore Enabled: %v\n", info.LiveRestore)
+	if info.HookSpec != "" {
+		fmt.Fprintf(cli.out, "Default hook spec file: %s\n", info.HookSpec)
+	}
 	return nil
 }

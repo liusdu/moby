@@ -105,6 +105,7 @@ func (daemon *Daemon) SystemInfo() (*types.Info, error) {
 		HTTPSProxy:         sockets.GetProxyEnv("https_proxy"),
 		NoProxy:            sockets.GetProxyEnv("no_proxy"),
 		LiveRestore:        daemon.configStore.LiveRestore,
+		HookSpec:           daemon.configStore.HookSpec,
 	}
 
 	// TODO Windows. Refactor this more once sysinfo is refactored into
