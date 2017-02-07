@@ -60,6 +60,12 @@ func (daemon *Daemon) containerStop(container *container.Container, seconds int)
 		}
 	}
 
+	// 3. Release accelerator resources
+	if err := daemon.releaseAccelResources(container); err != nil {
+		// Don't return error because the container is stopped, we just log the accelerator resources release error
+		logrus.Warnf("Container %v failed to release non-persistent acceleartor slots: %v", container.ID, err)
+	}
+
 	daemon.LogContainerEvent(container, "stop")
 	return nil
 }
