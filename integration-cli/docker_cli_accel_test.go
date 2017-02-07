@@ -875,6 +875,43 @@ func (s *DockerAccelSuite) TestDockerAccelCreateDeleteSpecialCharacters(c *check
 	c.Assert(err, checker.NotNil)
 }
 
+func (s *DockerAccelSuite) TestDockerAccelUpdate(c *check.C) {
+	out, _ := dockerCmd(c, "run", "-d", "--accel", "slot0="+fakeRuntime, "busybox", "top")
+	contID := strings.TrimSpace(out)
+
+	out, _ = dockerCmd(c, "accel", "ls", "--format", "{{.ID}}")
+	name := strings.Split(strings.TrimSpace(string(out)), "\n")
+	c.Assert(name, checker.HasLen, 1)
+
+	verifyContainerHasAccelerators(c, contID, name)
+
+	out, _ = dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "accelupdate")
+	accelID := strings.TrimSpace(out)
+
+	// try to update slot0 while container is running
+	out, _, err := dockerCmdWithError("update", "--accel", "slot0=accelupdate", contID)
+	c.Assert(err, checker.NotNil)
+	c.Assert(out, checker.Contains, "Container is running")
+
+	//try update slot0 with container stopped
+	dockerCmd(c, "stop", contID)
+	dockerCmd(c, "update", "--accel", "slot0=accelupdate", contID)
+	verifyContainerHasAccelerators(c, contID, []string{accelID})
+
+	// try to add a new slot
+	out, _ = dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "accelupdate1")
+	accelID1 := strings.TrimSpace(out)
+
+	dockerCmd(c, "update", "--accel", "slot1=accelupdate1", contID)
+	verifyContainerHasAccelerators(c, contID, []string{accelID, accelID1})
+
+	// try to start container after accel update
+	dockerCmd(c, "start", contID)
+
+	dockerCmd(c, "rm", "-f", contID)
+	dockerCmd(c, "accel", "rm", accelID, accelID1)
+}
+
 func (s *DockerAccelSuite) TestDockerAccelBuildImage(c *check.C) {
 	name := "testbuildaccelimage"
 	label := "slot0=" + fakeRuntime + ";slot1=" + fakeRuntime
