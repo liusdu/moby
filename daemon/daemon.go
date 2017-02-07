@@ -72,6 +72,7 @@ import (
 	"github.com/docker/libnetwork"
 	nwconfig "github.com/docker/libnetwork/config"
 	"github.com/docker/libtrust"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/net/context"
 )
 
@@ -133,6 +134,7 @@ type Daemon struct {
 	containerd                libcontainerd.Client
 	containerdRemote          libcontainerd.Remote
 	defaultIsolation          containertypes.Isolation // Default isolation mode on Windows
+	Hooks                     specs.Hooks
 }
 
 // GetContainer looks for a container using the provided information, which could be
@@ -851,9 +853,9 @@ func NewDaemon(config *Config, registryService *registry.Service, containerdRemo
 		return nil, fmt.Errorf("Devices cgroup isn't mounted")
 	}
 
-	hookDir := filepath.Join(config.Root, "hooks")
-	if err := idtools.MkdirAllAs(hookDir, 0700, rootUID, rootGID); err != nil && !os.IsExist(err) {
-		return nil, err
+	//setup hooks environment
+	if err := d.initHooks(config, rootUID, rootGID); err != nil {
+		return nil, fmt.Errorf("Failed to register default hooks: %v", err)
 	}
 
 	d.ID = trustKey.PublicKey().KeyID()
@@ -880,7 +882,6 @@ func NewDaemon(config *Config, registryService *registry.Service, containerdRemo
 	d.nameIndex = registrar.NewRegistrar()
 	d.linkIndex = newLinkIndex()
 	d.containerdRemote = containerdRemote
-	d.hookStore = hookDir
 
 	go d.execCommandGC()
 
@@ -1497,7 +1498,7 @@ func (daemon *Daemon) setHostConfig(container *container.Container, hostConfig *
 	}
 
 	// register hooks to container
-	if err := daemon.registerHooks(container, hostConfig); err != nil {
+	if err := daemon.registerHooks(container, hostConfig.HookSpec); err != nil {
 		return err
 	}
 
@@ -1842,41 +1843,112 @@ func copyBlkioEntry(entries []*containerd.BlkioStatsEntry) []types.BlkioStatEntr
 	return out
 }
 
-func (daemon *Daemon) registerHooks(container *container.Container, hostConfig *containertypes.HostConfig) error {
-	if hostConfig.HookSpec == "" {
+func (daemon *Daemon) sanitizeHookSpec(spec string) (string, error) {
+	if spec != "" {
+		spec = filepath.Clean(spec)
+		if !filepath.IsAbs(spec) {
+			return "", fmt.Errorf("hook spec file must be an absolute path")
+		}
+		fi, err := os.Stat(spec)
+		if err != nil {
+			return "", fmt.Errorf("stat hook spec file failed: %v", err)
+		}
+		if !fi.Mode().IsRegular() {
+			return "", fmt.Errorf("hook spec file must be a regular text file")
+		}
+	}
+	return spec, nil
+}
+
+func (daemon *Daemon) initHooks(config *Config, rootUID, rootGID int) error {
+	// create hook store dir
+	var err error
+	hookDir := filepath.Join(config.Root, "hooks")
+	if err = idtools.MkdirAllAs(hookDir, 0700, rootUID, rootGID); err != nil && !os.IsExist(err) {
+		return err
+	}
+	daemon.hookStore = hookDir
+
+	if config.HookSpec, err = daemon.sanitizeHookSpec(config.HookSpec); err != nil {
+		return err
+	}
+
+	//setup default hooks
+	if err := daemon.registerDaemonHooks(config.HookSpec); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (daemon *Daemon) registerDaemonHooks(hookspec string) error {
+	if hookspec == "" {
 		return nil
 	}
 
 	// the hook spec has already been sanitized, so no need for validation again
-	f, err := os.Open(hostConfig.HookSpec)
+	f, err := os.Open(hookspec)
 	if err != nil {
 		return fmt.Errorf("open hook spec file error: %v", err)
 	}
 	defer f.Close()
 
-	if err = json.NewDecoder(f).Decode(&container.Hooks); err != nil {
+	if err = json.NewDecoder(f).Decode(&daemon.Hooks); err != nil {
 		return fmt.Errorf("malformed hook spec, is your spec file in json format? error: %v", err)
 	}
 
 	// hook path must be absolute and must be subdir of XXX
-	if err = daemon.validateHook(container); err != nil {
+	if err = daemon.validateHook(&daemon.Hooks); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func (daemon *Daemon) validateHook(container *container.Container) error {
-	for _, v := range container.Hooks.Prestart {
+func (daemon *Daemon) registerHooks(container *container.Container, hookspec string) error {
+	container.Hooks.Prestart = append(container.Hooks.Prestart, daemon.Hooks.Prestart...)
+	container.Hooks.Poststart = append(container.Hooks.Poststart, daemon.Hooks.Poststart...)
+	container.Hooks.Poststop = append(container.Hooks.Poststop, daemon.Hooks.Poststop...)
+	if hookspec == "" {
+		return nil
+	}
+
+	// the hook spec has already been sanitized, so no need for validation again
+	f, err := os.Open(hookspec)
+	if err != nil {
+		return fmt.Errorf("open hook spec file error: %v", err)
+	}
+	defer f.Close()
+
+	var hooks specs.Hooks
+	if err = json.NewDecoder(f).Decode(&hooks); err != nil {
+		return fmt.Errorf("malformed hook spec, is your spec file in json format? error: %v", err)
+	}
+
+	container.Hooks.Prestart = append(container.Hooks.Prestart, hooks.Prestart...)
+	container.Hooks.Poststart = append(container.Hooks.Poststart, hooks.Poststart...)
+	container.Hooks.Poststop = append(container.Hooks.Poststop, hooks.Poststop...)
+
+	// hook path must be absolute and must be subdir of XXX
+	if err = daemon.validateHook(&container.Hooks); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (daemon *Daemon) validateHook(hooks *specs.Hooks) error {
+	for _, v := range hooks.Prestart {
 		if err := daemon.validateHookPath(v.Path); err != nil {
 			return err
 		}
 	}
-	for _, v := range container.Hooks.Poststart {
+	for _, v := range hooks.Poststart {
 		if err := daemon.validateHookPath(v.Path); err != nil {
 			return err
 		}
 	}
-	for _, v := range container.Hooks.Poststop {
+	for _, v := range hooks.Poststop {
 		if err := daemon.validateHookPath(v.Path); err != nil {
 			return err
 		}
@@ -1894,5 +1966,6 @@ func (daemon *Daemon) validateHookPath(path string) error {
 	if !filepath.HasPrefix(path, daemon.hookStore) {
 		return fmt.Errorf("hook program must be put under %q", daemon.hookStore)
 	}
+
 	return nil
 }
