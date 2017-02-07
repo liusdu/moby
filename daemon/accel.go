@@ -20,7 +20,7 @@ func (daemon *Daemon) AcceleratorControllerEnabled() bool {
 	return daemon.accelController != nil
 }
 
-func (daemon *Daemon) initAccelController(config *Config) (libaccelerator.AcceleratorController, error) {
+func (daemon *Daemon) initAccelController(config *Config, activeAccelSlots map[string]string) (libaccelerator.AcceleratorController, error) {
 	log.Debugf("Initialize accelerator controller")
 
 	// Create libaccelerator controller
@@ -39,7 +39,43 @@ func (daemon *Daemon) initAccelController(config *Config) (libaccelerator.Accele
 	}
 
 	// Cleanup invalid accelerators
-	controller.CleanupSlots(nil)
+	controller.CleanupSlots(func(s libaccelerator.Slot) bool {
+		if owner, ok := activeAccelSlots[s.ID()]; ok {
+			if s.Owner() != owner {
+				if s.Owner() == "" || !daemon.Exists(s.Owner()) {
+					s.SetOwner(owner)
+				} else { // XXX bug here
+					// invalid container
+					log.Warnf(" ... invalid container %s", owner)
+				}
+			} else {
+				// valid slot
+				log.Debugf(" ... valid slot %s: driver %s", s.ID(), s.DriverName())
+			}
+			delete(activeAccelSlots, s.ID())
+		} else {
+			if s.Scope() == libaccelerator.ContainerScope {
+				// unref container scope slot
+				//  - mainly caused by daemon kill & restart without --live-restore,
+				//    which will stop all running container but without accel cleanup,
+				//    see releaseAccelResources()
+				log.Warnf(" ... invalid slots %s: unref container-scope slot", s.ID())
+				s.Release()
+			} else {
+				// valid slot
+				log.Debugf(" ... valid slot %s: driver %s", s.ID(), s.DriverName())
+				s.SetOwner("")
+			}
+		}
+
+		return false
+	})
+
+	// TODO: Mark container with invalid accelerator slot?
+	for _, cid := range activeAccelSlots {
+		// invalid container
+		log.Warnf(" ... invalid container %s", cid)
+	}
 
 	return controller, nil
 }

@@ -264,13 +264,23 @@ func (daemon *Daemon) restore() error {
 		logrus.Errorf("removeRedundantMounts failed %v", err)
 	}
 
+	// get all active accel slots, for accelController initialization
+	activeAccelSlots := make(map[string]string)
+	for _, c := range containers {
+		for _, accel := range c.HostConfig.Accelerators {
+			if accel.Sid != "" {
+				activeAccelSlots[accel.Sid] = c.ID
+			}
+		}
+	}
+
 	daemon.netController, err = daemon.initNetworkController(daemon.configStore, activeSandboxes)
 	if err != nil {
 		return fmt.Errorf("Error initializing network controller: %v", err)
 	}
 
 	// Create libaccelerator controller
-	daemon.accelController, err = daemon.initAccelController(daemon.configStore)
+	daemon.accelController, err = daemon.initAccelController(daemon.configStore, activeAccelSlots)
 	if err != nil {
 		return fmt.Errorf("Error initializing accelerator controller: %v", err)
 	}
