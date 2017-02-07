@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.11.2.11.ict (2017-02-07)
+
++ Add support for building rpm on CentOS 7.2 (mr 249)
+- Fix docker save can't share layers (mr 254)
++ Add default hook support for all containers
+- Bump containerd to v1.11.2.11.ict
+- Bump runc to v1.11.2.11.ict
+  - Fix unit test and integration test (runc mr 37)
+
 ## v1.11.2.10.it (2017-01-23)
 
 - fixes races between list and create (mr 243)
