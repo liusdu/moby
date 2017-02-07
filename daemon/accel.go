@@ -194,6 +194,39 @@ func (daemon *Daemon) initializeAccelResources(container *container.Container) (
 		}(accel, slot)
 	}
 
+	// Prepare accel resource, save volume/device/envs to configs
+	mergedBindings := make(map[string]containertypes.AccelMount)
+	mergedDevices := make(map[string]string)
+	mergedEnvs := make(map[string]string)
+	for _, accel := range container.HostConfig.Accelerators {
+		slot, err := c.SlotById(accel.Sid)
+		if err != nil {
+			return err
+		}
+		binds, devices, envs, err := slot.Prepare()
+		if err != nil {
+			return err
+		}
+
+		// accel mount merge need container.Root
+		if mergedBindings, err = mergeAccelMount(mergedBindings, binds, container.Root); err != nil {
+			return err
+		}
+		// TODO: devices returned from slot.Prepare contains src only for now
+		// will parse devices here later: src:dest:permission
+		if mergedDevices, err = mergeAccelDevice(mergedDevices, devices); err != nil {
+			return err
+		}
+		mergedEnvs = mergeAccelEnv(mergedEnvs, envs)
+	}
+	container.HostConfig.AccelBindings = mergedBindings
+	container.HostConfig.AccelDevices = mergedDevices
+	container.HostConfig.AccelEnvironments = mergedEnvs
+
+	log.Debugf("AccelBings: %v", container.HostConfig.AccelBindings)
+	log.Debugf("AccelDevices: %v", container.HostConfig.AccelDevices)
+	log.Debugf("AccelEnvironments: %v", container.HostConfig.AccelEnvironments)
+
 	return nil
 }
 
@@ -205,6 +238,14 @@ func (daemon *Daemon) releaseAccelResources(container *container.Container) erro
 	log.Debugf("Release accelerator resources for container \"%s\"", container.Name)
 
 	c := daemon.accelController
+
+	// release volumebinding/devices/envs in container
+	container.HostConfig.AccelBindings = nil
+	container.HostConfig.AccelDevices = nil
+	container.HostConfig.AccelEnvironments = nil
+
+	// remove merged accel mounts
+	removeMergedMounts(container.Root)
 
 	// release accelerators
 	for idx, _ := range container.HostConfig.Accelerators {

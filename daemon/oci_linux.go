@@ -100,7 +100,7 @@ func setDevices(s *specs.Spec, c *container.Container) error {
 			},
 		}
 	} else {
-		for _, deviceMapping := range c.HostConfig.Devices {
+		for _, deviceMapping := range append(c.HostConfig.Devices, getAccelDevices(c.HostConfig.AccelDevices)...) {
 			d, dPermissions, err := getDevicesFromPath(deviceMapping)
 			if err != nil {
 				return err
@@ -599,6 +599,9 @@ func (daemon *Daemon) populateCommonSpec(s *specs.Spec, c *container.Container) 
 	s.Process.Args = append([]string{c.Path}, c.Args...)
 	s.Process.Cwd = cwd
 	s.Process.Env = c.CreateDaemonEnvironment(linkedEnv)
+	if len(c.HostConfig.AccelEnvironments) > 0 {
+		s.Process.Env = daemon.mergeEnv(s.Process.Env, c.HostConfig.AccelEnvironments)
+	}
 	if c.HostConfig.SystemContainer {
 		s.Process.Env = utils.ReplaceOrAppendEnvValues(s.Process.Env, []string{"container=docker"})
 	}
@@ -670,6 +673,7 @@ func (daemon *Daemon) createSpec(c *container.Container) (*libcontainerd.Spec, e
 	}
 	ms = append(ms, c.IpcMounts()...)
 	ms = append(ms, c.TmpfsMounts()...)
+	ms = append(ms, accelMounts(c.HostConfig.AccelBindings)...)
 	sort.Sort(mounts(ms))
 	if err := setMounts(daemon, &s, c, ms); err != nil {
 		return nil, fmt.Errorf("linux mounts: %v", err)

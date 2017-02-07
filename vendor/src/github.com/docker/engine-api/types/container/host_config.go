@@ -300,6 +300,18 @@ type AcceleratorConfig struct {
 	Capacity map[string]string
 }
 
+// AccelMount holds the attribultes of accelerator volume mounts
+// Accelerator need to mount one or more volumes into container to provide lib and binary
+// These volume or directories may need to be merged
+type AccelMount struct {
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
+	RW          bool   `json:"writable"`
+	Propagation string `json:"mountpropagation"`
+	Mode        string
+	Cover       bool `json:"cover"`
+}
+
 // HostConfig the non-portable Config structure of a container.
 // Here, "non-portable" means "dependent of the host we are running on".
 // Portable information *should* appear in Config.
@@ -348,6 +360,10 @@ type HostConfig struct {
 
 	// Container's accelerators config
 	Accelerators []AcceleratorConfig // List of accelerators to be used for the container
+	// TODO: move these Accel* to Accelerators
+	AccelBindings     map[string]AccelMount `json:",omitempty"` // Bind mount for accelerator
+	AccelDevices      map[string]string     `json:",omitempty"` // Devices for accelerator
+	AccelEnvironments map[string]string     `json:",omitempty"` // Envs for accelerator
 
 	// Contains container's resources (cgroups, ulimits)
 	Resources
