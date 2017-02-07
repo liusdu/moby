@@ -60,6 +60,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		flLabelsFile        = opts.NewListOpts(nil)
 		flLoggingOpts       = opts.NewListOpts(nil)
 		flHugetlb           = NewHugetlbOpt(ValidateHugetlb)
+		flAccel             = NewAccelOpt(ValidateAccel)
 		flPrivileged        = cmd.Bool([]string{"-privileged"}, false, "Give extended privileges to this container")
 		flPidMode           = cmd.String([]string{"-pid"}, "", "PID namespace to use")
 		flUTSMode           = cmd.String([]string{"-uts"}, "", "UTS namespace to use")
@@ -135,6 +136,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 	cmd.Var(flSysctls, []string{"-sysctl"}, "Sysctl options")
 	cmd.Var(&flLoggingOpts, []string{"-log-opt"}, "Log driver options")
 	cmd.Var(&flHugetlb, []string{"-hugetlb-limit"}, "Huge page limit (format: [size:]<limit>, e.g. --hugetlb-limit 2MB:32MB)")
+	cmd.Var(&flAccel, []string{"-accel"}, "Accelerator bindings (format: [<name>=]<runtime>[@<driver>[,<options>]]")
 
 	cmd.Require(flag.Min, 1)
 
@@ -442,6 +444,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		ExternalRootfs:  *flExternalRootfs,
 		HookSpec:        *flHookSpec,
 		SystemContainer: *flSystemContainer,
+		Accelerators:    flAccel.GetAll(),
 	}
 
 	// When allocating stdin in attached mode, close stdin at client disconnect

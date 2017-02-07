@@ -93,8 +93,9 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 		return nil, err
 	}
 
-	// merge accelerator runtimes required by image into contianer HostConfig,
-	// and verify these runtime requirements can be satisfied
+	// merge accelerator runtimes required by image with cli specified runtime
+	// into contianer HostConfig, and verify these runtime requirements can
+	// be satisfied
 	if err := daemon.mergeAndVerifyAccelRuntime(params.HostConfig, img); err != nil {
 		return nil, err
 	}
@@ -134,6 +135,11 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 	}
 
 	if err := daemon.createContainerPlatformSpecificSettings(container, params.Config, params.HostConfig); err != nil {
+		return nil, err
+	}
+
+	// allocate resources for "persistent" accelerators
+	if err := daemon.allocatePersistentAccelResources(container); err != nil {
 		return nil, err
 	}
 

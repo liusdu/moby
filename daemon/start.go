@@ -177,7 +177,7 @@ func (daemon *Daemon) Cleanup(container *container.Container) {
 
 	container.UnmountIpcMounts(detachMounted)
 
-	if err := daemon.releaseAccelResources(container); err != nil {
+	if err := daemon.releaseAccelResources(container, false); err != nil {
 		logrus.Warnf("%s stop: Failed to release non-persistent acceleartor slots: %v", container.ID, err)
 	}
 

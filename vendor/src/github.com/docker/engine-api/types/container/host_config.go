@@ -290,6 +290,10 @@ type AcceleratorConfig struct {
 	Runtime string
 	Driver  string
 	Options []string
+	// persistent means this accel will reserved until delete,
+	// otherwise it will be release when container stop.
+	// Cli allocated accelerators are always persistent.
+	IsPersistent bool
 	// Usually, this filed is filled in start stage. But if Cli use slotname-binding,
 	// it will be filled in create stage.
 	Sid string

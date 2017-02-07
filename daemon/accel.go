@@ -95,10 +95,11 @@ func mergeAccelConfig(hostConfig *containertypes.HostConfig, img *image.Image) e
 
 		for _, rt := range strings.Split(runtimeLabel, ";") {
 			cfg := containertypes.AcceleratorConfig{
-				Name:    "",
-				Driver:  "",
-				Options: make([]string, 0),
-				Sid:     "",
+				Name:         "",
+				Driver:       "",
+				Options:      make([]string, 0),
+				IsPersistent: false,
+				Sid:          "",
 			}
 			spt := strings.Split(rt, "=")
 			if len(spt) == 2 &&
@@ -120,7 +121,87 @@ func mergeAccelConfig(hostConfig *containertypes.HostConfig, img *image.Image) e
 	}
 
 	// Merge into HostConfig.Accelerators
-	hostConfig.Accelerators = append(hostConfig.Accelerators, imgAccelConfigs...)
+	for _, imgAccelCfg := range imgAccelConfigs {
+		var cAccelCfg containertypes.AcceleratorConfig
+		bFound := false
+		for _, cAccelCfg = range hostConfig.Accelerators {
+			if cAccelCfg.Name == imgAccelCfg.Name {
+				bFound = true
+				break
+			}
+		}
+		if bFound {
+			// runtime must be exactly matched
+			if cAccelCfg.Runtime != imgAccelCfg.Runtime {
+				return fmt.Errorf("Unmatched accelerator binding for %s: runtime <%s> != <%s>", cAccelCfg.Name, cAccelCfg.Runtime, imgAccelCfg.Runtime)
+			}
+			driver := "*"
+			if cAccelCfg.Driver != "" {
+				driver = cAccelCfg.Driver
+			}
+			extra := ""
+			if cAccelCfg.Sid != "" {
+				extra = ", sid:" + cAccelCfg.Sid
+			}
+			log.Debugf("Bind image accelerator %s with persistent slot %s@<%s>%s", imgAccelCfg.Name, cAccelCfg.Runtime, driver, extra)
+		} else {
+			hostConfig.Accelerators = append(hostConfig.Accelerators, imgAccelCfg)
+		}
+	}
+
+	return nil
+}
+
+func (daemon *Daemon) verifyAccelConfig(hostConfig *containertypes.HostConfig) error {
+	// The Accelerators field in hostConfig maybe nil if no accelerator is required,
+	// in which case, we just allocate an empty map for it.
+	if hostConfig.Accelerators == nil {
+		hostConfig.Accelerators = make([]containertypes.AcceleratorConfig, 0)
+	}
+
+	// Firstly, we check hostConfig.Accelerators filled by cli "--accel-runtime" options
+	for idx, _ := range hostConfig.Accelerators {
+		accel := &hostConfig.Accelerators[idx]
+
+		// validate parameters
+		if !accel.IsPersistent || // accelerators from cli must "persistent"
+			accel.Runtime == "" || // runtime must not empty, it can fill with either slot-name or *real* runtime
+			accel.Name == "" || // accel can not have empty name
+			// Runtime&Name must validate
+			!runconfigopts.ValidateAccelRuntime(accel.Runtime) ||
+			!runconfigopts.ValidateAccelName(accel.Name) {
+			return fmt.Errorf("invalid accelerator config: %v", *accel)
+		}
+		// cli should not touch accel.Sid
+		accel.Sid = ""
+		// for Driver=="", it could be "name0=slot0" or "name0=runtime"
+		if accel.Driver == "" {
+			// search accel.Runtime as slot key (name/sid)
+			key := accel.Runtime
+			if slot, err := daemon.GetAccelSlot(key); err == nil {
+				// only global-scoped slot can be assigned to container
+				if slot.Scope() != libaccelerator.GlobalScope {
+					return fmt.Errorf("not global scope slot")
+				}
+				// slot already bind to other container
+				if slot.Owner() != "" {
+					return fmt.Errorf("accel %s bind failed: slot %s already bind to %s", accel.Name, slot.Name(), slot.Owner())
+				}
+				// slot is not ready, e.g. BADDRV, NODEV
+				if slot.IsBadDriver() {
+					return fmt.Errorf("accel %s bind failed: invalid driver %s for slot %s", accel.Name, slot.DriverName(), slot.Name())
+				} else if slot.IsNoDev() {
+					return fmt.Errorf("accel %s bind failed: slot %s not exist", accel.Name, slot.Name())
+				}
+				// it should be "name0=slot0"
+				accel.Sid = slot.ID()
+				accel.Driver = slot.DriverName()
+				accel.Runtime = slot.Runtime()
+			} else {
+				// it should be "name0=runtime" without driver, just leave it as is
+			}
+		}
+	}
 
 	return nil
 }
@@ -128,6 +209,11 @@ func mergeAccelConfig(hostConfig *containertypes.HostConfig, img *image.Image) e
 func (daemon *Daemon) mergeAndVerifyAccelRuntime(hostConfig *containertypes.HostConfig, img *image.Image) (retErr error) {
 	// Get accelerator controller
 	c := daemon.accelController
+
+	// Verify runtime from cli
+	if err := daemon.verifyAccelConfig(hostConfig); err != nil {
+		return err
+	}
 
 	// Merge image runtime requirements into HostConfig.Accelerators
 	if err := mergeAccelConfig(hostConfig, img); err != nil {
@@ -139,12 +225,78 @@ func (daemon *Daemon) mergeAndVerifyAccelRuntime(hostConfig *containertypes.Host
 		accel := &hostConfig.Accelerators[idx]
 
 		// check availiability
-		_, err := c.Query(accel.Runtime, accel.Driver)
+		d, err := c.Query(accel.Runtime, accel.Driver)
 		if err != nil {
 			return err
 		}
+		// fixup persistent accelerator without driver
+		//   e.g. "--accel name0=runtime"
+		if accel.IsPersistent && accel.Driver == "" {
+			accel.Driver = d
+		}
 	}
 
+	return nil
+}
+
+func (daemon *Daemon) allocatePersistentAccelResources(container *container.Container) (retErr error) {
+	// for container without accelerator, just return success
+	if len(container.HostConfig.Accelerators) == 0 {
+		return nil
+	}
+	// Get accelerator controller
+	c := daemon.accelController
+
+	log.Debugf("Allocate persistent accelerator resources for container \"%s\"", container.Name)
+	for idx, _ := range container.HostConfig.Accelerators {
+		accel := &container.HostConfig.Accelerators[idx]
+
+		if accel.IsPersistent && accel.Sid != "" {
+			slot, err := c.SlotById(accel.Sid)
+			if err != nil {
+				return err
+			}
+
+			// Ignore slot already owned by container
+			//  - this is for `update`, which means the slot is an un-touched
+			//    slot in `update` action
+			if slot.Owner() == container.ID {
+				continue
+			}
+
+			// Set owner for slot-binding
+			if slot.Owner() != "" {
+				// XXX: we should never enter this
+				// if some bug make us here, clear accel info to avoid further error
+				accel.Sid = ""
+				accel.Driver = ""
+				return fmt.Errorf("Oops: this sould never happened: accel %s bind failed: slot %s already bind to %s", accel.Name, slot.Name(), slot.Owner())
+			}
+			slot.SetOwner(container.ID)
+
+			defer func(slot libaccelerator.Slot) {
+				if retErr != nil {
+					slot.SetOwner("")
+				}
+			}(slot)
+		} else if accel.IsPersistent && accel.Sid == "" {
+			// Reserve resource for "persistent" && "!slot-binding" accelerator
+			slot, err := c.AllocateContainerSlot(stringid.GenerateRandomID(), accel.Runtime, accel.Driver, accel.Options...)
+			if err != nil {
+				return err
+			}
+			slot.SetOwner(container.ID)
+			accel.Sid = slot.ID()
+			accel.Driver = slot.DriverName()
+
+			defer func(accel *containertypes.AcceleratorConfig, slot libaccelerator.Slot) {
+				if retErr != nil {
+					accel.Sid = ""
+					slot.Release()
+				}
+			}(accel, slot)
+		}
+	}
 	return nil
 }
 
@@ -159,6 +311,11 @@ func (daemon *Daemon) initializeAccelResources(container *container.Container) (
 
 	for idx, _ := range container.HostConfig.Accelerators {
 		accel := &container.HostConfig.Accelerators[idx]
+
+		// "persistent" accelerators are allocated at start stage
+		if accel.IsPersistent {
+			continue
+		}
 
 		// XXX Oops, if we kill all things(dockerd/containerd/shim), accel.Sid/Driver will still have values, how to deal with this?
 		// If driver-plugin is also killed, we can just ignore this and re-allocate accel for it.
@@ -230,12 +387,12 @@ func (daemon *Daemon) initializeAccelResources(container *container.Container) (
 	return nil
 }
 
-func (daemon *Daemon) releaseAccelResources(container *container.Container) error {
+func (daemon *Daemon) releaseAccelResources(container *container.Container, releasePersistent bool) error {
 	// for container without accelerator, just return success
 	if len(container.HostConfig.Accelerators) == 0 {
 		return nil
 	}
-	log.Debugf("Release accelerator resources for container \"%s\"", container.Name)
+	log.Debugf("Release accelerator resources for container \"%s\" (releasePersistent:%t)", container.Name, releasePersistent)
 
 	c := daemon.accelController
 
@@ -251,7 +408,7 @@ func (daemon *Daemon) releaseAccelResources(container *container.Container) erro
 	for idx, _ := range container.HostConfig.Accelerators {
 		accel := &container.HostConfig.Accelerators[idx]
 
-		if accel.Sid != "" {
+		if (releasePersistent || !accel.IsPersistent) && accel.Sid != "" {
 			sid := accel.Sid
 			// cleanup accelerator slot info
 			accel.Sid = ""
