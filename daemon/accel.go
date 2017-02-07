@@ -437,3 +437,94 @@ func (daemon *Daemon) releaseAccelResources(container *container.Container, rele
 
 	return nil
 }
+
+func (daemon *Daemon) verifyAccelUpdateConfig(hostConfig *containertypes.HostConfig) error {
+	if err := daemon.verifyAccelConfig(hostConfig); err != nil {
+		return err
+	}
+	// check accel runtime availiability
+	c := daemon.accelController
+	for idx, _ := range hostConfig.Accelerators {
+		accelCfg := &hostConfig.Accelerators[idx]
+
+		d, err := c.Query(accelCfg.Runtime, accelCfg.Driver)
+		if err != nil {
+			return err
+		}
+		// fixup persistent accelerator without driver
+		//   e.g. "--accel name0=runtime"
+		if accelCfg.IsPersistent && accelCfg.Driver == "" {
+			accelCfg.Driver = d
+		}
+	}
+
+	return nil
+}
+
+func (daemon *Daemon) updateAccelConfig(hostConfig *containertypes.HostConfig, container *container.Container) error {
+	c := daemon.accelController
+	updateAccelConfigs := hostConfig.Accelerators
+	cAccelConfigs := container.HostConfig.Accelerators
+	oldSids := []string{}
+
+	// no accelerator to update
+	if len(updateAccelConfigs) == 0 {
+		return nil
+	}
+
+	// update accelerators of HostConfig
+	for _, updateAccelCfg := range updateAccelConfigs {
+		var cAccelCfg containertypes.AcceleratorConfig
+		bFound := false
+		dst := 0
+		for dst, cAccelCfg = range cAccelConfigs {
+			if updateAccelCfg.Name == cAccelCfg.Name {
+				bFound = true
+				break
+			}
+		}
+		if bFound {
+			if !cAccelCfg.IsPersistent {
+				return fmt.Errorf("Non-Persistent accelerator cannot be updated: %s", cAccelCfg.Name)
+			} else if updateAccelCfg.Runtime != cAccelCfg.Runtime {
+				return fmt.Errorf("runtime mismatch (%s: %s != %s)", cAccelCfg.Name, cAccelCfg.Runtime, updateAccelCfg.Runtime)
+			}
+			if cAccelCfg.Sid != "" {
+				oldSids = append(oldSids, cAccelCfg.Sid)
+			}
+			cAccelConfigs[dst] = updateAccelCfg
+			break
+		} else {
+			cAccelConfigs = append(cAccelConfigs, updateAccelCfg)
+		}
+	}
+	container.HostConfig.Accelerators = cAccelConfigs
+
+	log.Debugf("Updated acceleratros: %v", container.HostConfig.Accelerators)
+
+	// Allocate resources for updated accelerator slots
+	if err := daemon.allocatePersistentAccelResources(container); err != nil {
+		return err
+	}
+
+	// Save to disk
+	if err := container.ToDisk(); err != nil {
+		log.Errorf("Error saving updated container: %v", err)
+		return err
+	}
+
+	// Release old accelerator
+	for _, sid := range oldSids {
+		if slot, err := c.SlotById(sid); err != nil {
+			continue
+		} else {
+			if slot.Scope() == libaccelerator.GlobalScope {
+				slot.SetOwner("")
+			} else {
+				slot.Release()
+			}
+		}
+	}
+
+	return nil
+}

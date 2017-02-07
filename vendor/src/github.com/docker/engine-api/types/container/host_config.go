@@ -280,6 +280,7 @@ type UpdateConfig struct {
 	// Contains container's resources (cgroups, ulimits)
 	Resources
 	RestartPolicy RestartPolicy
+	Accelerators  []AcceleratorConfig // Accelerator configs
 }
 
 // AcceleratorConfig holds the attributes of an Accelerator
