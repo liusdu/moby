@@ -538,6 +538,53 @@ func (s *DockerAccelSuite) TestDockerAccelCreateDeleteSpecialCharacters(c *check
 	c.Assert(err, checker.NotNil)
 }
 
+func (s *DockerAccelSuite) TestDockerAccelBuildImage(c *check.C) {
+	name := "testbuildaccelimage"
+	label := "slot0=" + fakeRuntime + ";slot1=" + fakeRuntime
+
+	// build from scratch
+	if _, err := buildImage(name, `
+                FROM scratch
+                LABEL runtime `+label,
+		true); err != nil {
+		c.Fatal(err)
+	}
+	out, _ := dockerCmd(c, "inspect", "--format", " {{.ContainerConfig.Labels.runtime}}", name)
+	c.Assert(strings.TrimSpace(out), check.Equals, label)
+	deleteImages(name)
+
+	// build from busybox
+	if _, err := buildImage(name, `
+                FROM busybox
+                LABEL runtime `+label,
+		true); err != nil {
+		c.Fatal(err)
+	}
+	out, _ = dockerCmd(c, "inspect", "--format", " {{.ContainerConfig.Labels.runtime}}", name)
+	c.Assert(strings.TrimSpace(out), check.Equals, label)
+	deleteImages(name)
+}
+
+func (s *DockerAccelSuite) TestDockerAccelImplictCreateInRun(c *check.C) {
+	// prepare image
+	name := "testbuildaccelimage"
+	label := "slot0=" + fakeRuntime + ";slot1=" + fakeRuntime
+	_, err := buildImage(name, `
+                FROM busybox
+                LABEL runtime `+label,
+		true)
+	c.Assert(err, check.IsNil)
+	defer deleteImages(name)
+
+	// run test
+	out, _ := dockerCmd(c, "run", "-d", name, "top")
+	contID := strings.TrimSpace(out)
+	defer dockerCmd(c, "rm", "-f", contID)
+
+	out, _ = dockerCmd(c, "accel", "ls", "--format", "{{.ID}}", "--filter", "Owner="+contID)
+	slots := strings.Split(strings.TrimSpace(string(out)), "\n")
+	c.Assert(slots, checker.HasLen, 2)
+}
 func (s *DockerAccelSuite) TestDockerAccelCreateWithoutSpecifyDriver(c *check.C) {
 	_, err := dockerCmd(c, "accel", "create", "--runtime", fakeRuntime, "nodrivername")
 	c.Assert(err, check.NotNil)
