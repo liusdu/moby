@@ -17,6 +17,7 @@ import (
 	remoteapi "github.com/docker/docker/libaccelerator/drivers/remote/api"
 	"github.com/docker/docker/pkg/integration/checker"
 	"github.com/docker/engine-api/types"
+	"github.com/docker/engine-api/types/versions/v1p20"
 	"github.com/go-check/check"
 )
 
@@ -374,18 +375,54 @@ func (s *DockerAccelSuite) TestDockerAccelLsFilter(c *check.C) {
 }
 
 func (s *DockerAccelSuite) TestDockerAccelCreateOnly(c *check.C) {
-	out, _ := dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "testaccel")
-	accelID := strings.TrimSpace(out)
+	dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "testaccel")
 	assertAccelIsAvailable(c, "testaccel")
 
-	out, _ = dockerCmd(c, "accel", "inspect", "--format", "{{.ID}}", "testaccel")
-	c.Assert(strings.TrimSpace(out), check.Equals, accelID)
+	out, _ := dockerCmd(c, "run", "-d", "--accel", "testaccel", "busybox", "top")
+	contID := strings.TrimSpace(out)
+	defer func() {
+		dockerCmd(c, "rm", "-f", contID)
+		dockerCmd(c, "accel", "rm", "testaccel")
+	}()
+
+	c.Assert(waitRun(contID), checker.IsNil)
+	out, _ = dockerCmd(c, "accel", "inspect", "--format", "{{.Owner}}", "testaccel")
+	c.Assert(strings.TrimSpace(out), check.Equals, contID)
 }
 
 func (s *DockerAccelSuite) TestDockerAccelCreateWithOption(c *check.C) {
 	out, _ := dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "--option", "opA", "--option", "opB", "testaccel")
 	slotID := strings.TrimSpace(out)
 	defer dockerCmd(c, "accel", "rm", slotID)
+
+	c.Assert(fakeDriver.slots[slotID].options, check.DeepEquals, []string{"opA", "opB"})
+
+	out, _ = dockerCmd(c, "accel", "inspect", "--format", "{{.Options}}", slotID)
+	c.Assert(strings.TrimSpace(out), check.Equals, "[opA opB]")
+}
+
+func (s *DockerAccelSuite) TestDockerAccelCreateInRun(c *check.C) {
+	out, _ := dockerCmd(c, "run", "-d", "--accel", "slot0="+fakeRuntime+"@"+dummyAccelDriver, "busybox", "top")
+	contID := strings.TrimSpace(out)
+	defer dockerCmd(c, "rm", "-f", contID)
+
+	out, _ = dockerCmd(c, "accel", "ls", "--format", "{{.ID}}")
+	name := strings.Split(strings.TrimSpace(string(out)), "\n")
+	c.Assert(name, checker.HasLen, 1)
+
+	verifyContainerHasAccelerators(c, contID, name)
+
+	out, _ = dockerCmd(c, "accel", "inspect", "--format", "{{.Scope}}", name[0])
+	c.Assert(strings.TrimSpace(out), check.Equals, "container")
+}
+
+func (s *DockerAccelSuite) TestDockerAccelCreateInRunWithOption(c *check.C) {
+	out, _ := dockerCmd(c, "create", "--accel", "slot0="+fakeRuntime+"@"+dummyAccelDriver+",opA,opB", "busybox", "top")
+	contID := strings.TrimSpace(out)
+	defer dockerCmd(c, "rm", "-f", contID)
+
+	out, _ = dockerCmd(c, "inspect", "--format", "{{(index .HostConfig.Accelerators 0).Sid}}", contID)
+	slotID := strings.TrimSpace(out)
 
 	c.Assert(fakeDriver.slots[slotID].options, check.DeepEquals, []string{"opA", "opB"})
 
@@ -407,6 +444,22 @@ func (s *DockerAccelSuite) TestDockerAccelDeleteNotExists(c *check.C) {
 	c.Assert(err, checker.NotNil, check.Commentf(out))
 }
 
+func (s *DockerAccelSuite) TestDockerAccelDeleteInUse(c *check.C) {
+	dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "testdeleteinuse")
+	assertAccelIsAvailable(c, "testdeleteinuse")
+
+	out, _ := dockerCmd(c, "run", "-d", "--accel", "testdeleteinuse", "busybox", "top")
+	id := strings.TrimSpace(out)
+	defer func() {
+		dockerCmd(c, "rm", "-f", id)
+		dockerCmd(c, "accel", "rm", "testdeleteinuse")
+	}()
+
+	out, _, err := dockerCmdWithError("accel", "rm", "testdeleteinuse")
+	c.Assert(err, checker.NotNil, check.Commentf("%v", out))
+	c.Assert(out, checker.Contains, "slot in use")
+}
+
 func (s *DockerAccelSuite) TestDockerAccelDeleteMultiple(c *check.C) {
 	dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "testdelmulti0")
 	assertAccelIsAvailable(c, "testdelmulti0")
@@ -417,12 +470,28 @@ func (s *DockerAccelSuite) TestDockerAccelDeleteMultiple(c *check.C) {
 	dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "testdelmulti2")
 	assertAccelIsAvailable(c, "testdelmulti2")
 
-	// delete three accelerators at the same time
-	dockerCmd(c, "accel", "rm", "testdelmulti0", "testdelmulti1", "testdelmulti2")
+	out, _ := dockerCmd(c, "run", "-d", "--accel", "testdelmulti2", "busybox", "top")
+	contID := strings.TrimSpace(out)
+	defer func() {
+		dockerCmd(c, "rm", "-f", contID)
+		dockerCmd(c, "accel", "rm", "testdelmulti2")
+	}()
+
+	waitRun(contID)
+
+	// delete three accelerators at the same time, since testdelmulti2
+	// contains active container, its deletion should fail.
+	out, _, err := dockerCmdWithError("accel", "rm", "testdelmulti0", "testdelmulti1", "testdelmulti2")
+	// err should not be nil due to deleting testdelmulti2 failed.
+	c.Assert(err, checker.NotNil, check.Commentf("out: %s", out))
+	// testdelmulti2 should fail due to slot in use
+	c.Assert(out, checker.Contains, "slot in use")
 
 	assertAccelNotAvailable(c, "testdelmulti0")
 	assertAccelNotAvailable(c, "testdelmulti1")
-	assertAccelNotAvailable(c, "testdelmulti2")
+
+	// testDelMulti2 can't be deleted, so it should exist
+	assertAccelIsAvailable(c, "testdelmulti2")
 }
 
 func (s *DockerAccelSuite) TestDockerAccelInspect(c *check.C) {
@@ -442,6 +511,31 @@ func (s *DockerAccelSuite) TestDockerAccelInspect(c *check.C) {
 	c.Assert(accels, checker.HasLen, 1)
 	c.Assert(accels[0].State, checker.Equals, "free")
 	c.Assert(accels[0].Owner, checker.Equals, "")
+	c.Assert(accels[0].InjectInfo, checker.DeepEquals, types.AccelInject{})
+
+	// create a container using this accel
+	out, _ = dockerCmd(c, "create", "-ti", "--accel", "testinspect", "busybox", "top")
+	contID := strings.TrimSpace(out)
+	defer dockerCmd(c, "rm", "-f", contID)
+
+	// check State, Owner, InjectInfo
+	out, _ = dockerCmd(c, "accel", "inspect", "testinspect")
+	err = json.Unmarshal([]byte(out), &accels)
+	c.Assert(err, check.IsNil)
+	c.Assert(accels, checker.HasLen, 1)
+	c.Assert(accels[0].State, checker.Equals, "used")
+	c.Assert(accels[0].Owner, checker.Equals, contID)
+	c.Assert(accels[0].InjectInfo, checker.DeepEquals, types.AccelInject{})
+
+	// start the container and check InjectInfo
+	dockerCmd(c, "start", contID)
+	out, _ = dockerCmd(c, "accel", "inspect", "testinspect")
+	err = json.Unmarshal([]byte(out), &accels)
+	c.Assert(err, check.IsNil)
+	c.Assert(accels, checker.HasLen, 1)
+	c.Assert(accels[0].InjectInfo.Bindings, checker.NotNil)
+	c.Assert(accels[0].InjectInfo.Devices, checker.NotNil)
+	c.Assert(accels[0].InjectInfo.Environments, checker.NotNil)
 }
 
 func (s *DockerAccelSuite) TestDockerAccelDirectInspect(c *check.C) {
@@ -514,6 +608,28 @@ func (s *DockerAccelSuite) TestDockerAccelInspectMultipleAccel(c *check.C) {
 	c.Assert(string(out), checker.Contains, "No such accel: nonexistent")
 }
 
+func (s *DockerAccelSuite) TestDockerAccelInspectAccelWithContainerName(c *check.C) {
+	dockerCmd(c, "accel", "create", "--runtime", fakeRuntime, "--driver", dummyAccelDriver, "accelforinspect")
+	assertAccelIsAvailable(c, "accelforinspect")
+
+	out, _ := dockerCmd(c, "run", "-d", "--name", "testAccelInspect1", "--accel", "accelforinspect", "busybox", "top")
+	contID := strings.TrimSpace(out)
+	defer func() {
+		// we don't stop container by name, because we'll rename it later
+		dockerCmd(c, "rm", "-f", contID)
+		dockerCmd(c, "accel", "rm", "accelforinspect")
+	}()
+	c.Assert(waitRun("testAccelInspect1"), check.IsNil)
+
+	accelResources := []types.Accel{}
+	out, _ = dockerCmd(c, "accel", "inspect", "accelforinspect")
+	err := json.Unmarshal([]byte(out), &accelResources)
+	c.Assert(err, check.IsNil)
+	c.Assert(accelResources, checker.HasLen, 1)
+	container := accelResources[0].Owner
+	c.Assert(container, checker.Equals, contID)
+}
+
 func (s *DockerAccelSuite) TestDockerAccelInspectCustomUnspecified(c *check.C) {
 	out, _ := dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "accelicu1")
 	accelID := strings.TrimSpace(out)
@@ -529,6 +645,227 @@ func (s *DockerAccelSuite) TestDockerAccelInspectCustomUnspecified(c *check.C) {
 
 	dockerCmd(c, "accel", "rm", "accelicu1")
 	assertAccelNotAvailable(c, "accelicu1")
+}
+
+func (s *DockerAccelSuite) TestDockerAccelDriverUngracefulRestart(c *check.C) {
+	// launch new accel driver plugin: dad
+	dad := "dad"
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	setupRemoteAccelDrivers(c, mux, server.URL, dad)
+
+	// start docker daemon with proper accel-driver set
+	s.d.StartWithBusybox("--accel-driver-plugin", dad)
+
+	out, err := s.d.Cmd("accel", "create", "-d", dad, "--runtime", fakeRuntime, "accel1")
+	c.Assert(err, checker.IsNil)
+	accelId := strings.TrimSpace(out)
+
+	out, err = s.d.Cmd("run", "-itd", "--accel", "accel1", "--name", "foo", "busybox", "sh")
+	c.Assert(err, checker.IsNil)
+	contID := strings.TrimSpace(out)
+
+	// Kill daemon and restart
+	if err = s.d.Stop(); err != nil {
+		c.Fatal(err)
+	}
+	// kill accel driver plugin
+	server.Close()
+
+	// restart accel driver
+	mux = http.NewServeMux()
+	server = httptest.NewServer(mux)
+	setupRemoteAccelDrivers(c, mux, server.URL, dad)
+
+	startTime := time.Now().Unix()
+	if err = s.d.Restart(); err != nil {
+		c.Fatal(err)
+	}
+
+	lapse := time.Now().Unix() - startTime
+	if lapse > 60 {
+		// In normal scenarios, daemon restart takes ~1 second.
+		// Plugin retry mechanism can delay the daemon start. systemd may not like it.
+		// Avoid accessing plugins during daemon bootup
+		c.Logf("daemon restart took too long : %d seconds", lapse)
+	}
+
+	// trying to reuse the same slot
+	out, err = s.d.Cmd("start", contID)
+	c.Assert(err, checker.IsNil)
+
+	out, err = s.d.Cmd("accel", "inspect", "--format", "{{.Owner}}", accelId)
+	c.Assert(err, checker.IsNil)
+	c.Assert(strings.TrimSpace(out), checker.Equals, contID)
+
+	s.d.Cmd("rm", "-f", "foo")
+	s.d.Cmd("accel", "rm", "accel1")
+	s.d.Stop()
+	server.Close()
+	cleanupRemoteAccelDrivers(c, dad)
+}
+
+func (s *DockerAccelSuite) TestDockerAccelInspectApiMultipleAccels(c *check.C) {
+	dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "accelinspect1")
+	dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "accelinspect2")
+
+	out, _ := dockerCmd(c, "run", "-d", "--accel=accelinspect1", "--accel=accelinspect2", "busybox", "top")
+	id := strings.TrimSpace(out)
+	defer func() {
+		dockerCmd(c, "rm", "-f", id)
+		dockerCmd(c, "accel", "rm", "accelinspect1")
+		dockerCmd(c, "accel", "rm", "accelinspect2")
+	}()
+	c.Assert(waitRun(id), check.IsNil)
+
+	var inspect120 v1p20.ContainerJSON
+	body := getInspectBody(c, "v1.20", id)
+	err := json.Unmarshal(body, &inspect120)
+	c.Assert(err, checker.IsNil)
+	c.Assert(inspect120.HostConfig.Accelerators, checker.HasLen, 2)
+
+	var inspect121 types.ContainerJSON
+	body = getInspectBody(c, "v1.21", id)
+	err = json.Unmarshal(body, &inspect121)
+	c.Assert(err, checker.IsNil)
+	c.Assert(inspect121.HostConfig.Accelerators, checker.HasLen, 2)
+
+	accel1 := inspect120.HostConfig.Accelerators[0]
+	c.Assert(accel1.Runtime, checker.Equals, fakeRuntime)
+	c.Assert(accel1.Driver, checker.Equals, dummyAccelDriver)
+
+	accel2 := inspect120.HostConfig.Accelerators[1]
+	c.Assert(accel2.Runtime, checker.Equals, fakeRuntime)
+	c.Assert(accel2.Driver, checker.Equals, dummyAccelDriver)
+
+	accel3 := inspect121.HostConfig.Accelerators[0]
+	c.Assert(accel3.Runtime, checker.Equals, fakeRuntime)
+	c.Assert(accel3.Driver, checker.Equals, dummyAccelDriver)
+
+	accel4 := inspect121.HostConfig.Accelerators[1]
+	c.Assert(accel4.Runtime, checker.Equals, fakeRuntime)
+	c.Assert(accel4.Driver, checker.Equals, dummyAccelDriver)
+}
+
+func verifyContainerHasAccelerators(c *check.C, cName string, accels []string) {
+	// Verify container contains all the accelerators
+	var aIDs []string
+	for _, accel := range accels {
+		out, _ := dockerCmd(c, "accel", "inspect", "-f", "{{.ID}}", accel)
+		accelID := strings.TrimSpace(out)
+		aIDs = append(aIDs, accelID)
+	}
+
+	var inspect types.ContainerJSON
+	body := getInspectBody(c, "v1.21", cName)
+	err := json.Unmarshal(body, &inspect)
+	c.Assert(err, checker.IsNil, check.Commentf("failed to unmarshal inspect result"))
+	c.Assert(inspect, check.NotNil, check.Commentf("container inspect get nil result"))
+
+	var ids []string
+	for _, acc := range inspect.HostConfig.Accelerators {
+		ids = append(ids, acc.Sid)
+	}
+	c.Assert(ids, check.NotNil, check.Commentf("container do not have accelerators"))
+
+	idstr := strings.Join(ids, ",")
+	for _, aid := range aIDs {
+		c.Assert(idstr, checker.Contains, aid)
+	}
+}
+
+func (s *DockerAccelSuite) verifyContainerHasAccelerators(c *check.C, cName string, accels []string) {
+	// Verify container contains all the accelerators
+	var aIDs []string
+	for _, accel := range accels {
+		out, _ := s.d.Cmd("accel", "inspect", "-f", "{{.ID}}", accel)
+		accelID := strings.TrimSpace(out)
+		aIDs = append(aIDs, accelID)
+	}
+
+	body, err := s.getInspectBody(c, "v1.21", cName)
+	c.Assert(err, checker.IsNil)
+
+	var inspect types.ContainerJSON
+	err = json.NewDecoder(body).Decode(&inspect)
+	c.Assert(err, checker.IsNil, check.Commentf("failed to unmarshal inspect result"))
+	c.Assert(inspect, check.NotNil, check.Commentf("container inspect get nil result"))
+
+	var ids []string
+	for _, acc := range inspect.HostConfig.Accelerators {
+		ids = append(ids, acc.Sid)
+	}
+	c.Assert(ids, check.NotNil, check.Commentf("container do not have accelerators"))
+
+	idstr := strings.Join(ids, ",")
+	for _, aid := range aIDs {
+		c.Assert(idstr, checker.Contains, aid)
+	}
+}
+
+func (s *DockerAccelSuite) TestDockerAccelMultipleAcceleratorsGracefulDaemonRestart(c *check.C) {
+	s.d.StartWithBusybox("--accel-driver-plugin", dummyAccelDriver)
+	s.d.Cmd("accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "accelgdr1")
+	s.d.Cmd("accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "accelgdr2")
+
+	out, _ := s.d.Cmd("run", "-d", "--accel=accelgdr1", "--accel=accelgdr2", "busybox", "top")
+	id := strings.TrimSpace(out)
+	c.Assert(s.waitRun(id), check.IsNil)
+
+	accels := []string{"accelgdr1", "accelgdr2"}
+	s.verifyContainerHasAccelerators(c, id, accels)
+
+	// Reload daemon
+	s.d.Restart()
+
+	s.d.Cmd("start", id)
+
+	s.verifyContainerHasAccelerators(c, id, accels)
+	s.d.Cmd("rm", "-f", id)
+	s.d.Cmd("accel", "rm", "accelgdr1")
+	s.d.Cmd("accel", "rm", "accelgdr2")
+	s.d.Stop()
+}
+
+func (s *DockerAccelSuite) TestDockerAccelMultipleAccelsUngracefulDaemonRestart(c *check.C) {
+	err := s.d.StartWithBusybox("--accel-driver-plugin", dummyAccelDriver)
+	c.Assert(err, check.IsNil)
+
+	accels := []string{"acceludr1", "acceludr2"}
+
+	_, err = s.d.Cmd("accel", "create", "--runtime", fakeRuntime, "acceludr1")
+	c.Assert(err, check.IsNil)
+	out, err := s.d.Cmd("accel", "create", "--runtime", fakeRuntime, "acceludr2")
+	c.Assert(err, check.IsNil)
+	out, err = s.d.Cmd("run", "-d", "--accel=acceludr1", "--accel=acceludr2", "busybox", "top")
+	c.Assert(err, check.IsNil)
+	id := strings.TrimSpace(out)
+	c.Assert(s.waitRun(id), check.IsNil)
+
+	s.verifyContainerHasAccelerators(c, id, accels)
+	// Reload daemon
+	if err := s.d.Stop(); err != nil {
+		c.Fatalf("Could not kill daemon: %v", err)
+	}
+	s.d.Restart()
+	s.d.Cmd("start", id)
+	s.verifyContainerHasAccelerators(c, id, accels)
+
+	s.d.Cmd("rm", "-f", id)
+	s.d.Cmd("accel", "rm", "acceludr1")
+	s.d.Cmd("accel", "rm", "acceludr2")
+	s.d.Stop()
+}
+
+func (s *DockerAccelSuite) TestDockerAccelRunByID(c *check.C) {
+	out, _ := dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "one")
+	sid := strings.TrimSpace(out)
+	out, _ = dockerCmd(c, "run", "-d", "--accel", sid, "busybox", "top")
+	id := strings.TrimSpace(out)
+	defer func() {
+		dockerCmd(c, "rm", "-f", id)
+		dockerCmd(c, "accel", "rm", "one")
+	}()
 }
 
 func (s *DockerAccelSuite) TestDockerAccelCreateDeleteSpecialCharacters(c *check.C) {
@@ -565,6 +902,33 @@ func (s *DockerAccelSuite) TestDockerAccelBuildImage(c *check.C) {
 	deleteImages(name)
 }
 
+func (s *DockerAccelSuite) TestDockerAccelCreateInRunBinding(c *check.C) {
+	// prepare image
+	name := "testbuildaccelimage"
+	label := "slot0=" + fakeRuntime + ";slot1=" + fakeRuntime
+	_, err := buildImage(name, `
+                FROM busybox
+                LABEL runtime `+label,
+		true)
+	c.Assert(err, check.IsNil)
+	defer deleteImages(name)
+
+	// run test
+	dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "s0")
+	dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "s1")
+	out, _ := dockerCmd(c, "run", "-d", "--accel", "slot0=s0", "--accel", "slot1=s1", name, "top")
+	contID := strings.TrimSpace(out)
+	defer func() {
+		dockerCmd(c, "rm", "-f", contID)
+		dockerCmd(c, "accel", "rm", "s0")
+		dockerCmd(c, "accel", "rm", "s1")
+	}()
+
+	out, _ = dockerCmd(c, "accel", "ls", "--format", "{{.Name}}", "--filter", "Owner="+contID)
+	slots := strings.Split(strings.TrimSpace(string(out)), "\n")
+	c.Assert(slots, checker.DeepEquals, []string{"s0", "s1"})
+}
+
 func (s *DockerAccelSuite) TestDockerAccelImplictCreateInRun(c *check.C) {
 	// prepare image
 	name := "testbuildaccelimage"
@@ -585,6 +949,7 @@ func (s *DockerAccelSuite) TestDockerAccelImplictCreateInRun(c *check.C) {
 	slots := strings.Split(strings.TrimSpace(string(out)), "\n")
 	c.Assert(slots, checker.HasLen, 2)
 }
+
 func (s *DockerAccelSuite) TestDockerAccelCreateWithoutSpecifyDriver(c *check.C) {
 	_, err := dockerCmd(c, "accel", "create", "--runtime", fakeRuntime, "nodrivername")
 	c.Assert(err, check.NotNil)
