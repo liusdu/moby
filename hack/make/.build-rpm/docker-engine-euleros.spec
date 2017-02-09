@@ -196,6 +196,9 @@ install -p -m 644 contrib/syntax/vim/syntax/dockerfile.vim $RPM_BUILD_ROOT/usr/s
 install -d $RPM_BUILD_ROOT/usr/share/nano
 install -p -m 644 contrib/syntax/nano/Dockerfile.nanorc $RPM_BUILD_ROOT/usr/share/nano/Dockerfile.nanorc
 
+# install empty image tool
+install -p -m 750 hack/empty-image.sh $RPM_BUILD_ROOT/%{_bindir}/empty-image.sh
+
 # list files owned by the package here
 %files
 %doc AUTHORS CHANGELOG.md CONTRIBUTING.md LICENSE MAINTAINERS NOTICE README.md
@@ -204,6 +207,7 @@ install -p -m 644 contrib/syntax/nano/Dockerfile.nanorc $RPM_BUILD_ROOT/usr/shar
 /%{_bindir}/docker-containerd-shim
 /%{_bindir}/docker-containerd-ctr
 /%{_bindir}/docker-runc
+/%{_bindir}/empty-image.sh
 /%{_sysconfdir}/udev/rules.d/80-docker.rules
 %if 0%{?is_systemd}
 /%{_unitdir}/docker.service
