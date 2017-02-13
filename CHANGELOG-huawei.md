@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.11.2.12.ict (2017-02-13)
+
++ Add empty image tools(empty-image.sh) to project (mr 265)
+
 ## v1.11.2.11.ict (2017-02-07)
 
 + Add support for building rpm on CentOS 7.2 (mr 249)
