@@ -25,6 +25,7 @@ import (
 	"github.com/docker/docker/daemon/graphdriver"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/mount"
+	"github.com/docker/docker/pkg/system"
 	"github.com/opencontainers/runc/libcontainer/label"
 )
 
@@ -305,7 +306,7 @@ func (d *Driver) Remove(id string) error {
 	if err := subvolDelete(d.subvolumesDir(), id); err != nil {
 		return err
 	}
-	if err := os.RemoveAll(dir); err != nil && !os.IsNotExist(err) {
+	if err := system.EnsureRemoveAll(dir); err != nil {
 		return err
 	}
 	return nil

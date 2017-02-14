@@ -45,6 +45,7 @@ import (
 	"github.com/docker/docker/pkg/locker"
 	mountpk "github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/stringid"
+	"github.com/docker/docker/pkg/system"
 
 	"github.com/opencontainers/runc/libcontainer/label"
 )
@@ -288,13 +289,13 @@ func (a *Driver) Remove(id string) error {
 	if err := os.Rename(mountpoint, tmpMntPath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	defer os.RemoveAll(tmpMntPath)
+	defer system.EnsureRemoveAll(tmpMntPath)
 
 	tmpDiffpath := path.Join(a.diffPath(), fmt.Sprintf("%s-removing", id))
 	if err := os.Rename(a.getDiffPath(id), tmpDiffpath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	defer os.RemoveAll(tmpDiffpath)
+	defer system.EnsureRemoveAll(tmpDiffpath)
 
 	// Remove the layers file for the id
 	if err := os.Remove(path.Join(a.rootPath(), "layers", id)); err != nil && !os.IsNotExist(err) {
