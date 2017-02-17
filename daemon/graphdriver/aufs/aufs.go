@@ -42,6 +42,7 @@ import (
 	"github.com/docker/docker/pkg/chrootarchive"
 	"github.com/docker/docker/pkg/directory"
 	"github.com/docker/docker/pkg/idtools"
+	"github.com/docker/docker/pkg/locker"
 	mountpk "github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/stringid"
 
@@ -74,6 +75,7 @@ type Driver struct {
 	ctr           *graphdriver.RefCounter
 	pathCacheLock sync.Mutex
 	pathCache     map[string]string
+	locker        *locker.Locker
 }
 
 // Init returns a new AUFS driver.
@@ -111,6 +113,7 @@ func Init(root string, options []string, uidMaps, gidMaps []idtools.IDMap) (grap
 		gidMaps:   gidMaps,
 		pathCache: make(map[string]string),
 		ctr:       graphdriver.NewRefCounter(graphdriver.NewFsChecker(graphdriver.FsMagicAufs)),
+		locker:    locker.New(),
 	}
 
 	rootUID, rootGID, err := idtools.GetRootUIDGID(uidMaps, gidMaps)
@@ -258,6 +261,8 @@ func (a *Driver) createDirsFor(id string) error {
 
 // Remove will unmount and remove the given id.
 func (a *Driver) Remove(id string) error {
+	a.locker.Lock(id)
+	defer a.locker.Unlock(id)
 	a.pathCacheLock.Lock()
 	mountpoint, exists := a.pathCache[id]
 	a.pathCacheLock.Unlock()
@@ -298,6 +303,8 @@ func (a *Driver) Remove(id string) error {
 // Get returns the rootfs path for the id.
 // This will mount the dir at it's given path
 func (a *Driver) Get(id, mountLabel string) (string, error) {
+	a.locker.Lock(id)
+	defer a.locker.Unlock(id)
 	parents, err := a.getParentLayerPaths(id)
 	if err != nil && !os.IsNotExist(err) {
 		return "", err
@@ -333,6 +340,8 @@ func (a *Driver) Get(id, mountLabel string) (string, error) {
 
 // Put unmounts and updates list of active mounts.
 func (a *Driver) Put(id string) error {
+	a.locker.Lock(id)
+	defer a.locker.Unlock(id)
 	a.pathCacheLock.Lock()
 	m, exists := a.pathCache[id]
 	if !exists {
