@@ -152,18 +152,25 @@ func (d *Daemon) ContainerExecStart(name string, stdin io.ReadCloser, stdout io.
 		return fmt.Errorf("Error: Exec command %s is already running", ec.ID)
 	}
 	ec.Running = true
-	defer func() {
-		if err != nil {
-			ec.Running = false
-			exitCode := 126
-			ec.ExitCode = &exitCode
-		}
-	}()
 	ec.Unlock()
 
 	c := d.containers.Get(ec.ContainerID)
 	logrus.Debugf("starting exec command %s in container %s", ec.ID, c.ID)
 	d.LogContainerEvent(c, "exec_start: "+ec.Entrypoint+" "+strings.Join(ec.Args, " "))
+
+	defer func() {
+		if err != nil {
+			ec.Lock()
+			ec.Running = false
+			exitCode := 126
+			ec.ExitCode = &exitCode
+			if err := ec.CloseStreams(); err != nil {
+				logrus.Errorf("failed to cleanup exec %s streams: %s", c.ID, err)
+			}
+			ec.Unlock()
+			c.ExecCommands.Delete(ec.ID)
+		}
+	}()
 
 	if ec.OpenStdin && stdin != nil {
 		r, w := io.Pipe()

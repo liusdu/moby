@@ -47,6 +47,7 @@ func WriteError(w http.ResponseWriter, err error) {
 		errStr := strings.ToLower(errMsg)
 		for keyword, status := range map[string]int{
 			"not found":             http.StatusNotFound,
+			"cannot find":           http.StatusNotFound,
 			"no such":               http.StatusNotFound,
 			"bad parameter":         http.StatusBadRequest,
 			"conflict":              http.StatusConflict,

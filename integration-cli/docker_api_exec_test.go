@@ -103,21 +103,7 @@ func (s *DockerSuite) TestExecApiStartMultipleTimesError(c *check.C) {
 	runSleepingContainer(c, "-d", "--name", "test")
 	execID := createExec(c, "test")
 	startExec(c, execID, http.StatusOK)
-
-	timeout := time.After(60 * time.Second)
-	var execJSON struct{ Running bool }
-	for {
-		select {
-		case <-timeout:
-			c.Fatal("timeout waiting for exec to start")
-		default:
-		}
-
-		inspectExec(c, execID, &execJSON)
-		if !execJSON.Running {
-			break
-		}
-	}
+	waitForExec(c, execID)
 
 	startExec(c, execID, http.StatusConflict)
 }
@@ -152,8 +138,43 @@ func (s *DockerSuite) TestExecApiStartWithDetach(c *check.C) {
 	}
 }
 
+// #30311
+func (s *DockerSuite) TestExecAPIStartValidCommand(c *check.C) {
+	name := "exec_test"
+	dockerCmd(c, "run", "-d", "-t", "--name", name, "busybox", "/bin/sh")
+
+	id := createExecCmd(c, name, "true")
+	startExec(c, id, http.StatusOK)
+
+	waitForExec(c, id)
+
+	var inspectJSON struct{ ExecIDs []string }
+	inspectContainer(c, name, &inspectJSON)
+
+	c.Assert(inspectJSON.ExecIDs, checker.IsNil)
+}
+
+// #30311
+func (s *DockerSuite) TestExecAPIStartInvalidCommand(c *check.C) {
+	name := "exec_test"
+	dockerCmd(c, "run", "-d", "-t", "--name", name, "busybox", "/bin/sh")
+
+	id := createExecCmd(c, name, "invalid")
+	startExec(c, id, http.StatusNotFound)
+	waitForExec(c, id)
+
+	var inspectJSON struct{ ExecIDs []string }
+	inspectContainer(c, name, &inspectJSON)
+
+	c.Assert(inspectJSON.ExecIDs, checker.IsNil)
+}
+
 func createExec(c *check.C, name string) string {
-	_, b, err := sockRequest("POST", fmt.Sprintf("/containers/%s/exec", name), map[string]interface{}{"Cmd": []string{"true"}})
+	return createExecCmd(c, name, "true")
+}
+
+func createExecCmd(c *check.C, name string, cmd string) string {
+	_, b, err := sockRequest("POST", fmt.Sprintf("/containers/%s/exec", name), map[string]interface{}{"Cmd": []string{cmd}})
 	c.Assert(err, checker.IsNil, check.Commentf(string(b)))
 
 	createResp := struct {
@@ -175,6 +196,32 @@ func startExec(c *check.C, id string, code int) {
 
 func inspectExec(c *check.C, id string, out interface{}) {
 	resp, body, err := sockRequestRaw("GET", fmt.Sprintf("/exec/%s/json", id), nil, "")
+	c.Assert(err, checker.IsNil)
+	defer body.Close()
+	c.Assert(resp.StatusCode, checker.Equals, http.StatusOK)
+	err = json.NewDecoder(body).Decode(out)
+	c.Assert(err, checker.IsNil)
+}
+
+func waitForExec(c *check.C, id string) {
+	timeout := time.After(60 * time.Second)
+	var execJSON struct{ Running bool }
+	for {
+		select {
+		case <-timeout:
+			c.Fatal("timeout waiting for exec to start")
+		default:
+		}
+
+		inspectExec(c, id, &execJSON)
+		if !execJSON.Running {
+			break
+		}
+	}
+}
+
+func inspectContainer(c *check.C, id string, out interface{}) {
+	resp, body, err := sockRequestRaw("GET", fmt.Sprintf("/containers/%s/json", id), nil, "")
 	c.Assert(err, checker.IsNil)
 	defer body.Close()
 	c.Assert(resp.StatusCode, checker.Equals, http.StatusOK)
