@@ -178,6 +178,7 @@ func GenerateKey(containerID string) string {
 // provided a key which uniquely identifies the sandbox
 func NewSandbox(key string, osCreate bool, isRestore bool) (Sandbox, error) {
 	if isRestore {
+		once.Do(createBasePath) // This is to start GC
 		return &networkNamespace{path: key, isDefault: !osCreate}, nil
 	}
 	err := createNetworkNamespace(key, osCreate)
