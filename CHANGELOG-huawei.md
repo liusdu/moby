@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.2.13.ict (2017-02-23)
+
+- fix race condition between device deferred removal and resume device (mr 282)
+- start GC on daemon restart (mr 279)
+- Fix docker leaks ExecIds on failed exec -i (mr 275)
+
 ## v1.11.2.12.ict (2017-02-13)
 
 + Add empty image tools(empty-image.sh) to project (mr 265)
