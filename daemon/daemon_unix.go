@@ -481,16 +481,43 @@ func verifyContainerResources(resources *containertypes.Resources, sysInfo *sysi
 		logrus.Warnf("Your kernel does not support hugetlb limit. --hugetlb-limit discarded.")
 		resources.Hugetlbs = []containertypes.Hugetlb{}
 	}
-	for i, hpl := range resources.Hugetlbs {
+	newHugetlbs, warning, err := validateHugetlbs(resources.Hugetlbs, sysInfo)
+	warnings = append(warnings, warning...)
+	if err != nil {
+		return warnings, err
+	}
+	resources.Hugetlbs = newHugetlbs
+
+	return warnings, nil
+}
+
+func validateHugetlbs(hgtlbs []containertypes.Hugetlb, sysInfo *sysinfo.SysInfo) ([]containertypes.Hugetlb, []string, error) {
+	warnings := []string{}
+	htbMap := make(map[string]uint64)
+
+	for _, hpl := range hgtlbs {
 		size, warning, err := sysInfo.ValidateHugetlb(hpl.PageSize, hpl.Limit)
 		warnings = append(warnings, warning...)
 		if err != nil {
-			return warnings, err
+			return nil, warnings, err
 		}
-		resources.Hugetlbs[i].PageSize = size
+
+		if l, ok := htbMap[size]; ok {
+			warnings = append(warnings, fmt.Sprintf("hugetlb-limit setting of %s is repeated, former setting %d will be replaced with %d", size, l, hpl.Limit))
+		}
+		htbMap[size] = hpl.Limit
 	}
 
-	return warnings, nil
+	newHgtlbs := []containertypes.Hugetlb{}
+	for k, v := range htbMap {
+		hugetlb := containertypes.Hugetlb{
+			PageSize: k,
+			Limit:    v,
+		}
+		newHgtlbs = append(newHgtlbs, hugetlb)
+	}
+
+	return newHgtlbs, warnings, nil
 }
 
 func (daemon *Daemon) getCgroupDriver() string {

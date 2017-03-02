@@ -401,6 +401,24 @@ func (s *DockerSuite) TestRunWithHugetlbLimit(c *check.C) {
 	c.Assert(out, checker.Contains, "2147483648")
 }
 
+func (s *DockerSuite) TestRunWithMultipleHugetlbLimit(c *check.C) {
+	testRequires(c, hugetlbLimitSupport)
+
+	sysInfo := sysinfo.New(true)
+	dSize, err := sysInfo.GetDefaultHugepageSize()
+	c.Assert(err, check.IsNil)
+
+	file := fmt.Sprintf("/sys/fs/cgroup/hugetlb/hugetlb.%s.limit_in_bytes", dSize)
+	stdout, _, _ := dockerCmdWithStdoutStderr(c, "run", "--hugetlb-limit", dSize+":1G", "--hugetlb-limit", dSize+":2G", "--name", "test1", "busybox", "cat", file)
+	// 1G should be overrided, and only 2G works
+	c.Assert(strings.TrimSpace(stdout), checker.Equals, "2147483648")
+
+	// inspect has 2G setting only, 1G should be discarded
+	out := inspectField(c, "test1", "HostConfig.Hugetlbs")
+	c.Assert(out, checker.Contains, "2147483648")
+	c.Assert(out, checker.Not(checker.Contains), "1073741824")
+}
+
 func (s *DockerSuite) TestRunWithInvalidHugetlbSize(c *check.C) {
 	testRequires(c, hugetlbLimitSupport)
 
