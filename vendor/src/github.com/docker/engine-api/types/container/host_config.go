@@ -298,11 +298,6 @@ type AcceleratorConfig struct {
 	// Usually, this filed is filled in start stage. But if Cli use slotname-binding,
 	// it will be filled in create stage.
 	Sid string
-
-	// hack for CloudRAN 18A API
-	AccType  string
-	Device   string
-	Capacity map[string]string
 }
 
 // AccelMount holds the attribultes of accelerator volume mounts
