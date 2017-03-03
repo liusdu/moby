@@ -461,18 +461,19 @@ func (daemon *Daemon) verifyAccelUpdateConfig(hostConfig *containertypes.HostCon
 	return nil
 }
 
-func (daemon *Daemon) updateAccelConfig(hostConfig *containertypes.HostConfig, container *container.Container) error {
-	c := daemon.accelController
+func (daemon *Daemon) updateAccelConfig(hostConfig *containertypes.HostConfig, container *container.Container) (retErr error) {
 	updateAccelConfigs := hostConfig.Accelerators
-	cAccelConfigs := container.HostConfig.Accelerators
-	oldSids := []string{}
+	// make a copy of HostConfig.Accelerators for update
+	cAccelConfigs := append([]containertypes.AcceleratorConfig{}, container.HostConfig.Accelerators...)
+	oldSids := []string{} // record old sid of updated slot needs release
+	updatedIdx := []int{} // record updated slot index for error rollback
 
 	// no accelerator to update
 	if len(updateAccelConfigs) == 0 {
 		return nil
 	}
 
-	// update accelerators of HostConfig
+	// update accelerators to local copy of HostConfig.Accelerators
 	for _, updateAccelCfg := range updateAccelConfigs {
 		var cAccelCfg containertypes.AcceleratorConfig
 		bFound := false
@@ -493,28 +494,59 @@ func (daemon *Daemon) updateAccelConfig(hostConfig *containertypes.HostConfig, c
 				oldSids = append(oldSids, cAccelCfg.Sid)
 			}
 			cAccelConfigs[dst] = updateAccelCfg
-			break
+			updatedIdx = append(updatedIdx, dst)
 		} else {
 			cAccelConfigs = append(cAccelConfigs, updateAccelCfg)
+			updatedIdx = append(updatedIdx, len(cAccelConfigs)-1)
 		}
 	}
+
+	// update container.HostConfig to new accelerator configs
 	container.HostConfig.Accelerators = cAccelConfigs
 
-	log.Debugf("Updated acceleratros: %v", container.HostConfig.Accelerators)
-
-	// Allocate resources for updated accelerator slots
+	// allocate resources for updated accelerator slots
+	//  - the non-updated slots will remain untouched
+	//  - if allocate failed, the updated slots will be released
 	if err := daemon.allocatePersistentAccelResources(container); err != nil {
 		return err
 	}
 
-	// Save to disk
+	// release updated slots if update failed
+	defer func(updatedIdx []int) {
+		// TODO
+		// How to make unit-test or integration-test to cover following codes?
+		//
+		//   - Surely, we can remove /var/lib/docker/container/xxxx folder to
+		//     force container.ToDisk() error, but this error will be caught in
+		//     early stage of update process before this defer.
+		//   - I have test this code by manual return error after this defer,
+		//     and it works ok, so no further test required.
+		if retErr != nil {
+			slotIDs := []string{}
+			for _, idx := range updatedIdx {
+				slotIDs = append(slotIDs, cAccelConfigs[idx].Sid)
+			}
+			daemon.releaseSlotsByID(slotIDs)
+		}
+	}(updatedIdx)
+
+	// save to disk
 	if err := container.ToDisk(); err != nil {
 		log.Errorf("Error saving updated container: %v", err)
 		return err
 	}
 
-	// Release old accelerator
-	for _, sid := range oldSids {
+	log.Debugf("Updated acceleratros: %v", container.HostConfig.Accelerators)
+
+	// release old accelerator
+	daemon.releaseSlotsByID(oldSids)
+
+	return nil
+}
+
+func (daemon *Daemon) releaseSlotsByID(slotIDs []string) {
+	c := daemon.accelController
+	for _, sid := range slotIDs {
 		if slot, err := c.SlotById(sid); err != nil {
 			continue
 		} else {
@@ -525,6 +557,4 @@ func (daemon *Daemon) updateAccelConfig(hostConfig *containertypes.HostConfig, c
 			}
 		}
 	}
-
-	return nil
 }
