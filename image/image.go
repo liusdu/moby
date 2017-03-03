@@ -48,7 +48,9 @@ type V1Image struct {
 // Image stores the image configuration
 type Image struct {
 	V1Image
-	Parent  ID        `json:"parent,omitempty"`
+	Parent ID `json:"parent,omitempty"`
+	// Please use this field only in `combine image` feature, this field hints that the image is a partial image.
+	From    string    `json:"from,omitempty`
 	RootFS  *RootFS   `json:"rootfs,omitempty"`
 	History []History `json:"history,omitempty"`
 

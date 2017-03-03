@@ -143,6 +143,7 @@ type ImageBuildOptions struct {
 	AuthConfigs    map[string]AuthConfig
 	Context        io.Reader
 	Labels         map[string]string
+	NoParent       bool
 }
 
 // ImageBuildResponse holds information

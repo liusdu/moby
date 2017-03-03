@@ -117,6 +117,7 @@ type ImageInspect struct {
 	RepoTags        []string
 	RepoDigests     []string
 	Parent          string
+	From            string
 	Comment         string
 	Created         string
 	Container       string

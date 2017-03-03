@@ -30,6 +30,7 @@ parent = "smn_cli"
       -m, --memory=""                 Memory limit for all build containers
       --memory-swap=""                A positive integer equal to memory plus swap. Specify -1 to enable unlimited swap.
       --no-cache                      Do not use cache when building the image
+      --no-parent                     Strip parent image after a successful build
       --pull                          Always attempt to pull a newer version of the image
       -q, --quiet                     Suppress the build output and print image ID on success
       --rm=true                       Remove intermediate containers after a successful build

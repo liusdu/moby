@@ -111,6 +111,9 @@ specified image, and then `starts` it using the specified command. That is,
 previous changes intact using `docker start`. See `docker ps -a` to view a list
 of all containers.
 
+If image is built with option `--no-parent`, when running the image, docker will try to find
+the default parents and combine them into a new image, then run the newly created image.
+
 The `docker run` command can be used in combination with `docker commit` to
 [*change the command that a container runs*](commit.md). There is additional detailed information about `docker run` in the [Docker run reference](../run.md).
 

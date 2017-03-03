@@ -654,6 +654,7 @@ _docker_build() {
 		--force-rm
 		--help
 		--no-cache
+		--no-parent
 		--pull
 		--quiet -q
 		--rm

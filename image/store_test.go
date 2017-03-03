@@ -298,3 +298,51 @@ func (ls *mockLayerGetReleaser) Get(layer.ChainID) (layer.Layer, error) {
 func (ls *mockLayerGetReleaser) Release(layer.Layer) ([]layer.Metadata, error) {
 	return nil, nil
 }
+
+func TestCombinedCache(t *testing.T) {
+	tmpdir, err := ioutil.TempDir("", "images-fs-store")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpdir)
+	fs, err := NewFSStoreBackend(tmpdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	is, err := NewImageStore(fs, &mockLayerGetReleaser{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	id, err := is.Create([]byte(`{"comment": "abc1", "rootfs": {"type": "layers"}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	id2, err := is.Create([]byte(`{"comment": "abc2", "rootfs": {"type": "layers"}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	id3, err := is.Create([]byte(`{"comment": "abc3", "rootfs": {"type": "layers"}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	key := is.GenCicKey([]ID{id, id2})
+	is.AddCicMapping(key, id3)
+	combinedID := is.FindCicID(key)
+	if combinedID != id3 {
+		t.Fatal("Cached ID not match, expected:%v got:%v", key, combinedID)
+	}
+
+	if _, err := is.Delete(id3); err != nil {
+		t.Fatal(err)
+	}
+
+	combinedID = is.FindCicID(key)
+	if combinedID != "" {
+		t.Fatal("ID found, it shound be none")
+	}
+}

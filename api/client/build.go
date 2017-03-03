@@ -61,6 +61,7 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 	flBuildArg := opts.NewListOpts(runconfigopts.ValidateEnv)
 	cmd.Var(&flBuildArg, []string{"-build-arg"}, "Set build-time variables")
 	isolation := cmd.String([]string{"-isolation"}, "", "Container isolation technology")
+	noParent := cmd.Bool([]string{"-no-parent"}, false, "Strip parent image after a successful build")
 
 	flLabels := opts.NewListOpts(nil)
 	cmd.Var(&flLabels, []string{"-label"}, "Set metadata for an image")
@@ -234,6 +235,7 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 		BuildArgs:      runconfigopts.ConvertKVStringsToMap(flBuildArg.GetAll()),
 		AuthConfigs:    cli.retrieveAuthConfigs(),
 		Labels:         runconfigopts.ConvertKVStringsToMap(flLabels.GetAll()),
+		NoParent:       *noParent,
 	}
 
 	response, err := cli.client.ImageBuild(context.Background(), options)

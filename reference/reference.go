@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/digest"
 	distreference "github.com/docker/distribution/reference"
 	"github.com/docker/docker/image/v1"
+	"github.com/docker/docker/pkg/stringid"
 )
 
 const (
@@ -208,4 +209,115 @@ func validateName(name string) error {
 		return fmt.Errorf("Invalid repository name (%s), cannot specify 64-byte hexadecimal strings", name)
 	}
 	return nil
+}
+
+// ReplaceFlexablePrefix replace name's hub and namespace by flexablePrefix. When
+// run partial image, parent image's hub and namespace should as same as the child image.
+func ReplaceFlexablePrefix(name, flexablePrefix string) (string, error) {
+	_, coreName, err := SplitName(name)
+	if err != nil {
+		return "", err
+	}
+
+	if flexablePrefix != "" {
+		return flexablePrefix + "/" + coreName, nil
+	}
+
+	return coreName, nil
+}
+
+func truncateID(name string) (id string, continueProcess bool) {
+	if stringid.IsShortID(name) {
+		return name, false
+	}
+
+	err := validateName(name)
+	// If err is no nil, it means it's 64-byte hexadecimal strings
+	if err != nil {
+		return stringid.TruncateID(name), false
+	}
+
+	if digest.Digest(name).Validate() == nil {
+		return stringid.TruncateID(name), false
+	}
+
+	return name, true
+}
+
+// SplitName split the name to two parts, first part is infomation of hub and
+// namespace, second part is the name and tag. If name is a digest, it will be
+// truncated to short ID.
+func SplitName(name string) (flexablePrefix, coreName string, err error) {
+	name, continueProcess := truncateID(name)
+	if !continueProcess {
+		return "", name, nil
+	}
+
+	_, err = ParseNamed(name)
+	if err != nil {
+		return "", "", err
+	}
+
+	names := strings.Split(name, "/")
+	coreName = names[len(names)-1]
+	if len(names) > 1 {
+		flexablePrefix = strings.Join(names[:len(names)-1], "/")
+	}
+
+	return flexablePrefix, coreName, nil
+}
+
+// CombinedFormat format the name from format like name:tag to name_tag.
+// Infomation of hub and namespace will stripped when after format.
+func CombinedFormat(name string) (string, error) {
+	name, continueProcess := truncateID(name)
+	if !continueProcess {
+		return name, nil
+	}
+
+	var rawName string
+	named, err := ParseNamed(name)
+	if err != nil {
+		return "", err
+	}
+
+	names := strings.Split(named.RemoteName(), "/")
+	rawName = names[len(names)-1]
+
+	if _, isCanonical := named.(distreference.Canonical); isCanonical {
+		return rawName, nil
+	}
+
+	tag := DefaultTag
+	if tagged, isTagged := named.(distreference.NamedTagged); isTagged {
+		tag = tagged.Tag()
+	}
+
+	return rawName + "_" + tag, nil
+}
+
+// JoinCombined join name and next to one name as combined image's default name.
+// Names should formated first.
+func JoinCombined(name, next string) string {
+	return name + "-" + next
+}
+
+// ParseFrom parse `From` field in config file to name and id. It should like
+// busybox2@sha256:4d86441a02248b1c2cfea2feec32894c1ba7b934ab7cc6ab0023274901cee45e
+func ParseFrom(from string) (name string, id string, err error) {
+	f := strings.Split(from, "@")
+	if len(f) != 2 {
+		return "", "", fmt.Errorf("invalid from %v", from)
+	}
+
+	if digest.Digest(f[1]).Validate() != nil {
+		return "", "", fmt.Errorf("invalid from %v", from)
+	}
+
+	_, err = ParseNamed(f[0])
+	if err != nil {
+		return "", "", err
+	}
+
+	return f[0], f[1], nil
 }

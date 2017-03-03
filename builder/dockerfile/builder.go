@@ -70,6 +70,7 @@ type Builder struct {
 	cancelled        chan struct{}
 	cancelOnce       sync.Once
 	allowedBuildArgs map[string]bool // list of build-time args that are allowed for expansion/substitution and passing to commands in 'run'.
+	parentImage      string          // parent imageID
 
 	// TODO: remove once docker.Commit can receive a tag
 	id string
@@ -168,7 +169,6 @@ func (bm *BuildManager) Build(clientCtx context.Context, config *types.ImageBuil
 	}
 	img, err := b.build(config, context, stdout, stderr, out, clientGone)
 	return img, err
-
 }
 
 // build runs the Dockerfile builder from a context and a docker object that allows to make calls
@@ -228,6 +228,8 @@ func (b *Builder) build(config *types.ImageBuildOptions, context builder.Context
 		b.dockerfile.Children = append(b.dockerfile.Children, node)
 	}
 
+	images := b.docker.GetImages()
+
 	var shortImgID string
 	for i, n := range b.dockerfile.Children {
 		select {
@@ -268,13 +270,44 @@ func (b *Builder) build(config *types.ImageBuildOptions, context builder.Context
 		return "", fmt.Errorf("No image was generated. Is your Dockerfile empty?")
 	}
 
+	if b.parentImage != "" {
+		if b.options.NoParent {
+			fmt.Fprintf(b.Stdout, "Stripping parent image\n")
+
+			removeComplete := true
+			if _, ok := images[b.image]; ok {
+				removeComplete = false
+			}
+
+			b.image, err = b.docker.CreateNoParentImg(b.image, b.parentImage, removeComplete)
+			if err != nil {
+				return "", err
+			}
+		}
+
+		defaultName, runtimeID, err := b.docker.GetCompleteImageFromPartial(b.parentImage)
+		if err == nil {
+			if runtimeID != "" && defaultName != "" {
+				if _, ok := images[runtimeID]; !ok {
+					b.docker.ImageDelete(defaultName, false, true)
+				}
+			}
+		} else {
+			fmt.Fprintf(b.Stdout, "Warning: Intermediate image will remain as getting runtime image by %v failed: %v\n", b.parentImage, err)
+			// Go through to avoid failing to build image.
+		}
+	} else if b.options.NoParent {
+		fmt.Fprintf(b.Stdout, "Warning: '--no-parent' option specified, but no parent image found.\n")
+	}
+
 	for _, rt := range repoAndTags {
 		if err := b.docker.TagImage(rt, b.image); err != nil {
 			return "", err
 		}
 	}
 
-	fmt.Fprintf(b.Stdout, "Successfully built %s\n", shortImgID)
+	fmt.Fprintf(b.Stdout, "Successfully built %s\n", stringid.TruncateID(b.image))
+
 	return b.image, nil
 }
 

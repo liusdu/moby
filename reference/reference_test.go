@@ -273,3 +273,132 @@ func TestInvalidReferenceComponents(t *testing.T) {
 		t.Fatal("Expected WithName to detect invalid digest")
 	}
 }
+
+func TestFlexablePrefix(t *testing.T) {
+	newPrefix := "192.168.1.1:600/namespace2"
+	type tcase struct {
+		name, newName, prefix, coreName string
+	}
+
+	tcases := []tcase{
+		{
+			name:     "127.0.0.1:500/namespace/name:v1.0.0",
+			newName:  newPrefix + "/name:v1.0.0",
+			prefix:   "127.0.0.1:500/namespace",
+			coreName: "name:v1.0.0",
+		},
+		{
+			name:     "name",
+			newName:  newPrefix + "/name",
+			prefix:   "",
+			coreName: "name",
+		},
+		{
+			name:     "namespace/name",
+			newName:  newPrefix + "/name",
+			prefix:   "namespace",
+			coreName: "name",
+		},
+		{
+			name:     "127.0.0.1:500/name",
+			newName:  newPrefix + "/name",
+			prefix:   "127.0.0.1:500",
+			coreName: "name",
+		},
+		{
+			name:     "namespace/name:v1.0.0",
+			newName:  newPrefix + "/name:v1.0.0",
+			prefix:   "namespace",
+			coreName: "name:v1.0.0",
+		},
+		{
+			name:     "docker.io/library/name",
+			newName:  newPrefix + "/name",
+			prefix:   "docker.io/library",
+			coreName: "name",
+		},
+		{
+			name:     "library/name",
+			newName:  newPrefix + "/name",
+			prefix:   "library",
+			coreName: "name",
+		},
+	}
+
+	for _, tcase := range tcases {
+		actual, err := ReplaceFlexablePrefix(tcase.name, newPrefix)
+		if err != nil {
+			t.Fatalf("Replace flexable prefix faild:%v", err)
+		}
+
+		if expected := tcase.newName; expected != actual {
+			t.Fatalf("Invalid new name for %q. Expected %q, got %q", tcase.name, expected, actual)
+		}
+
+		prefix, coreName, err := SplitName(tcase.name)
+		if err != nil {
+			t.Fatalf("Split name %v faild:%v", tcase.name, err)
+		}
+
+		if expectedPrefix, expectedCoreName := tcase.prefix, tcase.coreName; expectedPrefix != prefix || expectedCoreName != coreName {
+			t.Fatalf("Invalid split name for %q. Expected %q %q, got %q %q", tcase.name, expectedPrefix, expectedCoreName, prefix, coreName)
+		}
+	}
+}
+
+func TestCombinedFormat(t *testing.T) {
+	type tcase struct {
+		name1, name2, format1, format2, joined string
+	}
+
+	tcases := []tcase{
+		{
+			name1:   "127.0.0.1:500/namespace/name1:v1.0.0",
+			name2:   "name2:v1.0.0",
+			format1: "name1_v1.0.0",
+			format2: "name2_v1.0.0",
+			joined:  "name1_v1.0.0-name2_v1.0.0",
+		},
+		{
+			name1:   "name1",
+			name2:   "name2:latest",
+			format1: "name1_latest",
+			format2: "name2_latest",
+			joined:  "name1_latest-name2_latest",
+		},
+	}
+
+	for _, tcase := range tcases {
+		format1, err := CombinedFormat(tcase.name1)
+		if err != nil {
+			t.Fatalf("Format combined name %q faild:%v", tcase.name1, err)
+		}
+
+		if expected, actual := tcase.format1, format1; expected != actual {
+			t.Fatalf("Invalid formated for %q. Expected %q, got %q", tcase.name1, expected, actual)
+		}
+
+		format2, err := CombinedFormat(tcase.name2)
+		if err != nil {
+			t.Fatalf("Format combined name %q faild:%v", tcase.name2, err)
+		}
+
+		if expected, actual := tcase.format2, format2; expected != actual {
+			t.Fatalf("Invalid formated for %q. Expected %q, got %q", tcase.name2, expected, actual)
+		}
+
+		joined := JoinCombined(format1, format2)
+		if expected, actual := tcase.joined, joined; expected != actual {
+			t.Fatalf("Invalid formated for %q. Expected %q, got %q", tcase.joined, expected, actual)
+		}
+	}
+}
+
+func TestParseFrom(t *testing.T) {
+	from := "busybox:v1.0.0@sha256:7968321274dc6b6171697c33df7815310468e694ac5be0ec03ff053bb135e768"
+	expectedName, expectedID := "busybox:v1.0.0", "sha256:7968321274dc6b6171697c33df7815310468e694ac5be0ec03ff053bb135e768"
+	name, id, err := ParseFrom(from)
+	if err != nil || name != expectedName || id != expectedID {
+		t.Fatalf("ParseFrom %v failed. err:%v Expected %q %q, got %q %q", from, err, expectedName, expectedID, name, id)
+	}
+}

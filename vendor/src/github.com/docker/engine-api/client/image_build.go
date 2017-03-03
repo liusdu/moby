@@ -106,6 +106,11 @@ func imageBuildOptionsToQuery(options types.ImageBuildOptions) (url.Values, erro
 		return query, err
 	}
 	query.Set("labels", string(labelsJSON))
+
+	if options.NoParent {
+		query.Set("noparent", "1")
+	}
+
 	return query, nil
 }
 
