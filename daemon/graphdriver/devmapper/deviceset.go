@@ -868,10 +868,6 @@ func (devices *DeviceSet) takeSnapshot(hash string, baseInfo *devInfo, size uint
 			} else {
 				defer devices.deactivateDevice(baseInfo)
 			}
-			devinfo, err = devicemapper.GetInfoWithDeferred(baseInfo.Name())
-			if err != nil {
-				return err
-			}
 		}
 	} else {
 		devinfo, err = devicemapper.GetInfo(baseInfo.Name())
@@ -880,15 +876,17 @@ func (devices *DeviceSet) takeSnapshot(hash string, baseInfo *devInfo, size uint
 		}
 	}
 
+	devinfo, err = devicemapper.GetInfoWithDeferred(baseInfo.Name())
+	if err != nil {
+		return err
+	}
 	doSuspend := devinfo != nil && devinfo.Exists != 0
 
 	if doSuspend {
 		if err = devicemapper.SuspendDevice(baseInfo.Name()); err != nil {
-			if devices.deferredRemove {
-				newDevinfo, err1 := devicemapper.GetInfoWithDeferred(baseInfo.Name())
-				if err1 == nil {
-					logrus.Errorf("takeSnapshot: [%s] devinfo flags changed! old: %+v, new: %+v", baseInfo.Name(), devinfo, newDevinfo)
-				}
+			newDevinfo, err1 := devicemapper.GetInfoWithDeferred(baseInfo.Name())
+			if err1 == nil {
+				logrus.Errorf("takeSnapshot: [%s] devinfo flags changed! old: %+v, new: %+v", baseInfo.Name(), devinfo, newDevinfo)
 			}
 			return err
 		}
