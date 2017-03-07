@@ -17,7 +17,7 @@ import (
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/chrootarchive"
 	"github.com/docker/docker/pkg/idtools"
-
+	"github.com/docker/docker/pkg/locker"
 	"github.com/opencontainers/runc/libcontainer/label"
 )
 
@@ -93,6 +93,7 @@ type Driver struct {
 	uidMaps []idtools.IDMap
 	gidMaps []idtools.IDMap
 	ctr     *graphdriver.RefCounter
+	locker  *locker.Locker
 }
 
 var backingFs = "<unknown>"
@@ -148,6 +149,7 @@ func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (grap
 		uidMaps: uidMaps,
 		gidMaps: gidMaps,
 		ctr:     graphdriver.NewRefCounter(graphdriver.NewFsChecker(graphdriver.FsMagicOverlay)),
+		locker:  locker.New(),
 	}
 
 	return NaiveDiffDriverWithApply(d, uidMaps, gidMaps), nil
@@ -320,6 +322,8 @@ func (d *Driver) dir(id string) string {
 
 // Remove cleans the directories that are created for this id.
 func (d *Driver) Remove(id string) error {
+	d.locker.Lock(id)
+	defer d.locker.Unlock(id)
 	if err := os.RemoveAll(d.dir(id)); err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -328,6 +332,8 @@ func (d *Driver) Remove(id string) error {
 
 // Get creates and mounts the required file system for the given id and returns the mount path.
 func (d *Driver) Get(id string, mountLabel string) (s string, err error) {
+	d.locker.Lock(id)
+	defer d.locker.Unlock(id)
 	dir := d.dir(id)
 	if _, err := os.Stat(dir); err != nil {
 		return "", err
@@ -379,6 +385,8 @@ func (d *Driver) mounted(dir string) (bool, error) {
 
 // Put unmounts the mount path created for the give id.
 func (d *Driver) Put(id string) error {
+	d.locker.Lock(id)
+	defer d.locker.Unlock(id)
 	mountpoint := path.Join(d.dir(id), "merged")
 	if count := d.ctr.Decrement(mountpoint); count > 0 {
 		return nil
