@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.11.2.14.ict (2017-03-07)
+
+- Add feature "Build and run partial image" (mr 302)
+- Bugfix: wait for containerd to die before restarting it (mr 292 )
+- Bugfix: fix flaky test TestBuildApiDockerFileRemote (mr 294)
+- Bugfix: fix suspend removed device for devicemapper graphdriver(mr 298, refactor 282)
+- Bugfix: Add more locking to storage drivers (mr 312)
+
 ## v1.11.2.13.ict (2017-02-23)
 
 - fix race condition between device deferred removal and resume device (mr 282)
