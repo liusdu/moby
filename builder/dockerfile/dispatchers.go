@@ -199,6 +199,7 @@ func from(b *Builder, args []string, attributes map[string]bool, original string
 		}
 		b.image = ""
 		b.noBaseImage = true
+		b.parentImage = ""
 	} else {
 		// TODO: don't use `name`, instead resolve it to a digest
 		if !b.options.PullParent {
@@ -211,6 +212,8 @@ func from(b *Builder, args []string, attributes map[string]bool, original string
 				return err
 			}
 		}
+
+		b.parentImage = name
 	}
 
 	return b.processImageFrom(image)

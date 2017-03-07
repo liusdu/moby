@@ -37,6 +37,56 @@ func (s *DockerSuite) TestRunEchoStdout(c *check.C) {
 	}
 }
 
+func (s *DockerSuite) TestRunNoParentWithHost(c *check.C) {
+	app1 := "app1:v1.0.0"
+	app2 := "app2:v2.0.0"
+	app3 := "app3:v3.0.0"
+	fullNameApp1 := fmt.Sprintf("%v/dockercli/%v", privateRegistryURL, app1)
+	fullNameApp2 := fmt.Sprintf("%v/dockercli/%v", privateRegistryURL, app2)
+	fullNameApp3 := fmt.Sprintf("%v/dockercli/%v", privateRegistryURL, app3)
+
+	buildImageFrom(c, "busybox", fullNameApp1, false)
+	buildImageFrom(c, fullNameApp1, fullNameApp2, true)
+	buildImageFrom(c, fullNameApp2, fullNameApp3, true)
+
+	combinedApp := "app3_v3.0.0-app2_v2.0.0-app1_v1.0.0"
+	dockerCmd(c, "run", "--rm", fullNameApp3, "ls", fullNameApp1)
+	dockerCmd(c, "run", "--rm", fullNameApp3, "ls", fullNameApp2)
+	dockerCmd(c, "run", "--rm", fullNameApp3, "ls", fullNameApp3)
+	imagesExist(c, true, combinedApp)
+	dockerCmd(c, "rmi", fullNameApp1, fullNameApp2, fullNameApp3, combinedApp)
+	imagesExist(c, false, fullNameApp1, fullNameApp2, fullNameApp3, combinedApp)
+}
+
+func (s *DockerSuite) TestRunNoParent(c *check.C) {
+	buildImageFrom(c, "busybox", "app1", false)
+	buildImageFrom(c, "app1", "app2", true)
+	buildImageFrom(c, "app2", "app3", true)
+	dockerCmd(c, "run", "--rm", "app3", "ls", "app3")
+
+	combinedApp := "app3_latest-app2_latest-app1_latest"
+	imagesExist(c, true, combinedApp)
+	dockerCmd(c, "rmi", "app1", "app2", "app3", combinedApp)
+	imagesExist(c, false, "app1", "app2", "app3", combinedApp)
+}
+
+func (s *DockerSuite) TestRunNoParentWithID(c *check.C) {
+	buildImageFrom(c, "busybox", "testid1", false)
+	buildImageFrom(c, "testid1", "testid2", true)
+	id := buildNoParentFrom(c, "testid2", "testid3")
+	dockerCmd(c, "run", "--rm", id, "ls", "testid3")
+
+	ids := strings.Split(id, ":")
+	if len(ids) != 2 {
+		c.Errorf("Invalid id %v", id)
+	}
+
+	dockerCmd(c, "run", "--rm", ids[1], "ls", "testid3")
+
+	dockerCmd(c, "rmi", "testid1", "testid2", "testid3")
+	imagesExist(c, false, "testid1", "testid2", "testid3")
+}
+
 // "test" should be printed
 func (s *DockerSuite) TestRunEchoNamedContainer(c *check.C) {
 	out, _ := dockerCmd(c, "run", "--name", "testfoonamedcontainer", "busybox", "echo", "test")

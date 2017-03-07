@@ -1671,6 +1671,7 @@ Query Parameters:
         called `Dockerfile`.
 -   **q** – Suppress verbose build output.
 -   **nocache** – Do not use the cache when building the image.
+-   **noparent** - Strip parent image after a successful build.
 -   **pull** - Attempt to pull the image even if an older image exists locally.
 -   **rm** - Remove intermediate containers after a successful build (default behavior).
 -   **forcerm** - Always remove intermediate containers (includes `rm`).
@@ -1781,8 +1782,6 @@ Status Codes:
 
 -   **200** – no error
 -   **500** – server error
-
-
 
 ### Inspect an image
 

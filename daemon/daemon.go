@@ -1235,6 +1235,7 @@ func (daemon *Daemon) LookupImage(name string) (*types.ImageInspect, error) {
 		RepoTags:        repoTags,
 		RepoDigests:     repoDigests,
 		Parent:          img.Parent.String(),
+		From:            img.From,
 		Comment:         comment,
 		Created:         img.Created.Format(time.RFC3339Nano),
 		Container:       img.Container,
@@ -1422,6 +1423,13 @@ func (daemon *Daemon) GetCachedImage(imgID image.ID, config *containertypes.Conf
 			img, err := daemon.imageStore.Get(id)
 			if err != nil {
 				return nil, fmt.Errorf("unable to find image %q", id)
+			}
+
+			// Partial image should create a new complete image before running, so actually
+			// partial image can't run by itself. Running a partial image is running the created
+			// new complete image, so partial image should not be the cached image.
+			if img.From != "" {
+				continue
 			}
 
 			if runconfig.Compare(&img.ContainerConfig, config) {

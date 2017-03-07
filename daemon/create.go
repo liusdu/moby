@@ -58,11 +58,30 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 	)
 
 	if params.Config.Image != "" {
-		img, err = daemon.GetImage(params.Config.Image)
+		complete, err := daemon.IsCompleteImage(params.Config.Image)
 		if err != nil {
 			return nil, err
 		}
-		imgID = img.ID()
+
+		if complete {
+			img, err = daemon.GetImage(params.Config.Image)
+			if err != nil {
+				return nil, err
+			}
+			imgID = img.ID()
+		} else {
+			var id string
+			params.Config.Image, id, err = daemon.CreateCompleteImage(params.Config.Image)
+			if err != nil {
+				return nil, err
+			}
+
+			imgID = image.ID(id)
+			img, err = daemon.GetImage(id)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	if err := daemon.mergeAndVerifyConfig(params.Config, img); err != nil {

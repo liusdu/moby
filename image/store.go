@@ -22,6 +22,9 @@ type Store interface {
 	Children(id ID) []ID
 	Map() map[ID]*Image
 	Heads() map[ID]*Image
+	GenCicKey(ids []ID) string
+	FindCicID(key string) ID
+	AddCicMapping(key string, id ID)
 }
 
 // LayerGetReleaser is a minimal interface for getting and releasing images.
@@ -41,6 +44,10 @@ type store struct {
 	images    map[ID]*imageMeta
 	fs        StoreBackend
 	digestSet *digest.Set
+	// cic means 'Combined Image CacheID'. key is ids of child images
+	// joined by '-', like db27b1f78d42-537c3dac5c5b-e498a0b91c2b
+	// value is ID of combined image cached.
+	cic map[string]ID
 }
 
 // NewImageStore returns new store object for given layer store
@@ -50,6 +57,7 @@ func NewImageStore(fs StoreBackend, ls LayerGetReleaser) (Store, error) {
 		images:    make(map[ID]*imageMeta),
 		fs:        fs,
 		digestSet: digest.NewSet(),
+		cic:       make(map[string]ID),
 	}
 
 	// load all current images and retain layers
@@ -220,10 +228,12 @@ func (is *store) Delete(id ID) ([]layer.Metadata, error) {
 	}
 	delete(is.images, id)
 	is.fs.Delete(id)
+	is.deleteCicMapping(id)
 
 	if imageMeta.layer != nil {
 		return is.ls.Release(imageMeta.layer)
 	}
+
 	return nil, nil
 }
 
@@ -292,4 +302,39 @@ func (is *store) imagesMap(all bool) map[ID]*Image {
 		images[id] = img
 	}
 	return images
+}
+
+// FindCicID find cached ID of combined image by the key.
+// See store.cic for key format.
+func (is *store) FindCicID(key string) ID {
+	is.Lock()
+	defer is.Unlock()
+	if id, ok := is.cic[key]; ok {
+		if _, ok := is.images[id]; ok {
+			return id
+		}
+	}
+	return ""
+}
+
+func (is *store) AddCicMapping(key string, id ID) {
+	is.Lock()
+	defer is.Unlock()
+	is.cic[key] = id
+}
+
+func (is *store) deleteCicMapping(id ID) {
+	for k, v := range is.cic {
+		if v == id {
+			delete(is.cic, k)
+		}
+	}
+}
+
+func (is *store) GenCicKey(ids []ID) (key string) {
+	for _, id := range ids {
+		key = key + "-" + id.String()
+	}
+
+	return key
 }

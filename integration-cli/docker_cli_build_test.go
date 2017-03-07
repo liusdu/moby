@@ -4869,6 +4869,122 @@ func (s *DockerSuite) TestBuildNotVerboseSuccess(c *check.C) {
 
 }
 
+func buildImageFrom(c *check.C, from, name string, noParent bool) {
+	dockerfile := fmt.Sprintf("FROM %s\nRUN mkdir -p %s", from, name)
+	var err error
+	var stderr string
+	if noParent {
+		_, _, stderr, err = buildImageWithStdoutStderr(name, dockerfile, true, "-q", "--force-rm", "--rm", "--no-parent", "-t", name)
+	} else {
+		_, _, stderr, err = buildImageWithStdoutStderr(name, dockerfile, true, "-q", "--force-rm", "--rm", "-t", name)
+	}
+	if err != nil {
+		c.Fatalf("Test %s shouldn't fail, but got the following error: %s stderr:%v", name, err.Error(), stderr)
+	}
+}
+
+func imagesExist(c *check.C, exists bool, names ...string) {
+	for _, name := range names {
+		err := imageExists(name)
+		if err != nil && exists {
+			c.Fatalf("Can not found image %v", name)
+		} else if err == nil && !exists {
+			c.Fatalf("Image %v should not exists, but found.", name)
+		}
+	}
+}
+
+func buildNoParentFrom(c *check.C, from, name string) string {
+	cmd := fmt.Sprintf("touch %s", name)
+	outRegexp := regexp.MustCompile("^(sha256:|)[a-z0-9]{64}\\n$")
+	dockerfile := fmt.Sprintf("FROM %s\nRUN %s", from, cmd)
+	_, out, stderr, err := buildImageWithStdoutStderr(name, dockerfile, true, "-q", "--force-rm", "--rm", "--no-parent", "-t", name)
+	if err != nil {
+		c.Fatalf("Test %s shouldn't fail, but got the following error: %s stderr:%v", name, err.Error(), stderr)
+	}
+
+	idWithReturn := outRegexp.Find([]byte(out))
+	if idWithReturn == nil {
+		c.Fatalf("Test %s expected stdout to match the [%v] regexp, but it is [%v]", name, outRegexp, out)
+	}
+
+	out, _ = dockerCmd(c, "history", name)
+	if !strings.Contains(out, cmd) {
+		c.Fatalf("Test %s partial image should have history of [%v], but it is [%v]", name, cmd, out)
+	}
+
+	err = imageExists(name)
+	if err != nil {
+		c.Fatalf("Can not found image %v", name)
+	}
+
+	return strings.TrimRight(string(idWithReturn), "\n")
+}
+
+func (s *DockerSuite) TestBuildNoParentBasic(c *check.C) {
+	buildNoParentFrom(c, "busybox", "os:v1.0.0")
+	buildNoParentFrom(c, "os:v1.0.0", "platform:v1.1.0")
+	buildNoParentFrom(c, "platform:v1.1.0", "app:v2.1.0")
+
+	dockerCmd(c, "rmi", "app:v2.1.0", "platform:v1.1.0", "os:v1.0.0")
+}
+
+func (s *DockerSuite) TestBuildNoParentNoLayerImage(c *check.C) {
+	name := "test_no_layer"
+	// Do twice to ensure no problem with cache
+	_, _, stderr, err := buildImageWithStdoutStderr(name, "FROM busybox\nENV hello=helloworld", true, "-q", "--force-rm", "--rm", "--no-parent", "-t", name)
+	if err != nil {
+		c.Fatalf("Test %s shouldn't fail, but got the following error: %s stderr:%v", name, err.Error(), stderr)
+	}
+	_, _, stderr, err = buildImageWithStdoutStderr(name, "FROM busybox\nENV hello=helloworld", true, "-q", "--force-rm", "--rm", "--no-parent", "-t", name)
+	if err != nil {
+		c.Fatalf("Test %s shouldn't fail, but got the following error: %s stderr:%v", name, err.Error(), stderr)
+	}
+
+	err = imageExists(name)
+	if err != nil {
+		c.Fatalf("Can not found image %v", name)
+	}
+
+	dockerCmd(c, "rmi", name)
+}
+
+func (s *DockerSuite) TestBuildNoParentScratchImage(c *check.C) {
+	name := "test"
+	_, _, stderr, err := buildImageWithStdoutStderr(name, "FROM scratch\nENV hello=helloworld", true, "-q", "--force-rm", "--rm", "--no-parent", "-t", name)
+	if err != nil {
+		c.Fatalf("Test %s shouldn't fail, but got the following error: %s stderr:%v", name, err.Error(), stderr)
+	}
+	err = imageExists(name)
+	if err != nil {
+		c.Fatalf("Can not found image %v", name)
+	}
+	dockerCmd(c, "rmi", name)
+}
+
+func (s *DockerSuite) TestBuildNoParentFromNoLayer(c *check.C) {
+	name := "from_no_layer"
+	name2 := "from_no_layer2"
+	_, _, stderr, err := buildImageWithStdoutStderr(name, "FROM scratch\nENV hello=helloworld", true, "-q", "--force-rm", "--rm", "--no-parent", "-t", name)
+	if err != nil {
+		c.Fatalf("Test %s shouldn't fail, but got the following error: %s stderr:%v", name, err.Error(), stderr)
+	}
+
+	err = imageExists(name)
+	if err != nil {
+		c.Fatalf("Can not found image %v", name)
+	}
+
+	dockerfile := fmt.Sprintf("FROM %s\nENV hello2=helloworld2", name)
+	_, _, stderr, err = buildImageWithStdoutStderr(name, dockerfile, true, "-q", "--force-rm", "--rm", "--no-parent", "-t", name2)
+	if err != nil {
+		c.Fatalf("Test %s shouldn't fail, but got the following error: %s stderr:%v", name2, err.Error(), stderr)
+	}
+
+	dockerCmd(c, "rmi", name)
+	dockerCmd(c, "rmi", name2)
+}
+
 func (s *DockerSuite) TestBuildNotVerboseFailure(c *check.C) {
 	// This test makes sure that -q works correctly when build fails by
 	// comparing between the stderr output in quiet mode and in stdout

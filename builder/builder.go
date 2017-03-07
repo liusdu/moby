@@ -136,6 +136,11 @@ type Backend interface {
 	//ContainerCopy(name string, res string) (io.ReadCloser, error)
 	// TODO: use copyBackend api
 	CopyOnBuild(containerID string, destPath string, src FileInfo, decompress bool) error
+
+	CreateNoParentImg(img string, parentImg string, removeComplete bool) (string, error)
+	GetImages() map[string]struct{}
+	ImageDelete(imageRef string, force, prune bool) ([]types.ImageDelete, error)
+	GetCompleteImageFromPartial(imageRef string) (string, string, error)
 }
 
 // Image represents a Docker image used by the builder.
