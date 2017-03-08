@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/Microsoft/hcsshim"
 	"github.com/Sirupsen/logrus"
 )
@@ -333,7 +335,7 @@ func (clnt *client) Create(containerID string, spec Spec, options ...CreateOptio
 
 // AddProcess is the handler for adding a process to an already running
 // container. It's called through docker exec.
-func (clnt *client) AddProcess(containerID, processFriendlyName string, procToAdd Process) error {
+func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendlyName string, procToAdd Process) error {
 
 	clnt.lock(containerID)
 	defer clnt.unlock(containerID)
