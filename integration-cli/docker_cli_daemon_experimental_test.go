@@ -33,7 +33,7 @@ func (s *DockerDaemonSuite) TestDaemonRestartWithKilledRunningContainer(t *check
 	}
 
 	// kill the container
-	runCmd := exec.Command(ctrBinary, "--address", "/var/run/docker/libcontainerd/docker-containerd.sock", "containers", "kill", cid)
+	runCmd := exec.Command(ctrBinary, "--address", "unix:///var/run/docker/libcontainerd/docker-containerd.sock", "containers", "kill", cid)
 	if out, ec, err := runCommandWithOutput(runCmd); err != nil {
 		t.Fatalf("Failed to run ctr, ExitCode: %d, err: '%v' output: '%s' cid: '%s'\n", ec, err, out, cid)
 	}
@@ -127,7 +127,7 @@ func (s *DockerDaemonSuite) TestDaemonRestartWithUnpausedRunningContainer(t *che
 	}
 
 	// resume the container
-	runCmd := exec.Command(ctrBinary, "--address", "/var/run/docker/libcontainerd/docker-containerd.sock", "containers", "resume", cid)
+	runCmd := exec.Command(ctrBinary, "--address", "unix:///var/run/docker/libcontainerd/docker-containerd.sock", "containers", "resume", cid)
 	if out, ec, err := runCommandWithOutput(runCmd); err != nil {
 		t.Fatalf("Failed to run ctr, ExitCode: %d, err: '%v' output: '%s' cid: '%s'\n", ec, err, out, cid)
 	}

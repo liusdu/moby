@@ -20,39 +20,44 @@ import (
 	"github.com/docker/docker/pkg/locker"
 	sysinfo "github.com/docker/docker/pkg/system"
 	"github.com/docker/docker/utils"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/transport"
 )
 
 const (
-	maxConnectionRetryCount   = 3
-	connectionRetryDelay      = 3 * time.Second
-	containerdShutdownTimeout = 15 * time.Second
-	containerdBinary          = "docker-containerd"
-	containerdPidFilename     = "docker-containerd.pid"
-	containerdSockFilename    = "docker-containerd.sock"
-	containerdStateDir        = "containerd"
-	eventTimestampFilename    = "event.ts"
+	maxConnectionRetryCount      = 3
+	connectionRetryDelay         = 3 * time.Second
+	containerdHealthCheckTimeout = 3 * time.Second
+	containerdShutdownTimeout    = 15 * time.Second
+	containerdBinary             = "docker-containerd"
+	containerdPidFilename        = "docker-containerd.pid"
+	containerdSockFilename       = "docker-containerd.sock"
+	containerdStateDir           = "containerd"
+	eventTimestampFilename       = "event.ts"
 )
 
 type remote struct {
 	sync.RWMutex
-	apiClient     containerd.APIClient
-	daemonPid     int
-	stateDir      string
-	rpcAddr       string
-	startDaemon   bool
-	closeManually bool
-	debugLog      bool
-	rpcConn       *grpc.ClientConn
-	clients       []*client
-	eventTsPath   string
-	pastEvents    map[string]*containerd.Event
-	runtimeArgs   []string
-	liveRestore   bool
-	daemonWaitCh  chan struct{}
+	apiClient            containerd.APIClient
+	daemonPid            int
+	stateDir             string
+	rpcAddr              string
+	startDaemon          bool
+	closeManually        bool
+	debugLog             bool
+	rpcConn              *grpc.ClientConn
+	clients              []*client
+	eventTsPath          string
+	pastEvents           map[string]*containerd.Event
+	runtimeArgs          []string
+	liveRestore          bool
+	daemonWaitCh         chan struct{}
+	restoreFromTimestamp *timestamp.Timestamp
 }
 
 // New creates a fresh instance of libcontainerd remote.
@@ -66,7 +71,6 @@ func New(stateDir string, options ...RemoteOption) (_ Remote, err error) {
 		stateDir:    stateDir,
 		daemonPid:   -1,
 		eventTsPath: filepath.Join(stateDir, eventTimestampFilename),
-		pastEvents:  make(map[string]*containerd.Event),
 	}
 	for _, option := range options {
 		if err := option.Apply(r); err != nil {
@@ -103,6 +107,14 @@ func New(stateDir string, options ...RemoteOption) (_ Remote, err error) {
 	r.rpcConn = conn
 	r.apiClient = containerd.NewAPIClient(conn)
 
+	// Get the timestamp to restore from
+	t := r.getLastEventTimestamp()
+	tsp, err := ptypes.TimestampProto(t)
+	if err != nil {
+		logrus.Errorf("libcontainerd: failed to convert timestamp: %q", err)
+	}
+	r.restoreFromTimestamp = tsp
+
 	go r.handleConnectionChange()
 
 	if err := r.startEventsMonitor(); err != nil {
@@ -123,36 +135,41 @@ func (r *remote) UpdateOptions(options ...RemoteOption) error {
 
 func (r *remote) handleConnectionChange() {
 	var transientFailureCount = 0
-	state := grpc.Idle
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	healthClient := grpc_health_v1.NewHealthClient(r.rpcConn)
+
 	for {
-		s, err := r.rpcConn.WaitForStateChange(context.Background(), state)
-		if err != nil {
-			break
+		<-ticker.C
+		ctx, cancel := context.WithTimeout(context.Background(), containerdHealthCheckTimeout)
+		_, err := healthClient.Check(ctx, &grpc_health_v1.HealthCheckRequest{})
+		cancel()
+		if err == nil {
+			continue
 		}
-		state = s
-		logrus.Debugf("containerd connection state change: %v", s)
+
+		logrus.Debugf("libcontainerd: containerd health check returned error: %v", err)
 
 		if r.daemonPid != -1 {
-			switch state {
-			case grpc.TransientFailure:
-				// Reset state to be notified of next failure
-				transientFailureCount++
-				if transientFailureCount >= maxConnectionRetryCount {
-					transientFailureCount = 0
-					if utils.IsProcessAlive(r.daemonPid) {
-						utils.KillProcess(r.daemonPid)
-						<-r.daemonWaitCh
-					}
-					if err := r.runContainerdDaemon(); err != nil { //FIXME: Handle error
-						logrus.Errorf("error restarting containerd: %v", err)
-					}
-				} else {
-					state = grpc.Idle
-					time.Sleep(connectionRetryDelay)
-				}
-			case grpc.Shutdown:
+			if strings.Contains(err.Error(), "is closing") {
+
 				// Well, we asked for it to stop, just return
 				return
+			}
+			// all other errors are transient
+			// Reset state to be notified of next failure
+			transientFailureCount++
+			if transientFailureCount >= maxConnectionRetryCount {
+				transientFailureCount = 0
+				if utils.IsProcessAlive(r.daemonPid) {
+					utils.KillProcess(r.daemonPid)
+				}
+				<-r.daemonWaitCh
+				if err := r.runContainerdDaemon(); err != nil { //FIXME: Handle error
+					logrus.Errorf("libcontainerd: error restarting containerd: %v", err)
+				}
+				continue
 			}
 		}
 	}
@@ -226,39 +243,43 @@ func (r *remote) updateEventTimestamp(t time.Time) {
 
 }
 
-func (r *remote) getLastEventTimestamp() int64 {
+func (r *remote) getLastEventTimestamp() time.Time {
 	t := time.Now()
 
 	fi, err := os.Stat(r.eventTsPath)
 	if os.IsNotExist(err) || fi.Size() == 0 {
-		return t.Unix()
+		return t
 	}
 
 	f, err := os.Open(r.eventTsPath)
 	defer f.Close()
 	if err != nil {
 		logrus.Warn("libcontainerd: Unable to access last event ts: %v", err)
-		return t.Unix()
+		return t
 	}
 
 	b := make([]byte, fi.Size())
 	n, err := f.Read(b)
 	if err != nil || n != len(b) {
 		logrus.Warn("libcontainerd: Unable to read last event ts: %v", err)
-		return t.Unix()
+		return t
 	}
 
 	t.UnmarshalText(b)
 
-	return t.Unix()
+	return t
 }
 
 func (r *remote) startEventsMonitor() error {
 	// First, get past events
-	er := &containerd.EventsRequest{
-		Timestamp: uint64(r.getLastEventTimestamp()),
+	tsp, err := ptypes.TimestampProto(r.getLastEventTimestamp())
+	if err != nil {
+		logrus.Errorf("libcontainerd: failed to convert timestamp: %q", err)
 	}
-	events, err := r.apiClient.Events(context.Background(), er)
+	er := &containerd.EventsRequest{
+		Timestamp: tsp,
+	}
+	events, err := r.apiClient.Events(context.Background(), er, grpc.FailFast(false))
 	if err != nil {
 		return err
 	}
@@ -267,7 +288,6 @@ func (r *remote) startEventsMonitor() error {
 }
 
 func (r *remote) handleEventStream(events containerd.API_EventsClient) {
-	live := false
 	for {
 		e, err := events.Recv()
 		if err != nil {
@@ -280,46 +300,34 @@ func (r *remote) handleEventStream(events containerd.API_EventsClient) {
 			go r.startEventsMonitor()
 			return
 		}
+		logrus.Debugf("received containerd event: %#v", e)
 
-		if live == false {
-			logrus.Debugf("received past containerd event: %#v", e)
-
-			// Pause/Resume events should never happens after exit one
-			switch e.Type {
-			case StateExit:
-				r.pastEvents[e.Id] = e
-			case StatePause:
-				r.pastEvents[e.Id] = e
-			case StateResume:
-				r.pastEvents[e.Id] = e
-			case stateLive:
-				live = true
-				r.updateEventTimestamp(time.Unix(int64(e.Timestamp), 0))
+		var container *container
+		var c *client
+		r.RLock()
+		for _, c = range r.clients {
+			container, err = c.getContainer(e.Id)
+			if err == nil {
+				break
 			}
-		} else {
-			logrus.Debugf("received containerd event: %#v", e)
-
-			var container *container
-			var c *client
-			r.RLock()
-			for _, c = range r.clients {
-				container, err = c.getContainer(e.Id)
-				if err == nil {
-					break
-				}
-			}
-			r.RUnlock()
-			if container == nil {
-				logrus.Errorf("no state for container: %q", err)
-				continue
-			}
-
-			if err := container.handleEvent(e); err != nil {
-				logrus.Errorf("error processing state change for %s: %v", e.Id, err)
-			}
-
-			r.updateEventTimestamp(time.Unix(int64(e.Timestamp), 0))
 		}
+		r.RUnlock()
+		if container == nil {
+			logrus.Warnf("libcontainerd: unknown container %s", e.Id)
+			continue
+		}
+
+		if err := container.handleEvent(e); err != nil {
+			logrus.Errorf("libcontainerd: error processing state change for %s: %v", e.Id, err)
+		}
+
+		tsp, err := ptypes.Timestamp(e.Timestamp)
+		if err != nil {
+			logrus.Errorf("libcontainerd: failed to convert event timestamp: %q", err)
+			continue
+		}
+
+		r.updateEventTimestamp(tsp)
 	}
 }
 
@@ -363,7 +371,14 @@ func (r *remote) runContainerdDaemon() error {
 	}
 
 	// Start a new instance
-	args := []string{"-l", r.rpcAddr, "--runtime", "docker-runc", "--start-timeout", "2m", "--state-dir", filepath.Join(r.stateDir, containerdStateDir)}
+	args := []string{
+		"-l", fmt.Sprintf("unix://%s", r.rpcAddr),
+		"--shim", "docker-containerd-shim",
+		"--start-timeout", "2m",
+		"--state-dir", filepath.Join(r.stateDir, containerdStateDir),
+		"--runtime", "docker-runc",
+		"--metrics-interval=0",
+	}
 	if r.debugLog {
 		args = append(args, "--debug", "--metrics-interval=0")
 	}
