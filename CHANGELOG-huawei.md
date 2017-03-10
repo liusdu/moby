@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.11.2.15 (2017-03-10)
+
+- Backport: cherry pick devmapper relative commits from upstream (mr 281)
+- Bugfix: fix a race in daemon/logger.TestCopier (mr 317)
+- Bugfix: clean up tmp files for interrupted `docker build` (mr 310)
+- Bugfix: fix flaky TestSaveLoadParents (mr 313)
+
 ## v1.11.2.14.ict (2017-03-07)
 
 - Add feature "Build and run partial image" (mr 302)
