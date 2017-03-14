@@ -311,7 +311,7 @@ func (daemon *Daemon) CreateNoParentImg(img string, from string, removeComplete 
 	// `img` is deleted if it does not exists before build. It is't needed if
 	// `--no-parent` is specified, only new created partial image is expected.
 	if removeComplete {
-		if _, err := daemon.imageStore.Delete(image.ID(img)); err != nil {
+		if _, err := daemon.ImageDelete(img, false, true); err != nil {
 			return "", err
 		}
 	}
