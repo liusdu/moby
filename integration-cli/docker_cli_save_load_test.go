@@ -350,3 +350,25 @@ func (s *DockerSuite) TestSaveLoadParents(c *check.C) {
 	inspectOut = inspectField(c, idFoo, "Parent")
 	c.Assert(inspectOut, checker.Equals, "")
 }
+
+func (s *DockerSuite) TestSaveLoadPartialImage(c *check.C) {
+	testRequires(c, DaemonIsLinux)
+
+	imgName := "partial"
+
+	buildNoParentFrom(c, "busybox", imgName)
+
+	tmpDir, err := ioutil.TempDir("", "save-load-partial-image")
+	c.Assert(err, checker.IsNil)
+	defer os.RemoveAll(tmpDir)
+
+	c.Log("tmpdir", tmpDir)
+
+	outfile := filepath.Join(tmpDir, "out.tar")
+
+	dockerCmd(c, "save", "-o", outfile, "busybox", imgName)
+	dockerCmd(c, "rmi", imgName)
+	dockerCmd(c, "load", "-i", outfile)
+
+	dockerCmd(c, "rmi", imgName)
+}

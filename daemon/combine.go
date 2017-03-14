@@ -302,11 +302,12 @@ func (daemon *Daemon) CreateNoParentImg(img string, from string, removeComplete 
 		return "", err
 	}
 
-	// This parent infomation is for local image management, it has different
-	// meaning from `From` field.
-	if err := daemon.imageStore.SetParent(newImageID, parentID); err != nil {
-		return "", err
-	}
+	// Image's parent field is used when we try to share layers between image and it's
+	// parent. Since partial image doesn't contain parent image's layers, it doesn't need
+	// to share layers with other images. What's more, partial image strips the history
+	// of parent part, if we set parent field, operations like 'docker load' will fail because
+	// it'll try to check image history with it's parent.
+	// So we don't set parent for partial images.
 
 	// `img` is deleted if it does not exists before build. It is't needed if
 	// `--no-parent` is specified, only new created partial image is expected.

@@ -4913,6 +4913,11 @@ func buildNoParentFrom(c *check.C, from, name string) string {
 		c.Fatalf("Test %s partial image should have history of [%v], but it is [%v]", name, cmd, out)
 	}
 
+	parent := inspectField(c, name, "Parent")
+	if parent != "" {
+		c.Fatalf("Config's Parent should be nil, got: %s", parent)
+	}
+
 	err = imageExists(name)
 	if err != nil {
 		c.Fatalf("Can not found image %v", name)
