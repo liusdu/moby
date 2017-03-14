@@ -4929,6 +4929,24 @@ func (s *DockerSuite) TestBuildNoParentBasic(c *check.C) {
 	dockerCmd(c, "rmi", "app:v2.1.0", "platform:v1.1.0", "os:v1.0.0")
 }
 
+func (s *DockerSuite) TestBuildNoParentIntermediateImage(c *check.C) {
+	imagesOut, _ := dockerCmd(c, "images")
+	imagesOld := strings.Split(imagesOut, "\n")
+
+	buildNoParentFrom(c, "busybox", "os:v1.0.0")
+	buildNoParentFrom(c, "os:v1.0.0", "platform:v1.1.0")
+	buildNoParentFrom(c, "platform:v1.1.0", "app:v2.1.0")
+
+	imagesOut, _ = dockerCmd(c, "images")
+	imagesNew := strings.Split(imagesOut, "\n")
+
+	if len(imagesNew) != len(imagesOld)+3 {
+		c.Fatalf("Invalid image number after build, difference should be 3. Current %v, before %v", len(imagesNew), len(imagesOld))
+	}
+
+	dockerCmd(c, "rmi", "app:v2.1.0", "platform:v1.1.0", "os:v1.0.0")
+}
+
 func (s *DockerSuite) TestBuildNoParentNoLayerImage(c *check.C) {
 	name := "test_no_layer"
 	// Do twice to ensure no problem with cache
