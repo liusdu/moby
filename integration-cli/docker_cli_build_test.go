@@ -4897,7 +4897,7 @@ func imagesExist(c *check.C, exists bool, names ...string) {
 func buildNoParentFrom(c *check.C, from, name string) string {
 	cmd := fmt.Sprintf("touch %s", name)
 	outRegexp := regexp.MustCompile("^(sha256:|)[a-z0-9]{64}\\n$")
-	dockerfile := fmt.Sprintf("FROM %s\nRUN %s", from, cmd)
+	dockerfile := fmt.Sprintf("FROM %s\nRUN %s\nRUN echo hello > /hello.txt\n", from, cmd)
 	_, out, stderr, err := buildImageWithStdoutStderr(name, dockerfile, true, "-q", "--force-rm", "--rm", "--no-parent", "-t", name)
 	if err != nil {
 		c.Fatalf("Test %s shouldn't fail, but got the following error: %s stderr:%v", name, err.Error(), stderr)
