@@ -144,6 +144,17 @@ func (l *tarexporter) setParentID(id, parentID image.ID) error {
 	if err != nil {
 		return err
 	}
+
+	// Image's parent field is used when we try to share layers between image and it's
+	// parent. Since partial image doesn't contain parent image's layers, it doesn't need
+	// to share layers with other images. What's more, partial image strips the history
+	// of parent part, if we set parent field, operations like 'docker load' will fail because
+	// it'll try to check image history with it's parent.
+	// So we don't set parent for partial images.
+	if img.From != "" || parent.From != "" {
+		return nil
+	}
+
 	if !checkValidParent(img, parent) {
 		return fmt.Errorf("image %v is not a valid parent for %v", parent.ID, img.ID)
 	}
