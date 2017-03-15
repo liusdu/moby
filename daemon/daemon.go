@@ -1972,7 +1972,7 @@ func (daemon *Daemon) validateHookPath(path string) error {
 	}
 
 	if !filepath.HasPrefix(path, daemon.hookStore) {
-		return fmt.Errorf("hook program must be put under %q", daemon.hookStore)
+		return fmt.Errorf("hook path %q isn't right, hook program must be put under %q", path, daemon.hookStore)
 	}
 
 	return nil
