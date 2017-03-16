@@ -618,6 +618,17 @@ func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *containertypes.
 			return warnings, fmt.Errorf("Hook spec file must be a regular text file")
 		}
 	}
+	if hostConfig.ExternalRootfs != "" {
+		if !filepath.IsAbs(hostConfig.ExternalRootfs) {
+			return warnings, fmt.Errorf("external rootfs %s is not a absolute path", hostConfig.ExternalRootfs)
+		}
+		if st, err := os.Stat(hostConfig.ExternalRootfs); err != nil {
+			return warnings, fmt.Errorf("stat external rootfs %s with error %v", hostConfig.ExternalRootfs, err)
+		} else if !st.IsDir() {
+			return warnings, fmt.Errorf("external rootfs %s is not a directory", hostConfig.ExternalRootfs)
+		}
+	}
+
 	return warnings, nil
 }
 
