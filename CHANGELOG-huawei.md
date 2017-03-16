@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.11.2.16 (2017-03-16)
+
+- Bugfix: Use default tag to fill 'From' field in config if no tag provided (mr 332)
+- Bugfix: Change tag to lowercase when used as part of name(mr 333)
+- Bugfix: Ignore `layer does not exist` error from `docker images`(mr 331)
+- Bugfix: Don't set 'Parent' field when building a partial image(mr 327)
+- Bugfix: Delete intermediate images after build Dockerfile with parameter --no-parent (mr 325)
+- Bugfix: Don't add device to list if it doesn't exist anymore(mr 322)
+- Bugfix: Refactor specify external rootfs to enable specify user(mr 323)
+- Improvement: Modify some hint information(mr 329)
+- Improvement: Allow granular vendoring( mr 324)
+- bump containerd
+	- Allow granular vendoring(mr 36)
+- bump runc
+	- bugfix: Don't add device to list if it doesn't exist anymore(mr 39)
+
 ## v1.11.2.15 (2017-03-10)
 
 - Backport: cherry pick devmapper relative commits from upstream (mr 281)
