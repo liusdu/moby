@@ -246,22 +246,33 @@ func truncateID(name string) (id string, continueProcess bool) {
 
 // SplitName split the name to two parts, first part is infomation of hub and
 // namespace, second part is the name and tag. If name is a digest, it will be
-// truncated to short ID.
+// truncated to short ID. If name's format is <image>@<digest>, '@<digest>' will
+// be stripped.
 func SplitName(name string) (flexablePrefix, coreName string, err error) {
 	name, continueProcess := truncateID(name)
 	if !continueProcess {
 		return "", name, nil
 	}
 
-	_, err = ParseNamed(name)
+	named, err := ParseNamed(name)
 	if err != nil {
 		return "", "", err
 	}
 
-	names := strings.Split(name, "/")
+	names := strings.Split(strings.Split(name, "@")[0], "/")
 	coreName = names[len(names)-1]
 	if len(names) > 1 {
 		flexablePrefix = strings.Join(names[:len(names)-1], "/")
+	}
+
+	// If name's format is id or <image>@<digest>, SWR can't handle it. So if partial
+	// images is combined in hub, please do not use this format in Dockerfile.
+	if _, isCanonical := named.(distreference.Canonical); !isCanonical {
+		// SWR can only handle name with a tag, if no tag exist, use default tag
+		// instead.
+		if _, isTagged := named.(distreference.NamedTagged); !isTagged {
+			coreName = coreName + ":" + DefaultTag
+		}
 	}
 
 	return flexablePrefix, coreName, nil
