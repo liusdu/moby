@@ -293,7 +293,9 @@ func CombinedFormat(name string) (string, error) {
 		tag = tagged.Tag()
 	}
 
-	return rawName + "_" + tag, nil
+	// Tag can be uppercase, but name can't, so we change tag to lowercase
+	// to avoid error when we use tag as part of name.
+	return rawName + "_" + strings.ToLower(tag), nil
 }
 
 // JoinCombined join name and next to one name as combined image's default name.

@@ -4927,11 +4927,14 @@ func buildNoParentFrom(c *check.C, from, name string) string {
 }
 
 func (s *DockerSuite) TestBuildNoParentBasic(c *check.C) {
-	buildNoParentFrom(c, "busybox", "os:v1.0.0")
-	buildNoParentFrom(c, "os:v1.0.0", "platform:v1.1.0")
-	buildNoParentFrom(c, "platform:v1.1.0", "app:v2.1.0")
+	// Notice that character in tag is uppercase. Build failure
+	// happened because of uppercase tag once before. So we want
+	// to cover this case.
+	buildNoParentFrom(c, "busybox", "os:V1.0.0")
+	buildNoParentFrom(c, "os:V1.0.0", "platform:V1.1.0")
+	buildNoParentFrom(c, "platform:V1.1.0", "app:V2.1.0")
 
-	dockerCmd(c, "rmi", "app:v2.1.0", "platform:v1.1.0", "os:v1.0.0")
+	dockerCmd(c, "rmi", "app:V2.1.0", "platform:V1.1.0", "os:V1.0.0")
 }
 
 func (s *DockerSuite) TestBuildNoParentIntermediateImage(c *check.C) {
