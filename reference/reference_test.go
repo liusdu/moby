@@ -289,21 +289,21 @@ func TestFlexablePrefix(t *testing.T) {
 		},
 		{
 			name:     "name",
-			newName:  newPrefix + "/name",
+			newName:  newPrefix + "/name:latest",
 			prefix:   "",
-			coreName: "name",
+			coreName: "name:latest",
 		},
 		{
 			name:     "namespace/name",
-			newName:  newPrefix + "/name",
+			newName:  newPrefix + "/name:latest",
 			prefix:   "namespace",
-			coreName: "name",
+			coreName: "name:latest",
 		},
 		{
 			name:     "127.0.0.1:500/name",
-			newName:  newPrefix + "/name",
+			newName:  newPrefix + "/name:latest",
 			prefix:   "127.0.0.1:500",
-			coreName: "name",
+			coreName: "name:latest",
 		},
 		{
 			name:     "namespace/name:v1.0.0",
@@ -313,15 +313,15 @@ func TestFlexablePrefix(t *testing.T) {
 		},
 		{
 			name:     "docker.io/library/name",
-			newName:  newPrefix + "/name",
+			newName:  newPrefix + "/name:latest",
 			prefix:   "docker.io/library",
-			coreName: "name",
+			coreName: "name:latest",
 		},
 		{
 			name:     "library/name",
-			newName:  newPrefix + "/name",
+			newName:  newPrefix + "/name:latest",
 			prefix:   "library",
-			coreName: "name",
+			coreName: "name:latest",
 		},
 	}
 
