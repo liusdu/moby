@@ -229,6 +229,11 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 		if *flAttachOutput != "" {
 			c, err := cli.client.ContainerInspect(context.Background(), *flAttachOutput)
 			if err != nil {
+				// We have holdHijackedConnection, should notify
+				// holdHijackedConnection we are going to exit and wait
+				// to avoid the terminal are not restored.
+				cancelFun()
+				<-errCh
 				return err
 			}
 			options2 := types.ContainerAttachOptions{
@@ -241,6 +246,11 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 			}
 			resp2, err := cli.client.ContainerAttach(context.Background(), options2)
 			if err != nil {
+				// We have holdHijackedConnection, should notify
+				// holdHijackedConnection we are going to exit and wait
+				// to avoid the terminal are not restored.
+				cancelFun()
+				<-errCh
 				return err
 			}
 			errCh2 = promise.Go(func() error {
