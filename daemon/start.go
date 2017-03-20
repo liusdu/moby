@@ -141,7 +141,7 @@ func (daemon *Daemon) containerStart(container *container.Container, resetRestar
 		container.ResetRestartManager(true)
 	}
 
-	if err := daemon.containerd.Create(container.ID, *spec); err != nil {
+	if err := daemon.containerd.Create(container.ID, *spec, container.InitializeStdio); err != nil {
 		errDesc := grpc.ErrorDesc(err)
 		logrus.Errorf("Create container failed with error: %s", errDesc)
 		// if we receive an internal error from the initial start of a container then lets

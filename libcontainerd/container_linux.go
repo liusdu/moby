@@ -68,7 +68,7 @@ func (ctr *container) spec() (*specs.Spec, error) {
 	return &spec, nil
 }
 
-func (ctr *container) start() error {
+func (ctr *container) start(attachStdio StdioCallback) error {
 	spec, err := ctr.spec()
 	if err != nil {
 		return nil
@@ -117,7 +117,7 @@ func (ctr *container) start() error {
 	}
 	ctr.client.appendContainer(ctr)
 
-	if err := ctr.client.backend.AttachStreams(ctr.containerID, *iopipe); err != nil {
+	if err := attachStdio(*iopipe); err != nil {
 		ctr.closeFifos(iopipe)
 		return err
 	}

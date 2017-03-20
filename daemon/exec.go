@@ -205,7 +205,7 @@ func (d *Daemon) ContainerExecStart(name string, stdin io.ReadCloser, stdout io.
 
 	attachErr := container.AttachStreams(context.Background(), ec.StreamConfig, ec.OpenStdin, true, ec.Tty, cStdin, cStdout, cStderr, ec.DetachKeys)
 
-	if err := d.containerd.AddProcess(context.Background(), c.ID, name, p); err != nil {
+	if err := d.containerd.AddProcess(context.Background(), c.ID, name, p, ec.InitializeStdio); err != nil {
 		return err
 	}
 
