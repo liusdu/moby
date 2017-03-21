@@ -37,6 +37,7 @@ type Daemon struct {
 	stdout, stderr    io.ReadCloser
 	cmd               *exec.Cmd
 	storageDriver     string
+	storageOpts       string
 	wait              chan error
 	userlandProxy     bool
 	useDefaultHost    bool
@@ -78,6 +79,7 @@ func NewDaemon(c *check.C) *Daemon {
 		folder:        daemonFolder,
 		root:          daemonRoot,
 		storageDriver: os.Getenv("DOCKER_GRAPHDRIVER"),
+		storageOpts:   os.Getenv("DOCKER_STORAGE_OPTS2"), // example usage: DOCKER_STORAGE_OPTS2="dm.basesize=20G,dm.loopdatasize=200G"
 		userlandProxy: userlandProxy,
 	}
 }
@@ -159,6 +161,7 @@ func (d *Daemon) StartWithLogFile(out *os.File, providedArgs ...string) error {
 	// turn on debug mode
 	foundLog := false
 	foundSd := false
+	foundSo := false
 	for _, a := range providedArgs {
 		if strings.Contains(a, "--log-level") || strings.Contains(a, "-D") || strings.Contains(a, "--debug") {
 			foundLog = true
@@ -166,12 +169,30 @@ func (d *Daemon) StartWithLogFile(out *os.File, providedArgs ...string) error {
 		if strings.Contains(a, "--storage-driver") {
 			foundSd = true
 		}
+		if strings.Contains(a, "--storage-opt") {
+			foundSo = true
+		}
 	}
 	if !foundLog {
 		args = append(args, "--debug")
 	}
 	if d.storageDriver != "" && !foundSd {
 		args = append(args, "--storage-driver", d.storageDriver)
+	}
+
+	if d.storageOpts != "" {
+		opts := strings.Split(d.storageOpts, ",")
+		for _, opt := range opts {
+			// If dm.override_udev_sync_check is setted, it means we want to avoid
+			// failure of starting daemon caused by lack of 'udev sync' support. We
+			// can't ignore this option even if --storage-opt is provided in test
+			// case, or daemon may start failed. What's more, dm.metadatadev and
+			// dm.datadev need to be different values in different daemon, so we
+			// should always use these parameters.
+			if !foundSo || strings.HasPrefix(opt, "dm.override_udev_sync_check=") || strings.HasPrefix(opt, "dm.metadatadev=") || strings.HasPrefix(opt, "dm.datadev=") {
+				args = append(args, "--storage-opt", opt)
+			}
+		}
 	}
 
 	args = append(args, providedArgs...)
