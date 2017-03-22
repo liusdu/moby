@@ -21,6 +21,7 @@ import (
 	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/parsers"
 	"github.com/docker/docker/pkg/sysinfo"
+	"github.com/docker/docker/utils"
 	"github.com/go-check/check"
 	"github.com/kr/pty"
 )
@@ -389,8 +390,7 @@ func (s *DockerSuite) TestRunWithCpuPeriod(c *check.C) {
 func (s *DockerSuite) TestRunWithHugetlbLimit(c *check.C) {
 	testRequires(c, hugetlbLimitSupport)
 
-	sysInfo := sysinfo.New(true)
-	dSize, err := sysInfo.GetDefaultHugepageSize()
+	dSize, err := utils.GetDefaultHugepageSize()
 	c.Assert(err, check.IsNil)
 
 	file := fmt.Sprintf("/sys/fs/cgroup/hugetlb/hugetlb.%s.limit_in_bytes", dSize)
@@ -404,8 +404,7 @@ func (s *DockerSuite) TestRunWithHugetlbLimit(c *check.C) {
 func (s *DockerSuite) TestRunWithMultipleHugetlbLimit(c *check.C) {
 	testRequires(c, hugetlbLimitSupport)
 
-	sysInfo := sysinfo.New(true)
-	dSize, err := sysInfo.GetDefaultHugepageSize()
+	dSize, err := utils.GetDefaultHugepageSize()
 	c.Assert(err, check.IsNil)
 
 	file := fmt.Sprintf("/sys/fs/cgroup/hugetlb/hugetlb.%s.limit_in_bytes", dSize)
@@ -423,8 +422,7 @@ func (s *DockerSuite) TestRunWithInvalidHugetlbSize(c *check.C) {
 	testRequires(c, hugetlbLimitSupport)
 
 	size := "123M"
-	sysInfo := sysinfo.New(true)
-	dSize, err := sysInfo.GetDefaultHugepageSize()
+	dSize, err := utils.GetDefaultHugepageSize()
 	c.Assert(err, check.IsNil)
 
 	file := fmt.Sprintf("/sys/fs/cgroup/hugetlb/hugetlb.%s.limit_in_bytes", size)
