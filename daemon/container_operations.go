@@ -411,13 +411,37 @@ func (daemon *Daemon) allocateNetwork(container *container.Container) error {
 		}
 
 	}
+	networks := make(map[string]*networktypes.EndpointSettings)
 	for n, nConf := range container.NetworkSettings.Networks {
 		if n == defaultNetName {
 			continue
 		}
+		networks[n] = nConf
 		if err := daemon.connectToNetwork(container, n, nConf, updateSettings); err != nil {
 			return err
 		}
+	}
+
+	// If the container is not to be connected to any network,
+	// create its network sandbox now if not present
+	if len(networks) == 0 {
+		if nil == daemon.getNetworkSandbox(container) {
+			options, err := daemon.buildSandboxOptions(container)
+			if err != nil {
+				return err
+			}
+			sb, err := daemon.netController.NewSandbox(container.ID, options...)
+			if err != nil {
+				return err
+			}
+			container.UpdateSandboxNetworkSettings(sb)
+			defer func() {
+				if err != nil {
+					sb.Delete()
+				}
+			}()
+		}
+
 	}
 
 	return container.WriteHostConfig()
