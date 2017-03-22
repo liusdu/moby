@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/docker/utils"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 )
 
@@ -85,7 +86,7 @@ func checkCgroupHugetlb(cgMounts map[string]string, quiet bool) cgroupHugetlbInf
 		}
 		return c
 	}
-	dSize, err = c.GetDefaultHugepageSize()
+	dSize, err = utils.GetDefaultHugepageSize()
 	if err != nil {
 		logrus.Warnf("Your kernel does not support cgroup hugetlb limit")
 		return c

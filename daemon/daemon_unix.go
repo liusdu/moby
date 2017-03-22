@@ -26,6 +26,7 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/runconfig"
 	runconfigopts "github.com/docker/docker/runconfig/opts"
+	"github.com/docker/docker/utils"
 	"github.com/docker/engine-api/types"
 	pblkiodev "github.com/docker/engine-api/types/blkiodev"
 	containertypes "github.com/docker/engine-api/types/container"
@@ -481,7 +482,7 @@ func verifyContainerResources(resources *containertypes.Resources, sysInfo *sysi
 		logrus.Warnf("Your kernel does not support hugetlb limit. --hugetlb-limit discarded.")
 		resources.Hugetlbs = []containertypes.Hugetlb{}
 	}
-	newHugetlbs, warning, err := validateHugetlbs(resources.Hugetlbs, sysInfo)
+	newHugetlbs, warning, err := validateHugetlbs(resources.Hugetlbs)
 	warnings = append(warnings, warning...)
 	if err != nil {
 		return warnings, err
@@ -491,12 +492,12 @@ func verifyContainerResources(resources *containertypes.Resources, sysInfo *sysi
 	return warnings, nil
 }
 
-func validateHugetlbs(hgtlbs []containertypes.Hugetlb, sysInfo *sysinfo.SysInfo) ([]containertypes.Hugetlb, []string, error) {
+func validateHugetlbs(hgtlbs []containertypes.Hugetlb) ([]containertypes.Hugetlb, []string, error) {
 	warnings := []string{}
 	htbMap := make(map[string]uint64)
 
 	for _, hpl := range hgtlbs {
-		size, warning, err := sysInfo.ValidateHugetlb(hpl.PageSize, hpl.Limit)
+		size, warning, err := utils.ValidateHugetlb(hpl.PageSize, hpl.Limit)
 		warnings = append(warnings, warning...)
 		if err != nil {
 			return nil, warnings, err
