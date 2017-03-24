@@ -25,6 +25,10 @@ func (daemon *Daemon) ContainerLogs(containerName string, config *backend.Contai
 		return err
 	}
 
+	if container.RemovalInProgress || container.Dead {
+		return fmt.Errorf("Can not get logs from container which is dead or marked for removal")
+	}
+
 	if !(config.ShowStdout || config.ShowStderr) {
 		return fmt.Errorf("You must choose at least one stream")
 	}
