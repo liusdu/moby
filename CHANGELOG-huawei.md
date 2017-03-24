@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.11.2.17 (2017-03-24)
+
+- Bugfix: Fix devicemapper issue: power off the VM while loading a image, couldn't load it after VM bootup (mr 339)
+- Bugfix: Remove redundant Mounts when start docker daemon (mr 315)
+- Bugfix: Fix docker logs a dead container (mr 353)
+- Bugfix: fix TestCreateShrinkRootfs and TestCreateShrinkRootfs (mr 349)
+- Bugfix: Close context when error out in attach-output (mr 335)
+- Backport: Update layer store to sync transaction files before committing (mr 347)
+- Backport: Set permission on atomic file write (mr347)
+- Backport: Safer file io for configuration files (mr347)
+- Backport: fix relative symlinks don't work with --device argument (mr 348)
+- Backport: Fix inspect Dead container (352)
+
 ## v1.11.2.16 (2017-03-16)
 
 - Bugfix: Use default tag to fill 'From' field in config if no tag provided (mr 332)
