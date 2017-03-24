@@ -465,3 +465,7 @@ func rootFSToAPIType(rootfs *image.RootFS) types.RootFS {
 		BaseLayer: rootfs.BaseLayer,
 	}
 }
+
+func (daemon *Daemon) removeRedundantMounts(containers map[string]*container.Container) error {
+	return nil
+}
