@@ -108,7 +108,10 @@ func (ls *layerStore) loadLayer(layer ChainID) (l *roLayer, err error) {
 		return cl, nil
 	}
 	defer func() {
-		// If failed to load the layer, remove the layer metadata.
+		// If failed to load the layer, remove the layer metadata on disk, or the memory and disk doesn't keep the same.
+		// if we kept the metadata on disk, we will fail to load the image which contains this layer, and an error will be reported like this:
+		//  "rename /var/lib/docker/image/devicemapper/layerdb/tmp/layer-870197081 /var/lib/docker/image/devicemapper/layerdb/sha256/b257bb4b4aeaa5590b31c125581c301d69352345c09fe860a35de4c7cf212ae7: directory not empty"
+		// This error is caused by the old metadata exists on disk.
 		if err != nil {
 			ls.store.Remove(layer)
 		}
