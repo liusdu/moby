@@ -200,12 +200,12 @@ func (d *Daemon) ContainerExecStart(name string, stdin io.ReadCloser, stdout io.
 	}
 
 	if err := execSetPlatformOpt(c, ec, &p); err != nil {
-		return nil
+		return err
 	}
 
 	attachErr := container.AttachStreams(context.Background(), ec.StreamConfig, ec.OpenStdin, true, ec.Tty, cStdin, cStdout, cStderr, ec.DetachKeys)
 
-	if err := d.containerd.AddProcess(c.ID, name, p); err != nil {
+	if err := d.containerd.AddProcess(context.Background(), c.ID, name, p); err != nil {
 		return err
 	}
 

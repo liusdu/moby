@@ -2,7 +2,10 @@ syntax = "proto3";
 
 package types;
 
+import "google/protobuf/timestamp.proto";
+
 service API {
+	rpc GetServerVersion(GetServerVersionRequest) returns (GetServerVersionResponse) {}
 	rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse) {}
 	rpc UpdateContainer(UpdateContainerRequest) returns (UpdateContainerResponse) {}
 	rpc Signal(SignalRequest) returns (SignalResponse) {}
@@ -14,6 +17,16 @@ service API {
 	rpc State(StateRequest) returns (StateResponse) {}
 	rpc Events(EventsRequest) returns (stream Event) {}
 	rpc Stats(StatsRequest) returns (StatsResponse) {}
+}
+
+message GetServerVersionRequest {
+}
+
+message GetServerVersionResponse {
+	uint32 major = 1;
+	uint32 minor = 2;
+	uint32 patch = 3;
+	string revision = 4;
 }
 
 message UpdateProcessRequest {
@@ -36,6 +49,9 @@ message CreateContainerRequest {
 	string stderr = 6; // path to file where stderr will be written (optional)
 	repeated string labels = 7;
 	bool noPivotRoot = 8;
+	string runtime = 9;
+	repeated string runtimeArgs = 10;
+	string checkpointDir = 11; // Directory where checkpoints are stored
 }
 
 message CreateContainerResponse {
@@ -57,7 +73,7 @@ message AddProcessRequest {
 	User user = 3; // User under which process will be run
 	repeated string args = 4; // Arguments for process, first is binary path itself
 	repeated string env = 5; // List of environment variables for process
-	string cwd = 6; // Workind directory of process
+	string cwd = 6; // Working directory of process
 	string pid = 7; // Process ID
 	string stdin = 8; // path to the file where stdin will be read (optional)
 	string stdout = 9; // path to file where stdout will be written (optional)
@@ -82,11 +98,13 @@ message User {
 }
 
 message AddProcessResponse {
+	uint32 systemPid = 1;
 }
 
 message CreateCheckpointRequest {
 	string id = 1; // ID of container
 	Checkpoint checkpoint = 2; // Checkpoint configuration
+	string checkpointDir = 3; // Directory where checkpoints are stored
 }
 
 message CreateCheckpointResponse {
@@ -95,6 +113,7 @@ message CreateCheckpointResponse {
 message DeleteCheckpointRequest {
 	string id = 1; // ID of container
 	string name = 2; // Name of checkpoint
+	string checkpointDir = 3; // Directory where checkpoints are stored
 }
 
 message DeleteCheckpointResponse {
@@ -102,6 +121,7 @@ message DeleteCheckpointResponse {
 
 message ListCheckpointRequest {
 	string id = 1; // ID of container
+	string checkpointDir = 2; // Directory where checkpoints are stored
 }
 
 message Checkpoint {
@@ -110,6 +130,7 @@ message Checkpoint {
 	bool tcp = 3; // allow open tcp connections
 	bool unixSockets = 4; // allow external unix sockets
 	bool shell = 5; // allow shell-jobs
+	repeated string emptyNS = 6;
 }
 
 message ListCheckpointResponse {
@@ -130,7 +151,7 @@ message Process {
 	User user = 3; // User under which process will be run
 	repeated string args = 4; // Arguments for process, first is binary path itself
 	repeated string env = 5; // List of environment variables for process
-	string cwd = 6; // Workind directory of process
+	string cwd = 6; // Working directory of process
 	uint32 systemPid = 7;
 	string stdin = 8; // path to the file where stdin will be read (optional)
 	string stdout = 9; // path to file where stdout will be written (optional)
@@ -167,12 +188,12 @@ message StateResponse {
 message UpdateContainerRequest {
 	string id = 1; // ID of container
 	string pid = 2;
-	string status = 3; // Status to whcih containerd will try to change
+	string status = 3; // Status to which containerd will try to change
 	UpdateResource resources =4;
 }
 
 message UpdateResource {
-	uint64 blkioWeight =1;
+	uint64 blkioWeight = 1;
 	uint64 cpuShares = 2;
 	uint64 cpuPeriod = 3;
 	uint64 cpuQuota = 4;
@@ -182,13 +203,39 @@ message UpdateResource {
 	uint64 memorySwap = 8;
 	uint64 memoryReservation = 9;
 	uint64 kernelMemoryLimit = 10;
+	uint64 kernelTCPMemoryLimit = 11;
+	uint64 blkioLeafWeight = 12;
+	repeated WeightDevice blkioWeightDevice = 13;
+	repeated ThrottleDevice blkioThrottleReadBpsDevice = 14;
+	repeated ThrottleDevice blkioThrottleWriteBpsDevice = 15;
+	repeated ThrottleDevice blkioThrottleReadIopsDevice = 16;
+	repeated ThrottleDevice blkioThrottleWriteIopsDevice = 17;
+}
+
+message BlockIODevice {
+	int64 major = 1;
+	int64 minor = 2;
+}
+
+message WeightDevice {
+	BlockIODevice blkIODevice = 1;
+	uint32 weight = 2;
+	uint32 leafWeight = 3;
+}
+
+message ThrottleDevice {
+	BlockIODevice blkIODevice = 1;
+	uint64 rate = 2;
 }
 
 message UpdateContainerResponse {
 }
 
 message EventsRequest {
-	uint64 timestamp = 1;
+	// Tag 1 is deprecated (old uint64 timestamp)
+	google.protobuf.Timestamp timestamp = 2;
+	bool storedOnly = 3;
+	string id = 4;
 }
 
 message Event {
@@ -196,7 +243,8 @@ message Event {
 	string id = 2;
 	uint32 status = 3;
 	string pid = 4;
-	uint64 timestamp = 5;
+	// Tag 5 is deprecated (old uint64 timestamp)
+	google.protobuf.Timestamp timestamp = 6;
 }
 
 message NetworkStats {
@@ -258,7 +306,7 @@ message BlkioStatsEntry {
 }
 
 message BlkioStats {
-	repeated BlkioStatsEntry io_service_bytes_recursive = 1; // number of bytes tranferred to and from the block device
+	repeated BlkioStatsEntry io_service_bytes_recursive = 1; // number of bytes transferred to and from the block device
 	repeated BlkioStatsEntry io_serviced_recursive = 2;
 	repeated BlkioStatsEntry io_queued_recursive = 3;
 	repeated BlkioStatsEntry io_service_time_recursive = 4;
@@ -286,7 +334,8 @@ message CgroupStats {
 message StatsResponse {
 	repeated NetworkStats network_stats = 1;
 	CgroupStats cgroup_stats = 2;
-	uint64 timestamp = 3;
+	// Tag 3 is deprecated (old uint64 timestamp)
+	google.protobuf.Timestamp timestamp = 4;
 };
 
 message StatsRequest {

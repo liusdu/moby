@@ -57,8 +57,8 @@ clone git github.com/mistifyio/go-zfs v2.1.1
 clone git github.com/tchap/go-patricia v2.1.0
 clone git github.com/vdemeester/shakers 24d7f1d6a71aa5d9cbe7390e4afb66b7eef9e1b3
 # forked golang.org/x/net package includes a patch for lazy loading trace templates
-clone git golang.org/x/net 78cb2c067747f08b343f20614155233ab4ea2ad3 https://github.com/tonistiigi/net.git
-clone git golang.org/x/sys eb2c74142fd19a79b3f237334c7384d5167b1b46 https://github.com/golang/sys.git
+clone git golang.org/x/net 991d3e32f76f19ee6d9caadb3a22eae8d23315f7 https://github.com/golang/net.git
+clone git golang.org/x/sys d4feaf1a7e61e1d9e79e6c4e76c6349e9cab0a03 https://github.com/golang/sys.git
 clone git github.com/docker/go-units 651fc226e7441360384da338d0fd37f2440ffbe3
 clone git github.com/docker/go-connections v0.2.0
 clone git github.com/docker/engine-api v0.3.3
@@ -91,7 +91,7 @@ clone git github.com/vbatts/tar-split v0.9.11
 # get desired notary commit, might also need to be updated in Dockerfile
 clone git github.com/docker/notary docker-v1.11-3
 
-clone git google.golang.org/grpc a22b6611561e9f0a3e0919690dd2caf48f14c517 https://github.com/grpc/grpc-go.git
+clone git google.golang.org/grpc v1.0.4 https://github.com/grpc/grpc-go.git
 clone git github.com/miekg/pkcs11 df8ae6ca730422dba20c768ff38ef7d79077a59f
 clone git github.com/docker/go v1.5.1-1-1-gbaf439e
 clone git github.com/agl/ed25519 d2b94fd789ea21d12fac1a4443dd3a3f79cda72c
@@ -103,7 +103,7 @@ clone git github.com/seccomp/libseccomp-golang 1b506fc7c24eec5a3693cdcbed40d9c22
 clone git github.com/coreos/go-systemd v4
 clone git github.com/godbus/dbus v3
 clone git github.com/syndtr/gocapability 2c00daeb6c3b45114c80ac44119e7b8801fdd852
-clone git github.com/golang/protobuf 68415e7123da32b07eab49c96d2c4d6158360e9b
+clone git github.com/golang/protobuf 8ee79997227bf9b34611aee7946ae64735e6fd93
 
 # gelf logging driver deps
 clone git github.com/Graylog2/go-gelf aab2f594e4585d43468ac57287b0dece9d806883
