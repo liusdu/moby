@@ -20,6 +20,7 @@ DOCKER_ENVS := \
 	-e DOCKER_INCREMENTAL_BINARY \
 	-e DOCKER_REMAP_ROOT \
 	-e DOCKER_STORAGE_OPTS \
+	-e DOCKER_STORAGE_OPTS2 \
 	-e DOCKER_USERLANDPROXY \
 	-e TESTDIRS \
 	-e TESTFLAGS \
@@ -59,6 +60,7 @@ ifeq ($(INTERACTIVE), 1)
 endif
 
 DOCKER_RUN_DOCKER := $(DOCKER_FLAGS) "$(DOCKER_IMAGE)"
+DOCKER_RUN_TEST := $(DOCKER_FLAGS) -v /dev:/dev "$(DOCKER_IMAGE)"
 
 default: binary
 
@@ -105,7 +107,7 @@ test-docker-py: build
 	$(DOCKER_RUN_DOCKER) hack/make.sh dynbinary test-docker-py
 
 test-integration-cli: build
-	$(DOCKER_RUN_DOCKER) hack/make.sh dynbinary test-integration-cli
+	$(DOCKER_RUN_TEST) hack/make.sh dynbinary test-integration-cli
 
 test-unit: build
 	$(DOCKER_RUN_DOCKER) hack/make.sh test-unit
