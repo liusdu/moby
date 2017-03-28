@@ -140,6 +140,9 @@ install -p -m 644 contrib/udev/80-docker.rules $RPM_BUILD_ROOT/%{_sysconfdir}/ud
 install -d $RPM_BUILD_ROOT/etc/sysconfig
 install -d $RPM_BUILD_ROOT/%{_initddir}
 
+install -p -m 644 contrib/init/sysvinit-redhat/docker.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/docker
+install -p -m 644 contrib/init/sysvinit-redhat/docker-network $RPM_BUILD_ROOT/etc/sysconfig/docker-network
+install -p -m 644 contrib/init/sysvinit-redhat/docker-storage $RPM_BUILD_ROOT/etc/sysconfig/docker-storage
 
 %if 0%{?is_systemd}
 install -d $RPM_BUILD_ROOT/%{_unitdir}
@@ -199,6 +202,9 @@ install -p -m 750 hack/empty-image.sh $RPM_BUILD_ROOT/%{_bindir}/empty-image.sh
 %doc
 /%{_mandir}/man1/*
 /%{_mandir}/man5/*
+%config(noreplace,missingok) /etc/sysconfig/docker
+%config(noreplace,missingok) /etc/sysconfig/docker-storage
+%config(noreplace,missingok) /etc/sysconfig/docker-network
 /usr/share/vim/vimfiles/doc/dockerfile.txt
 /usr/share/vim/vimfiles/ftdetect/dockerfile.vim
 /usr/share/vim/vimfiles/syntax/dockerfile.vim
@@ -206,7 +212,8 @@ install -p -m 750 hack/empty-image.sh $RPM_BUILD_ROOT/%{_bindir}/empty-image.sh
 
 %post
 %if 0%{?is_systemd}
-%systemd_post docker
+#%systemd_post docker
+systemctl enable docker
 %else
 # This adds the proper /etc/rc*.d links for the script
 /sbin/chkconfig --add docker
