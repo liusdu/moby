@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -109,7 +111,7 @@ const defaultOwner = "docker"
 
 // Create is the entrypoint to create a container from a spec, and if successfully
 // created, start it too.
-func (clnt *client) Create(containerID string, spec Spec, options ...CreateOption) error {
+func (clnt *client) Create(containerID string, spec Spec, attachStdio StdioCallback, options ...CreateOption) error {
 	logrus.Debugln("LCD client.Create() with spec", spec)
 
 	cu := &containerInit{
@@ -323,7 +325,7 @@ func (clnt *client) Create(containerID string, spec Spec, options ...CreateOptio
 	// internal structure, and also keep HCS in sync by deleting the
 	// container there.
 	logrus.Debugf("Create() id=%s, Calling start()", containerID)
-	if err := container.start(); err != nil {
+	if err := container.start(attachStdio); err != nil {
 		clnt.deleteContainer(containerID)
 		return err
 	}
@@ -335,7 +337,7 @@ func (clnt *client) Create(containerID string, spec Spec, options ...CreateOptio
 
 // AddProcess is the handler for adding a process to an already running
 // container. It's called through docker exec.
-func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendlyName string, procToAdd Process) error {
+func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendlyName string, procToAdd Process, attachStdio StdioCallback) error {
 
 	clnt.lock(containerID)
 	defer clnt.unlock(containerID)
@@ -384,10 +386,10 @@ func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendly
 
 	// Convert io.ReadClosers to io.Readers
 	if stdout != nil {
-		iopipe.Stdout = openReaderFromPipe(stdout)
+		iopipe.Stdout = ioutil.NopCloser(&autoClosingReader{ReadCloser: stdout})
 	}
 	if stderr != nil {
-		iopipe.Stderr = openReaderFromPipe(stderr)
+		iopipe.Stderr = ioutil.NopCloser(&autoClosingReader{ReadCloser: stderr})
 	}
 
 	// Add the process to the containers list of processes
@@ -402,16 +404,10 @@ func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendly
 			commandLine: createProcessParms.CommandLine,
 		}
 
-	// Make sure the lock is not held while calling back into the daemon
-	clnt.unlock(containerID)
-
 	// Tell the engine to attach streams back to the client
-	if err := clnt.backend.AttachStreams(processFriendlyName, *iopipe); err != nil {
+	if err := attachStdio(*iopipe); err != nil {
 		return err
 	}
-
-	// Lock again so that the defer unlock doesn't fail. (I really don't like this code)
-	clnt.lock(containerID)
 
 	// Spin up a go routine waiting for exit to handle cleanup
 	go container.waitExit(pid, processFriendlyName, false)
@@ -503,7 +499,7 @@ func (clnt *client) Stats(containerID string) (*Stats, error) {
 }
 
 // Restore is the handler for restoring a container
-func (clnt *client) Restore(containerID string, unusedOnWindows ...CreateOption) error {
+func (clnt *client) Restore(containerID string, _ StdioCallback, unusedOnWindows ...CreateOption) error {
 	// TODO Windows: Implement this. For now, just tell the backend the container exited.
 	logrus.Debugf("lcd Restore %s", containerID)
 	return clnt.backend.StateChanged(containerID, StateInfo{

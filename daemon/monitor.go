@@ -3,7 +3,6 @@ package daemon
 import (
 	"errors"
 	"fmt"
-	"io"
 	"runtime"
 	"strconv"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/libcontainerd"
 	"github.com/docker/docker/restartmanager"
-	"github.com/docker/docker/runconfig"
 )
 
 // StateChanged updates daemon state changes from containerd
@@ -109,60 +107,6 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 			return err
 		}
 		daemon.LogContainerEvent(c, "unpause")
-	}
-
-	return nil
-}
-
-// AttachStreams is called by libcontainerd to connect the stdio.
-func (daemon *Daemon) AttachStreams(id string, iop libcontainerd.IOPipe) error {
-	var s *runconfig.StreamConfig
-	c := daemon.containers.Get(id)
-	if c == nil {
-		ec, err := daemon.getExecConfig(id)
-		if err != nil {
-			return fmt.Errorf("no such exec/container: %s", id)
-		}
-		s = ec.StreamConfig
-	} else {
-		s = c.StreamConfig
-		if err := daemon.StartLogging(c); err != nil {
-			c.Reset(false)
-			return err
-		}
-	}
-
-	if stdin := s.Stdin(); stdin != nil {
-		if iop.Stdin != nil {
-			go func() {
-				io.Copy(iop.Stdin, stdin)
-				iop.Stdin.Close()
-			}()
-		}
-	} else {
-		if c != nil && !c.Config.Tty {
-			// tty is enabled, so dont close containerd's iopipe stdin.
-			if iop.Stdin != nil {
-				iop.Stdin.Close()
-			}
-		}
-	}
-
-	copy := func(w io.Writer, r io.Reader) {
-		s.Add(1)
-		go func() {
-			if _, err := io.Copy(w, r); err != nil {
-				logrus.Errorf("%v stream copy error: %v", id, err)
-			}
-			s.Done()
-		}()
-	}
-
-	if iop.Stdout != nil {
-		copy(s.Stdout(), iop.Stdout)
-	}
-	if iop.Stderr != nil {
-		copy(s.Stderr(), iop.Stderr)
 	}
 
 	return nil

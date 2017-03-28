@@ -10,7 +10,6 @@ import (
 	"github.com/docker/docker/api/types/backend"
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/daemon/logger"
-	"github.com/docker/docker/daemon/logger/jsonfilelog"
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/pkg/stdcopy"
 	containertypes "github.com/docker/engine-api/types/container"
@@ -109,50 +108,26 @@ func (daemon *Daemon) getLogger(container *container.Container) (logger.Logger, 
 	if container.LogDriver != nil && container.IsRunning() {
 		return container.LogDriver, nil
 	}
-	cfg := daemon.getLogConfig(container.HostConfig.LogConfig)
-	if err := logger.ValidateLogOpts(cfg.Type, cfg.Config); err != nil {
-		return nil, err
-	}
-	return container.StartLogger(cfg)
+	return container.StartLogger(container.HostConfig.LogConfig)
 }
 
-// StartLogging initializes and starts the container logging stream.
-func (daemon *Daemon) StartLogging(container *container.Container) error {
-	cfg := daemon.getLogConfig(container.HostConfig.LogConfig)
-	if cfg.Type == "none" {
-		return nil // do not start logging routines
+// mergeLogConfig merges the daemon log config to the container's log config if the container's log driver is not specified.
+func (daemon *Daemon) mergeAndVerifyLogConfig(cfg *containertypes.LogConfig) error {
+	if cfg.Type == "" {
+		cfg.Type = daemon.defaultLogConfig.Type
 	}
 
-	if err := logger.ValidateLogOpts(cfg.Type, cfg.Config); err != nil {
-		return err
-	}
-	l, err := container.StartLogger(cfg)
-	if err != nil {
-		return fmt.Errorf("Failed to initialize logging driver: %v", err)
+	if cfg.Config == nil {
+		cfg.Config = make(map[string]string)
 	}
 
-	copier := logger.NewCopier(container.ID, map[string]io.Reader{"stdout": container.StdoutPipe(), "stderr": container.StderrPipe()}, l)
-	container.LogCopier = copier
-	copier.Run()
-	container.LogDriver = l
-
-	// set LogPath field only for json-file logdriver
-	if jl, ok := l.(*jsonfilelog.JSONFileLogger); ok {
-		container.LogPath = jl.LogPath()
-	}
-
-	return nil
-}
-
-// getLogConfig returns the log configuration for the container.
-func (daemon *Daemon) getLogConfig(cfg containertypes.LogConfig) containertypes.LogConfig {
-	if cfg.Type != "" || len(cfg.Config) > 0 { // container has log driver configured
-		if cfg.Type == "" {
-			cfg.Type = jsonfilelog.Name
+	if cfg.Type == daemon.defaultLogConfig.Type {
+		for k, v := range daemon.defaultLogConfig.Config {
+			if _, ok := cfg.Config[k]; !ok {
+				cfg.Config[k] = v
+			}
 		}
-		return cfg
 	}
 
-	// Use daemon's default log config for containers
-	return daemon.defaultLogConfig
+	return logger.ValidateLogOpts(cfg.Type, cfg.Config)
 }

@@ -37,7 +37,6 @@ import (
 	"github.com/docker/engine-api/types/strslice"
 	// register graph drivers
 	_ "github.com/docker/docker/daemon/graphdriver/register"
-	"github.com/docker/docker/daemon/logger"
 	"github.com/docker/docker/distribution"
 	dmetadata "github.com/docker/docker/distribution/metadata"
 	"github.com/docker/docker/distribution/xfer"
@@ -194,7 +193,7 @@ func (daemon *Daemon) restore() error {
 
 			if c.IsRunning() || c.IsPaused() {
 				c.RestartManager().Cancel() // manually start containers because some need to wait for swarm networking
-				if err := daemon.containerd.Restore(c.ID); err != nil {
+				if err := daemon.containerd.Restore(c.ID, c.InitializeStdio); err != nil {
 					logrus.Errorf("Failed to restore %s with containerd: %s", c.ID, err)
 					return
 				}
@@ -512,12 +511,6 @@ func NewDaemon(config *Config, registryService *registry.Service, containerdRemo
 		return nil, fmt.Errorf("error setting default isolation mode: %v", err)
 	}
 
-	// Verify logging driver type
-	if config.LogConfig.Type != "none" {
-		if _, err := logger.GetLogDriver(config.LogConfig.Type); err != nil {
-			return nil, fmt.Errorf("error finding the logging driver: %v", err)
-		}
-	}
 	logrus.Debugf("Using default logging driver %s", config.LogConfig.Type)
 
 	if err := configureMaxThreads(config); err != nil {
@@ -1307,11 +1300,6 @@ func (daemon *Daemon) verifyContainerSettings(hostConfig *containertypes.HostCon
 
 	if hostConfig == nil {
 		return nil, nil
-	}
-
-	logCfg := daemon.getLogConfig(hostConfig.LogConfig)
-	if err := logger.ValidateLogOpts(logCfg.Type, logCfg.Config); err != nil {
-		return nil, err
 	}
 
 	for port := range hostConfig.PortBindings {
