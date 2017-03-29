@@ -80,7 +80,9 @@ func (is *store) restore() error {
 			l, err = is.ls.Get(chainID)
 			if err != nil {
 				logrus.Errorf("Failed to restore layer %s for image %s: %v", chainID, id, err)
-				// If the layer doesn't exist, return nil to ignore this image.
+				// If the layer doesn't exist, that means something wrong with layers of the image.
+				// 'Layer doesn't exist' means all the images which contain this layer couldn't run successfully.
+				// But docker need to continue to work, so here ignore this image, and return nil.
 				if err == layer.ErrLayerDoesNotExist {
 					return nil
 				}
