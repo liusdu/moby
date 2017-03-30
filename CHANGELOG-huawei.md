@@ -1,4 +1,29 @@
 # Changelog
+## v1.11.2.19 (2017-03-30)
+
+- Bugfix: Increase udev wait timeout to 185s (mr 365)
+- Bugfix: Add restarting check before attach a container (mr 362)
+- Bubfix: daemon: reorder mounts before setting them (mr 350)
+- Feature: modify centos rpm spec according to that of EulerOS (mr 361)
+- Backport: fix TestDaemonRestartWithInvalidBasesize (mr 358)
+- Backport: Ignore "failed to close stdin" if container or process not found (mr 364)
+- Backport: Reset RemovalInProgress flag on daemon restart (mr 360)
+- Backport: backport some prs after bumping containerd to v0.2.x branch (mr 342) 
+  - Fix restoring behavior when live-restore is not set (https://github.com/docker/docker/pull/24984)
+  - Fix a race in libcontainerd/pausemonitor_linux.go (https://github.com/docker/docker/pull/26695)
+  - Fix libcontainerd: attach streams before create (https://github.com/docker/docker/pull/26744)
+  - add lock in libcontainerd client AddProcess (https://github.com/docker/docker/pull/27094)
+  - Fix issues with fifos blocking on open (https://github.com/docker/docker/pull/27405)
+  - inherit the daemon log options when creating containers (https://github.com/docker/docker/pull/21153)
+  - Fix panic while merging log configs to nil map (https://github.com/docker/docker/pull/24548)
+  - Move stdio attach from libcontainerd backend to callback (https://github.com/docker/docker/pull/27467)
+  - Fix race on sending stdin close event (https://github.com/docker/docker/pull/28682)
+  - Handle paused container when restoring without live-restore set (https://github.com/docker/docker/pull/31704)
+  - Fix daemon panic on restoring containers (https://github.com/docker/docker/pull/25111)
+
+## v1.11.2.18 (2017-03-25)
+
+- Bugfix: disable systemd create /var/run/docker.sock for docker starting (mr 351 fix DTS2017031709612)
 
 ## v1.11.2.17 (2017-03-24)
 
