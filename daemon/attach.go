@@ -23,6 +23,10 @@ func (daemon *Daemon) ContainerAttach(prefixOrName string, c *backend.ContainerA
 		err := fmt.Errorf("Container %s is paused. Unpause the container before attach", prefixOrName)
 		return errors.NewRequestConflictError(err)
 	}
+	if container.IsRestarting() {
+		err := fmt.Errorf("Container %s is restarting. Wait until the container is running", prefixOrName)
+		return errors.NewRequestConflictError(err)
+	}
 
 	inStream, outStream, errStream, err := c.GetStreams()
 	if err != nil {
