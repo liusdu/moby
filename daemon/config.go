@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/pkg/discovery"
 	flag "github.com/docker/docker/pkg/mflag"
 	"github.com/docker/docker/registry"
+	"github.com/docker/engine-api/types"
 	"github.com/imdario/mergo"
 )
 
@@ -29,6 +30,7 @@ const (
 var flatOptions = map[string]bool{
 	"cluster-store-opts": true,
 	"log-opts":           true,
+	"runtimes":           true,
 }
 
 // LogConfig represents the default log configuration.
@@ -170,7 +172,7 @@ func ReloadConfiguration(configFile string, flags *flag.FlagSet, reload func(*Co
 		return err
 	}
 
-	if err := validateConfiguration(newConfig); err != nil {
+	if err := ValidateConfiguration(newConfig); err != nil {
 		return fmt.Errorf("file configuration validation failed (%v)", err)
 	}
 
@@ -194,13 +196,19 @@ func MergeDaemonConfigurations(flagsConfig *Config, flags *flag.FlagSet, configF
 		return nil, err
 	}
 
-	if err := validateConfiguration(fileConfig); err != nil {
+	if err := ValidateConfiguration(fileConfig); err != nil {
 		return nil, fmt.Errorf("file configuration validation failed (%v)", err)
 	}
 
 	// merge flags configuration on top of the file configuration
 	if err := mergo.Merge(fileConfig, flagsConfig); err != nil {
 		return nil, err
+	}
+
+	// We need to validate again once both fileConfig and flagsConfig
+	// have been merged
+	if err := ValidateConfiguration(fileConfig); err != nil {
+		return nil, fmt.Errorf("file configuration validation failed (%v)", err)
 	}
 
 	return fileConfig, nil
@@ -351,9 +359,9 @@ func findConfigurationConflicts(config map[string]interface{}, flags *flag.FlagS
 	return nil
 }
 
-// validateConfiguration validates some specific configs.
+// ValidateConfiguration validates some specific configs.
 // such as config.DNS, config.Labels, config.DNSSearch
-func validateConfiguration(config *Config) error {
+func ValidateConfiguration(config *Config) error {
 	// validate DNS
 	for _, dns := range config.DNS {
 		if _, err := opts.ValidateIPAddress(dns); err != nil {
@@ -372,6 +380,20 @@ func validateConfiguration(config *Config) error {
 	for _, label := range config.Labels {
 		if _, err := opts.ValidateLabel(label); err != nil {
 			return err
+		}
+	}
+
+	// validate that "default" runtime is not reset
+	if runtimes := config.GetAllRuntimes(); len(runtimes) > 0 {
+		if _, ok := runtimes[types.DefaultRuntimeName]; ok {
+			return fmt.Errorf("runtime name '%s' is reserved", types.DefaultRuntimeName)
+		}
+	}
+
+	if defaultRuntime := config.GetDefaultRuntimeName(); defaultRuntime != "" && defaultRuntime != types.DefaultRuntimeName {
+		runtimes := config.GetAllRuntimes()
+		if _, ok := runtimes[defaultRuntime]; !ok {
+			return fmt.Errorf("specified default runtime '%s' does not exist", defaultRuntime)
 		}
 	}
 

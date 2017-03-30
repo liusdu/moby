@@ -256,6 +256,8 @@ type Info struct {
 	ClusterAdvertise   string
 	LiveRestore        bool
 	HookSpec           string
+	Runtimes           map[string]Runtime
+	DefaultRuntime     string
 }
 
 // PluginsInfo is a temp struct holding Plugins name
@@ -526,4 +528,14 @@ type NetworkConnect struct {
 type NetworkDisconnect struct {
 	Container string
 	Force     bool
+}
+
+// DefaultRuntimeName is the reserved name/alias used to represent the
+// OCI runtime being shipped with the docker daemon package.
+var DefaultRuntimeName = "default"
+
+// Runtime describes an OCI runtime
+type Runtime struct {
+	Path string   `json:"path"`
+	Args []string `json:"runtimeArgs,omitempty"`
 }

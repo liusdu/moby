@@ -83,6 +83,7 @@ func (cli *DaemonCli) getPlatformRemoteOptions() []libcontainerd.RemoteOption {
 	if cli.Config.LiveRestore {
 		opts = append(opts, libcontainerd.WithLiveRestore(true))
 	}
+	opts = append(opts, libcontainerd.WithRuntimePath(daemon.DefaultRuntimeBinary))
 	return opts
 }
 

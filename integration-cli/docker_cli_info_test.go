@@ -35,6 +35,10 @@ func (s *DockerSuite) TestInfoEnsureSucceeds(c *check.C) {
 		"Live Restore Enabled:",
 	}
 
+	if DaemonIsLinux.Condition() {
+		stringsToCheck = append(stringsToCheck, "Runtimes:", "Default Runtime: default")
+	}
+
 	if utils.ExperimentalBuild() {
 		stringsToCheck = append(stringsToCheck, "Experimental: true")
 	}

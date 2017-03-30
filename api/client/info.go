@@ -55,7 +55,7 @@ func (cli *DockerCli) CmdInfo(args ...string) error {
 	ioutils.FprintfIfNotEmpty(cli.out, "Cgroup Driver: %s\n", info.CgroupDriver)
 	ioutils.FprintfIfNotEmpty(cli.out, "Hugetlb Pagesize: %s\n", info.HugetlbPageSize)
 
-	fmt.Fprintf(cli.out, "Plugins: \n")
+	fmt.Fprintf(cli.out, "Plugins:\n")
 	fmt.Fprintf(cli.out, " Volume:")
 	fmt.Fprintf(cli.out, " %s", strings.Join(info.Plugins.Volume, " "))
 	fmt.Fprintf(cli.out, "\n")
@@ -71,6 +71,15 @@ func (cli *DockerCli) CmdInfo(args ...string) error {
 	if len(info.Plugins.Accel) != 0 {
 		fmt.Fprintf(cli.out, " Accelerator:")
 		fmt.Fprintf(cli.out, " %s\n", strings.Join(info.Plugins.Accel, " "))
+	}
+
+	if len(info.Runtimes) > 0 {
+		fmt.Fprintf(cli.out, "Runtimes:")
+		for name := range info.Runtimes {
+			fmt.Fprintf(cli.out, " %s", name)
+		}
+		fmt.Fprint(cli.out, "\n")
+		fmt.Fprintf(cli.out, "Default Runtime: %s\n", info.DefaultRuntime)
 	}
 
 	ioutils.FprintfIfNotEmpty(cli.out, "Kernel Version: %s\n", info.KernelVersion)

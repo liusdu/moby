@@ -105,6 +105,8 @@ func (daemon *Daemon) SystemInfo() (*types.Info, error) {
 		HTTPSProxy:         sockets.GetProxyEnv("https_proxy"),
 		NoProxy:            sockets.GetProxyEnv("no_proxy"),
 		LiveRestore:        daemon.configStore.LiveRestore,
+		Runtimes:           daemon.configStore.GetAllRuntimes(),
+		DefaultRuntime:     daemon.configStore.GetDefaultRuntimeName(),
 		HookSpec:           daemon.configStore.HookSpec,
 	}
 
