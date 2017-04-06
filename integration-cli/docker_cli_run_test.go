@@ -4639,7 +4639,7 @@ func (s *DockerSuite) TestRunUnblockSyscallRebootWithSystemContainer(c *check.C)
 // TestRunUnblockSyscallUnshareWithSystemContainer checks that 'docker run --system-container debian:jessie'
 // allows calling unshare syscall
 func (s *DockerSuite) TestRunUnblockSyscallUnshareWithSystemContainer(c *check.C) {
-	testRequires(c, DaemonIsLinux, seccompEnabled, NotUserNamespace)
+	testRequires(c, DaemonIsLinux, seccompEnabled, NotUserNamespace, UserNamespaceInKernel)
 
 	if err := setupFakeOciSystemdHook(); err != nil {
 		c.Skip(fmt.Sprintf("Test cannot be run without ociSystemdHook, setup ociSystemdHook failed with error: %v", err))
