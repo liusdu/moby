@@ -2,6 +2,7 @@ package layer
 
 import (
 	"io"
+	"sync"
 
 	"github.com/docker/docker/pkg/archive"
 )
@@ -15,6 +16,7 @@ type mountedLayer struct {
 	layerStore *layerStore
 
 	references map[RWLayer]*referencedRWLayer
+	sync.RWMutex
 }
 
 func (ml *mountedLayer) cacheParent() string {
@@ -59,6 +61,14 @@ func (ml *mountedLayer) Changes() ([]archive.Change, error) {
 
 func (ml *mountedLayer) Metadata() (map[string]string, error) {
 	return ml.layerStore.driver.GetMetadata(ml.mountID)
+}
+
+func (ml *mountedLayer) RLockRWLayer() {
+	ml.RLock()
+}
+
+func (ml *mountedLayer) RUnlockRWLayer() {
+	ml.RUnlock()
 }
 
 func (ml *mountedLayer) getReference() RWLayer {

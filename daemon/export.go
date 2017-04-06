@@ -21,6 +21,8 @@ func (daemon *Daemon) ContainerExport(name string, out io.Writer) error {
 		return fmt.Errorf("can't export content of container with external rootfs")
 	}
 
+	container.RWLayer.RLockRWLayer()
+	defer container.RWLayer.RUnlockRWLayer()
 	data, err := daemon.containerExport(container)
 	if err != nil {
 		return fmt.Errorf("Error exporting container %s: %v", name, err)
