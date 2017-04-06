@@ -285,7 +285,6 @@ func UdevWait(cookie *uint) error {
 		<-chError
 		return ErrUdevWaitTimeout
 	}
-	return nil
 }
 
 // SetUdevWaitTimeout sets udev wait timeout

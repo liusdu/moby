@@ -334,7 +334,7 @@ func TestCombinedCache(t *testing.T) {
 	is.AddCicMapping(key, id3)
 	combinedID := is.FindCicID(key)
 	if combinedID != id3 {
-		t.Fatal("Cached ID not match, expected:%v got:%v", key, combinedID)
+		t.Fatalf("Cached ID not match, expected:%v got:%v", key, combinedID)
 	}
 
 	if _, err := is.Delete(id3); err != nil {
