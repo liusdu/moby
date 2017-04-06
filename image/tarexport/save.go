@@ -36,6 +36,15 @@ func (l *tarexporter) Save(names []string, outStream io.Writer) error {
 		return err
 	}
 
+	for id := range images {
+		image.UpdateImageIDSavingStatus(id, true)
+	}
+
+	defer func() {
+		for id := range images {
+			image.UpdateImageIDSavingStatus(id, false)
+		}
+	}()
 	return (&saveSession{tarexporter: l, images: images}).save(outStream)
 }
 
