@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/dockerversion"
+	"github.com/docker/docker/errors"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/layer"
 	"github.com/docker/docker/pkg/archive"
@@ -103,6 +104,16 @@ func (daemon *Daemon) Commit(name string, c *types.ContainerCommitConfig) (strin
 		return "", err
 	}
 
+	if container.IsDead() {
+		err := fmt.Errorf("You cannot commit container %s which is Dead", container.ID)
+		return "", errors.NewRequestConflictError(err)
+	}
+
+	if container.IsRemovalInProgress() {
+		err := fmt.Errorf("You cannot commit container %s which is being removed", container.ID)
+		return "", errors.NewRequestConflictError(err)
+	}
+
 	if container.HostConfig.ExternalRootfs != "" {
 		return "", fmt.Errorf("can't commit a container with external rootfs")
 	}
@@ -122,6 +133,8 @@ func (daemon *Daemon) Commit(name string, c *types.ContainerCommitConfig) (strin
 		}
 	}
 
+	container.RWLayer.RLockRWLayer()
+	defer container.RWLayer.RUnlockRWLayer()
 	rwTar, err := daemon.exportContainerRw(container)
 	if err != nil {
 		return "", err

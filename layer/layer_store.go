@@ -517,6 +517,8 @@ func (ls *layerStore) ReleaseRWLayer(l RWLayer) ([]Metadata, error) {
 		return []Metadata{}, nil
 	}
 
+	m.Lock()
+	defer m.Unlock()
 	if err := m.deleteReference(l); err != nil {
 		return nil, err
 	}

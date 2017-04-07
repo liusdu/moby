@@ -139,6 +139,13 @@ type RWLayer interface {
 
 	// Metadata returns the low level metadata for the mutable layer
 	Metadata() (map[string]string, error)
+
+	// RLockRWLayer locks the RWLayer to block unmounting/removal
+	// of that layer
+	RLockRWLayer()
+
+	// RUnlockRWLayer unlocks the RWLayer
+	RUnlockRWLayer()
 }
 
 // Metadata holds information about a
