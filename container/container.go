@@ -990,7 +990,7 @@ func (container *Container) InitializeStdio(iop libcontainerd.IOPipe) error {
 	if container.Stdin() == nil && !container.Config.Tty {
 		if iop.Stdin != nil {
 			if err := iop.Stdin.Close(); err != nil {
-				logrus.Error("error closing stdin: %+v", err)
+				logrus.Errorf("error closing stdin: %+v", err)
 			}
 		}
 	}
