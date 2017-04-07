@@ -13,6 +13,10 @@ func (daemon *Daemon) ContainerChanges(name string) ([]archive.Change, error) {
 		return nil, err
 	}
 
+	if container.RemovalInProgress || container.Dead {
+		return nil, fmt.Errorf("can't diff a container which is dead or marked for removal")
+	}
+
 	if container.HostConfig.ExternalRootfs != "" {
 		return nil, fmt.Errorf("can't diff a container with external rootfs")
 	}

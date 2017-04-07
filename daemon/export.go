@@ -17,6 +17,10 @@ func (daemon *Daemon) ContainerExport(name string, out io.Writer) error {
 		return err
 	}
 
+	if container.RemovalInProgress || container.Dead {
+		return fmt.Errorf("can't export content of container which is dead or marked for removal")
+	}
+
 	if container.HostConfig.ExternalRootfs != "" {
 		return fmt.Errorf("can't export content of container with external rootfs")
 	}

@@ -49,6 +49,10 @@ func (daemon *Daemon) ContainerStatPath(name string, path string) (stat *types.C
 		return nil, err
 	}
 
+	if container.RemovalInProgress || container.Dead {
+		return nil, fmt.Errorf("can't stat file from a container which is dead or marked for removal")
+	}
+
 	if container.HostConfig.ExternalRootfs != "" {
 		return nil, fmt.Errorf("can't copy file from a container with external rootfs")
 	}
@@ -63,6 +67,10 @@ func (daemon *Daemon) ContainerArchivePath(name string, path string) (content io
 	container, err := daemon.GetContainer(name)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if container.RemovalInProgress || container.Dead {
+		return nil, nil, fmt.Errorf("can't copy file from a container which is dead or marked for removal")
 	}
 
 	if container.HostConfig.ExternalRootfs != "" {
@@ -83,6 +91,11 @@ func (daemon *Daemon) ContainerExtractToDir(name, path string, noOverwriteDirNon
 	if err != nil {
 		return err
 	}
+
+	if container.RemovalInProgress || container.Dead {
+		return fmt.Errorf("can't copy to a container which is dead or marked for removal")
+	}
+
 	if container.HostConfig.ExternalRootfs != "" {
 		return fmt.Errorf("can't copy file from a container with external rootfs")
 	}
