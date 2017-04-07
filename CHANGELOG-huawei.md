@@ -1,4 +1,15 @@
 # Changelog
+
+## v1.11.2.20 (2017-04-07)
+
+- Bugfix: devicemapper: remove thin pool if 'initDevmapper' failed (mr 374 fix DTS2017040505495)
+- Bugfix: Fix delete a image while saving it, delete successfully but failed to save it (mr 370 fix DTS2017033003238)
+- Bugfix: Update go-patricia to 2.2.6 to fix memory leak (mr 379 fix DTS2017040103654 )
+- Bugfix: Fix RefCounter count memory leak (mr 380 fix DTS2017040103654 )
+- Bugfix: Lock the RWLayer while committing/exporting (mr 375 fix DTS2017033104732 DTS2017040106675)
+- Bugfix: fix 'unrecognize image ID' error (mr 382 fix DTS2017040607485 )
+- Bugfix: Add check when execute docker {cp, export, diff} (mr 383 fix DTS2017040704111)
+
 ## v1.11.2.19 (2017-03-30)
 
 - Bugfix: Increase udev wait timeout to 185s (mr 365)
