@@ -135,7 +135,7 @@ func newTestNotary(c *check.C) (*testNotary, error) {
 }
 
 func (t *testNotary) Ping() error {
-	tlsConfig := tlsconfig.ClientDefault
+	tlsConfig := tlsconfig.ClientDefault()
 	tlsConfig.InsecureSkipVerify = true
 	client := http.Client{
 		Transport: &http.Transport{
@@ -145,7 +145,7 @@ func (t *testNotary) Ping() error {
 				KeepAlive: 30 * time.Second,
 			}).Dial,
 			TLSHandshakeTimeout: 10 * time.Second,
-			TLSClientConfig:     &tlsConfig,
+			TLSClientConfig:     tlsConfig,
 		},
 	}
 	resp, err := client.Get(fmt.Sprintf("%s/v2/", notaryURL))
