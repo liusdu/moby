@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/Sirupsen/logrus"
 	containerd "github.com/docker/containerd/api/grpc/types"
 	"github.com/tonistiigi/fifo"
 	"golang.org/x/net/context"
@@ -99,4 +100,13 @@ func (r emptyReader) Read(b []byte) (int, error) {
 
 func (p *process) fifo(index int) string {
 	return filepath.Join(p.dir, p.friendlyName+"-"+fdNames[index])
+}
+
+func (p *process) cleanFifos(id string) {
+	for _, i := range []int{syscall.Stdin, syscall.Stdout, syscall.Stderr} {
+		if err := os.Remove(p.fifo(i)); err != nil && !os.IsNotExist(err) {
+			logrus.Warnf("failed to remove %v for process %v: %v", p.fifo(i), id, err)
+		}
+	}
+
 }
