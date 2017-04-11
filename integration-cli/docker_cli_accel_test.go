@@ -52,6 +52,10 @@ type DockerAccelSuite struct {
 }
 
 func (s *DockerAccelSuite) TearDownTest(c *check.C) {
+	// rollback control flag
+	fakeDriver.unmarkNoService()
+	fakeDriver.unmarkNotFound()
+
 	// call DockerSuite.TearDownTest() to cleanup **error** remained
 	// things (e.g. container, image, volume, network, ...)
 	s.ds.TearDownTest(c)
@@ -91,6 +95,23 @@ func (s *DockerAccelSuite) TearDownSuite(c *check.C) {
 type remoteAccelDriver struct {
 	runtime string
 	slots   map[string]slot
+
+	// control flags for test
+	isNoService bool // if set, AllocateSlot call will reture NoService error
+	isNotFound  bool // if set, Slot call will return NotFound error
+}
+
+func (d *remoteAccelDriver) markNoService() {
+	d.isNoService = true
+}
+func (d *remoteAccelDriver) unmarkNoService() {
+	d.isNoService = false
+}
+func (d *remoteAccelDriver) markNotFound() {
+	d.isNotFound = true
+}
+func (d *remoteAccelDriver) unmarkNotFound() {
+	d.isNotFound = false
 }
 
 type slot struct {
@@ -103,6 +124,9 @@ type slot struct {
 var fakeDriver = remoteAccelDriver{
 	runtime: fakeRuntime,
 	slots:   make(map[string]slot),
+
+	isNoService: false,
+	isNotFound:  false,
 }
 
 func cleanupRemoteAccelDrivers(c *check.C, accelDrv string) {
@@ -184,14 +208,30 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 			return
 		}
 
-		fakeDriver.slots[asRequest.SlotID] = slot{
-			name:    asRequest.SlotID,
-			runtime: asRequest.Runtime,
-			options: asRequest.Options,
+		resp := remoteapi.AllocateSlotResponse{}
+		resp.ErrType = remoteapi.RESP_ERR_NOERROR
+		resp.ErrMsg = ""
+		// if NoService flags set, return error
+		if fakeDriver.isNoService {
+			resp.ErrType = remoteapi.RESP_ERR_NODEV
+			resp.ErrMsg = asRequest.Runtime
+		} else {
+			// else, allocate a slot
+			fakeDriver.slots[asRequest.SlotID] = slot{
+				name:    asRequest.SlotID,
+				runtime: asRequest.Runtime,
+				options: asRequest.Options,
+			}
+		}
+
+		jsonResp, err := json.Marshal(resp)
+		if err != nil {
+			http.Error(w, "Json Marshal slotInfo error: "+err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
-		fmt.Fprintf(w, "null")
+		fmt.Fprintf(w, string(jsonResp))
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.ReleaseSlot", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
@@ -202,13 +242,23 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
-		if _, ok := fakeDriver.slots[rsRequest.SlotID]; !ok {
-			fmt.Fprintf(w, `{"Error":"slot %s not found"}`, rsRequest.SlotID)
+		resp := remoteapi.ReleaseSlotResponse{}
+		resp.ErrType = remoteapi.RESP_ERR_NOERROR
+		resp.ErrMsg = ""
+		if _, ok := fakeDriver.slots[rsRequest.SlotID]; !ok || fakeDriver.isNotFound {
+			resp.ErrType = remoteapi.RESP_ERR_NOTFOUND
+			resp.ErrMsg = fmt.Sprintf("slot %s not found", rsRequest.SlotID)
 		} else {
 			delete(fakeDriver.slots, rsRequest.SlotID)
-			fmt.Fprintf(w, "null")
 		}
+
+		jsonResp, err := json.Marshal(resp)
+		if err != nil {
+			http.Error(w, "Json Marshal slotInfo error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		fmt.Fprintf(w, string(jsonResp))
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.ListSlot", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
@@ -235,28 +285,28 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		resp := remoteapi.SlotInfoResponse{}
+		resp.ErrType = remoteapi.RESP_ERR_NOERROR
+		resp.ErrMsg = ""
+
 		slot, ok := fakeDriver.slots[siRequest.SlotID]
-		if !ok {
-			fmt.Fprintf(w, `{"Error":"slot %s not found"}`, siRequest.SlotID)
-			return
+		if !ok || fakeDriver.isNotFound {
+			resp.ErrType = remoteapi.RESP_ERR_NOTFOUND
+			resp.ErrMsg = fmt.Sprintf("slot %s not found", siRequest.SlotID)
+		} else {
+			resp.SlotInfo.Name = slot.name
+			resp.SlotInfo.Device = slot.device
+			resp.SlotInfo.Runtime = slot.runtime
 		}
 
-		siResponse := remoteapi.SlotInfoResponse{
-			SlotInfo: driverapi.SlotInfo{
-				Name:    slot.name,
-				Device:  slot.device,
-				Runtime: slot.runtime,
-			},
-		}
-
-		si, err := json.Marshal(siResponse)
+		jsonResp, err := json.Marshal(resp)
 		if err != nil {
 			http.Error(w, "Json Marshal slotInfo error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		fmt.Fprintf(w, string(si))
+		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		fmt.Fprintf(w, string(jsonResp))
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.PrepareSlot", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
@@ -267,38 +317,39 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		resp := remoteapi.PrepareSlotResponse{}
+		resp.ErrType = remoteapi.RESP_ERR_NOERROR
+		resp.ErrMsg = ""
 		slot, ok := fakeDriver.slots[psRequest.SlotID]
-		if !ok {
-			fmt.Fprintf(w, `{"Error":"slot %s not found"}`, psRequest.SlotID)
-			return
+		if !ok || fakeDriver.isNotFound {
+			resp.ErrType = remoteapi.RESP_ERR_NOTFOUND
+			resp.ErrMsg = fmt.Sprintf("slot %s not found", psRequest.SlotID)
+		} else {
+			slot.device = "/dev/zero"
+			sConfig := driverapi.SlotConfig{
+				Envs: make(map[string]string),
+			}
+			os.MkdirAll("/fakeAccelSource", 0755)
+
+			sConfig.Binds = append(sConfig.Binds, driverapi.Mount{
+				Source:      "/fakeAccelSource",
+				Destination: "/fakeDestination",
+				Mode:        "rw",
+			})
+			sConfig.Devices = append(sConfig.Devices, slot.device)
+			sConfig.Envs["fakeEnv"] = "fakeEnv"
+
+			resp.SlotConfig = sConfig
 		}
 
-		slot.device = "/dev/zero"
-		sConfig := driverapi.SlotConfig{
-			Envs: make(map[string]string),
-		}
-		os.MkdirAll("/fakeAccelSource", 0755)
-
-		sConfig.Binds = append(sConfig.Binds, driverapi.Mount{
-			Source:      "/fakeAccelSource",
-			Destination: "/fakeDestination",
-			Mode:        "rw",
-		})
-		sConfig.Devices = append(sConfig.Devices, slot.device)
-		sConfig.Envs["fakeEnv"] = "fakeEnv"
-
-		psResponse := remoteapi.PrepareSlotResponse{
-			SlotConfig: sConfig,
-		}
-
-		ps, err := json.Marshal(psResponse)
+		jsonResp, err := json.Marshal(resp)
 		if err != nil {
 			http.Error(w, "Json Marshal prepare slot repsonse error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		fmt.Fprintf(w, string(ps))
+		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		fmt.Fprintf(w, string(jsonResp))
 	})
 
 	err := os.MkdirAll("/etc/docker/plugins", 0755)

@@ -14,18 +14,21 @@ type Response struct {
 
 const (
 	RESP_ERR_NOERROR  = 0x0
-	RESP_ERR_NOTFOUND = 0x1
-	RESP_ERR_NOTIMPL  = 0x2
+	RESP_ERR_NOTIMPL  = 0x1
+	RESP_ERR_NOTFOUND = 0x2
+	RESP_ERR_NODEV    = 0x3
 )
 
 // GetError returns the error from the response, if any.
 func (r *Response) GetError() error {
 	if r.ErrType == RESP_ERR_NOERROR {
 		return nil
-	} else if r.ErrType == RESP_ERR_NOTFOUND {
-		return driverapi.ErrNoSlot(r.ErrMsg)
 	} else if r.ErrType == RESP_ERR_NOTIMPL {
 		return &driverapi.ErrNotImplemented{}
+	} else if r.ErrType == RESP_ERR_NOTFOUND {
+		return driverapi.ErrNoSlot(r.ErrMsg)
+	} else if r.ErrType == RESP_ERR_NODEV {
+		return driverapi.ErrNoDev(r.ErrMsg)
 	} else {
 		return fmt.Errorf("remote: %s", r.ErrMsg)
 	}

@@ -14,6 +14,16 @@ func (enn ErrNoSlot) Error() string {
 // NotFound denotes the type of this error
 func (enn ErrNoSlot) NotFound() {}
 
+// ErrNoDev is returned if no accelerator device available
+type ErrNoDev string
+
+func (enn ErrNoDev) Error() string {
+	return fmt.Sprintf("no available device for %s", string(enn))
+}
+
+// NoService denotes the type of this error
+func (enn ErrNoDev) NoService() {}
+
 // ErrNotImplemented is returned when a Driver has not implemented an API yet
 type ErrNotImplemented struct{}
 
