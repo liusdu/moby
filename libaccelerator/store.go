@@ -203,6 +203,8 @@ func (c *controller) CleanupSlots(cleaner SlotWalker) {
 		}
 		// clear BADDRIVER
 		s.unmarkBadDriver()
+		// clear NODEV
+		s.unmarkNoDev()
 
 		// this is a deleting slot, continue deleting
 		//   - do delete after BADDRIVER check to avoid inconsistent, which
