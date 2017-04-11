@@ -2170,6 +2170,18 @@ func (s *DockerSuite) TestDaemonDiscoveryBackendConfigReload(c *check.C) {
 	c.Assert(out, checker.Contains, fmt.Sprintf("Cluster advertise: 192.168.56.100:0"))
 }
 
+func (s *DockerDaemonSuite) TestBuildOnDisabledBridgeNetworkDaemon(c *check.C) {
+	err := s.d.Start("-b=none", "--iptables=false")
+	c.Assert(err, check.IsNil)
+	s.d.c.Logf("dockerBinary %s", dockerBinary)
+	out, code, err := s.d.buildImageWithOut("busyboxs",
+		`FROM busybox
+                RUN cat /etc/hosts`, false)
+	comment := check.Commentf("Failed to build image. output %s, exitCode %d, err %v", out, code, err)
+	c.Assert(err, check.IsNil, comment)
+	c.Assert(code, check.Equals, 0, comment)
+}
+
 // Test case for 29342
 func (s *DockerDaemonSuite) TestExecWithUserAfterLiveRestore(c *check.C) {
 	testRequires(c, DaemonIsLinux)
