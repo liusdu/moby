@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.11.2.21 (2017-4-12)
+
+- Bugfix: Fix when containerd restarted, event handler may exit (mr 247 fix DTS2017041111320)
+- Backport: Fix docker build error in daemon (mr 393)
+- Backport: Fix update memory without memoryswap (mr 389)
+- Feature: Add support for setting sysctls (mr 385)
+
 ## v1.11.2.20 (2017-04-07)
 
 - Bugfix: devicemapper: remove thin pool if 'initDevmapper' failed (mr 374 fix DTS2017040505495)
