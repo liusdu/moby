@@ -279,9 +279,22 @@ func (r *remote) startEventsMonitor() error {
 	er := &containerd.EventsRequest{
 		Timestamp: tsp,
 	}
-	events, err := r.apiClient.Events(context.Background(), er, grpc.FailFast(false))
-	if err != nil {
-		return err
+	var (
+		events containerd.API_EventsClient
+	)
+	for {
+		events, err = r.apiClient.Events(context.Background(), er, grpc.FailFast(false))
+		if err == nil {
+			break
+		}
+		logrus.Warnf("libcontainerd: failed to get events from containerd: %q", err)
+
+		if r.closeManually {
+			// ignore error if grpc remote connection is closed manually
+			return nil
+		}
+
+		<-time.After(1 * time.Second)
 	}
 	go r.handleEventStream(events)
 	return nil
