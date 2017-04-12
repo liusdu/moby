@@ -1,23 +1,31 @@
 package remote
 
 import (
+	"sync"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/docker/libaccelerator/driverapi"
 	"github.com/docker/docker/libaccelerator/drivers/remote/api"
 	"github.com/docker/docker/pkg/plugins"
 )
 
+type PluginEndpoint interface {
+	Call(serviceMethod string, args interface{}, ret interface{}) error
+}
+
 type driver struct {
-	endpoint   *plugins.Client
+	sync.Mutex
+	endpoint   PluginEndpoint
 	driverName string
+	SeqNo      int
 }
 
 type maybeError interface {
 	GetError() error
 }
 
-func newDriver(name string, client *plugins.Client) driverapi.Driver {
-	return &driver{driverName: name, endpoint: client}
+func newDriver(name string, endpoint PluginEndpoint) driverapi.Driver {
+	return &driver{driverName: name, endpoint: endpoint, SeqNo: 0}
 }
 
 // Init is the initialzing function of remote driver, to get and register all the driver through docker plugin
@@ -49,10 +57,18 @@ func (d *driver) getCapabilities() (*driverapi.Capability, error) {
 
 func (d *driver) call(methodName string, arg interface{}, retVal maybeError) error {
 	method := driverapi.AcceleratorPluginEndpointType + "." + methodName
-	err := d.endpoint.Call(method, arg, retVal)
-	if err != nil {
+
+	d.Lock()
+	defer func() {
+		d.SeqNo++
+		d.Unlock()
+	}()
+
+	req := api.Request{SeqNo: d.SeqNo, Args: arg}
+	if err := d.endpoint.Call(method, req, retVal); err != nil {
 		return err
 	}
+
 	return retVal.GetError()
 }
 

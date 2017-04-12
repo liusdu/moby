@@ -6,6 +6,12 @@ import (
 	"github.com/docker/docker/libaccelerator/driverapi"
 )
 
+// Request is the request head for plugin call
+type Request struct {
+	SeqNo int         // current sequence number when send the request
+	Args  interface{} // args
+}
+
 // Response is the basic response structure used in all responses.
 type Response struct {
 	ErrType int

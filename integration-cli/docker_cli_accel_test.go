@@ -170,10 +170,17 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.QueryRuntime", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
-		var qsRequest remoteapi.QueryRuntimeRequest
-		err := json.NewDecoder(r.Body).Decode(&qsRequest)
+		request := remoteapi.Request{
+			Args: &remoteapi.QueryRuntimeRequest{},
+		}
+		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
 			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		qsRequest, ok := request.Args.(*remoteapi.QueryRuntimeRequest)
+		if !ok {
+			http.Error(w, "Unable to decode QueryRuntimeRequest: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -201,10 +208,17 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.AllocateSlot", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
-		var asRequest remoteapi.AllocateSlotRequest
-		err := json.NewDecoder(r.Body).Decode(&asRequest)
+		request := remoteapi.Request{
+			Args: &remoteapi.AllocateSlotRequest{},
+		}
+		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
 			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		asRequest, ok := request.Args.(*remoteapi.AllocateSlotRequest)
+		if !ok {
+			http.Error(w, "Unable to decode AllocateSlotRequest: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -235,10 +249,17 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.ReleaseSlot", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
-		var rsRequest remoteapi.ReleaseSlotRequest
-		err := json.NewDecoder(r.Body).Decode(&rsRequest)
+		request := remoteapi.Request{
+			Args: &remoteapi.ReleaseSlotRequest{},
+		}
+		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
 			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		rsRequest, ok := request.Args.(*remoteapi.ReleaseSlotRequest)
+		if !ok {
+			http.Error(w, "Unable to decode ReleaseSlotRequest: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -278,10 +299,17 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.SlotInfo", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
-		var siRequest remoteapi.SlotInfoRequest
-		err := json.NewDecoder(r.Body).Decode(&siRequest)
+		request := remoteapi.Request{
+			Args: &remoteapi.SlotInfoRequest{},
+		}
+		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
 			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		siRequest, ok := request.Args.(*remoteapi.SlotInfoRequest)
+		if !ok {
+			http.Error(w, "Unable to decode SlotInfoRequest: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -310,10 +338,18 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.PrepareSlot", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
-		var psRequest remoteapi.PrepareSlotRequest
-		err := json.NewDecoder(r.Body).Decode(&psRequest)
+		request := remoteapi.Request{
+			Args: &remoteapi.PrepareSlotRequest{},
+		}
+		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
 			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		psRequest, ok := request.Args.(*remoteapi.PrepareSlotRequest)
+		if !ok {
+			http.Error(w, "Unable to decode PrepareSlotRequest: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
