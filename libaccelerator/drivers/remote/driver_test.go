@@ -15,23 +15,40 @@ type TestPlugin struct {
 func (plugin *TestPlugin) Call(serviceMethod string, args interface{}, ret interface{}) error {
 	defer func() { plugin.SeqNo++ }()
 
-	if serviceMethod == "AcceleratorDriver.SlotInfo" {
-		req, ok := args.(api.Request)
+	req, ok := args.(api.Request)
+	if !ok {
+		return fmt.Errorf("bad request")
+	}
+
+	if serviceMethod == "AcceleratorDriver.GetCapability" {
+		plugin.SeqNo = req.SeqNo
+	} else if serviceMethod == "AcceleratorDriver.SlotInfo" {
+		resp, ok := ret.(*api.SlotInfoResponse)
 		if !ok {
 			return fmt.Errorf("bad request")
 		}
+		resp.ErrType = 0
+		resp.ErrMsg = ""
+
+		// check SeqNo
 		if plugin.SeqNo != req.SeqNo {
-			return fmt.Errorf("mismatch SeqNo: Request.SeqNo=%d, Plugin.SeqNo=%d", req.SeqNo, plugin.SeqNo)
+			resp.ErrType = api.RESP_ERR_NOTSYNC
+			resp.ErrMsg = fmt.Sprintf("%d", plugin.SeqNo)
+			return nil
 		}
 
+		// get SlotInfo request args
 		siReq, ok := req.Args.(*api.SlotInfoRequest)
 		if !ok {
-			return fmt.Errorf("covert SlotInfoRequest failed")
-		}
-		if siReq.SlotID != "sid" {
-			return fmt.Errorf("bad SlotInfoRequest.SlotID: %s", siReq.SlotID)
+			// this is interanl error, so return it by retval
+			return fmt.Errorf("interal error: covert SlotInfoRequest failed")
 		}
 
+		// bad SlotID
+		if siReq.SlotID != "sid" {
+			resp.ErrType = api.RESP_ERR_NOTFOUND
+			resp.ErrMsg = siReq.SlotID
+		}
 	} else {
 		return &driverapi.ErrNotImplemented{}
 	}
@@ -50,13 +67,17 @@ func TestAccelRemoteDriverSeqNo(t *testing.T) {
 
 	// reset driver.SeqNo, expect error
 	d.(*driver).SeqNo = 0
-	if _, err := d.Slot("sid"); err == nil {
-		t.Errorf("reset driver.SeqNo check failed")
+	for i := 0; i < 10; i = i + 1 {
+		if _, err := d.Slot("sid"); err != nil {
+			t.Errorf("%v", err)
+		}
 	}
 
 	// reset plugin.SeqNo, expect error
 	plugin.SeqNo = 0
-	if _, err := d.Slot("sid"); err == nil {
-		t.Errorf("reset plugin.SeqNo check failed")
+	for i := 0; i < 10; i = i + 1 {
+		if _, err := d.Slot("sid"); err != nil {
+			t.Errorf("%v", err)
+		}
 	}
 }

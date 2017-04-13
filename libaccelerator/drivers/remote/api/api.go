@@ -19,10 +19,13 @@ type Response struct {
 }
 
 const (
-	RESP_ERR_NOERROR  = 0x0
-	RESP_ERR_NOTIMPL  = 0x1
-	RESP_ERR_NOTFOUND = 0x2
-	RESP_ERR_NODEV    = 0x3
+	// code 0x0[0-9]: for plugin internal error
+	RESP_ERR_NOERROR = 0x0
+	RESP_ERR_NOTIMPL = 0x1
+	RESP_ERR_NOTSYNC = 0x2
+	// code 0x1[0-9]: for accelerator operation error
+	RESP_ERR_NOTFOUND = 0x10
+	RESP_ERR_NODEV    = 0x11
 )
 
 // GetError returns the error from the response, if any.
@@ -31,6 +34,8 @@ func (r *Response) GetError() error {
 		return nil
 	} else if r.ErrType == RESP_ERR_NOTIMPL {
 		return &driverapi.ErrNotImplemented{}
+	} else if r.ErrType == RESP_ERR_NOTSYNC {
+		return &driverapi.ErrNotSync{}
 	} else if r.ErrType == RESP_ERR_NOTFOUND {
 		return driverapi.ErrNoSlot(r.ErrMsg)
 	} else if r.ErrType == RESP_ERR_NODEV {

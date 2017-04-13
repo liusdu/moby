@@ -55,8 +55,33 @@ func (d *driver) getCapabilities() (*driverapi.Capability, error) {
 	return c, nil
 }
 
-func (d *driver) call(methodName string, arg interface{}, retVal maybeError) error {
+func (d *driver) call(methodName string, arg interface{}, retVal maybeError) (retErr error) {
 	method := driverapi.AcceleratorPluginEndpointType + "." + methodName
+
+	d.Lock()
+	defer func() {
+		d.SeqNo++
+		d.Unlock()
+		// check if we need recovery from ERR_RESP_NOTSYNC
+		if _, ok := retErr.(*driverapi.ErrNotSync); ok {
+			retErr = d.recall(method, arg, retVal)
+		}
+	}()
+
+	req := api.Request{SeqNo: d.SeqNo, Args: arg}
+	if err := d.endpoint.Call(method, req, retVal); err != nil {
+		return err
+	}
+
+	return retVal.GetError()
+}
+
+func (d *driver) recall(method string, arg interface{}, retVal maybeError) error {
+	// Plugin & Daemon need state sync
+	// do state sync if plugin return ErrNotSync
+	if _, err := d.getCapabilities(); err != nil {
+		return err
+	}
 
 	d.Lock()
 	defer func() {
@@ -64,10 +89,13 @@ func (d *driver) call(methodName string, arg interface{}, retVal maybeError) err
 		d.Unlock()
 	}()
 
+	// restart call
 	req := api.Request{SeqNo: d.SeqNo, Args: arg}
 	if err := d.endpoint.Call(method, req, retVal); err != nil {
 		return err
 	}
+
+	// if the restart call still failed, just return it.
 
 	return retVal.GetError()
 }
