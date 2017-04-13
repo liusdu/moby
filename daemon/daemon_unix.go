@@ -27,7 +27,6 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/runconfig"
 	runconfigopts "github.com/docker/docker/runconfig/opts"
-	"github.com/docker/docker/utils"
 	"github.com/docker/engine-api/types"
 	pblkiodev "github.com/docker/engine-api/types/blkiodev"
 	containertypes "github.com/docker/engine-api/types/container"
@@ -499,7 +498,7 @@ func validateHugetlbs(hgtlbs []containertypes.Hugetlb) ([]containertypes.Hugetlb
 	htbMap := make(map[string]uint64)
 
 	for _, hpl := range hgtlbs {
-		size, warning, err := utils.ValidateHugetlb(hpl.PageSize, hpl.Limit)
+		size, warning, err := sysinfo.ValidateHugetlb(hpl.PageSize, hpl.Limit)
 		warnings = append(warnings, warning...)
 		if err != nil {
 			return nil, warnings, err
