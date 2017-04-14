@@ -121,7 +121,7 @@ func (daemon *Daemon) SystemInfo() (*types.Info, error) {
 		v.CPUCfsQuota = sysInfo.CPUCfsQuota
 		v.CPUShares = sysInfo.CPUShares
 		v.CPUSet = sysInfo.Cpuset
-		v.HugetlbPageSize, err = utils.GetHugepageSize()
+		v.HugetlbPageSize, err = sysinfo.GetHugepageSize()
 		if err != nil {
 			logrus.Errorf("Failed to get default hugetlb pagesize: %v", err)
 		}
