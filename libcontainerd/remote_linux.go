@@ -136,7 +136,9 @@ func (r *remote) UpdateOptions(options ...RemoteOption) error {
 func (r *remote) handleConnectionChange() {
 	var transientFailureCount = 0
 
-	ticker := time.NewTicker(500 * time.Millisecond)
+	// 500ms is not enough in heavy-loaded host
+	// just raise to 1s
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 	healthClient := grpc_health_v1.NewHealthClient(r.rpcConn)
 
@@ -168,6 +170,18 @@ func (r *remote) handleConnectionChange() {
 				<-r.daemonWaitCh
 				if err := r.runContainerdDaemon(); err != nil { //FIXME: Handle error
 					logrus.Errorf("libcontainerd: error restarting containerd: %v", err)
+				} else {
+					// will give containerd 15s to be ready, otherwise will try again
+					for i := 0; i < 15; i++ {
+						time.Sleep(1 * time.Second)
+						ctx, cancel := context.WithTimeout(context.Background(), containerdHealthCheckTimeout)
+						_, err := healthClient.Check(ctx, &grpc_health_v1.HealthCheckRequest{})
+						cancel()
+						if err == nil {
+							break
+						}
+						logrus.Warnf("Containerd not ready yet, keep trying")
+					}
 				}
 				continue
 			}
