@@ -13,9 +13,11 @@ type DeviceInfo struct {
 
 // SlotInfo indicates the attributes of Slot
 type SlotInfo struct {
+	Sid     string
 	Name    string
 	Device  string
 	Runtime string
+	Options []string
 }
 
 // Mount defines the mount info slot provided to container
@@ -67,7 +69,21 @@ type Driver interface {
 
 // DriverCallback defines an interface to maintainer driver infomation
 type DriverCallback interface {
-	RegisterDriver(name string, driver Driver, capability Capability) error
+	// register driver to controller
+	//  - driverName: target driver name
+	//  - driver: driver communicate endpoint
+	//  - cap: updated capability
+	//  - invalidSlots: slots need invalid
+	RegisterDriver(driverName string, driver Driver, cap Capability, invalidSlots []SlotInfo) error
+
+	// notify controller about state update of driver
+	//  - driverName: target driver name
+	//  - cap: updated capability
+	//  - invalidSlots: slots need invalid
+	UpdateDriver(driverName string, cap Capability, invalidSlots []SlotInfo) error
+
+	// return a list of slots managed by this driver
+	QueryManagedSlots(driverName string) ([]SlotInfo, error)
 }
 
 // Capability defines the capability driver provided, here means runtime it support

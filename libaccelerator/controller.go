@@ -74,7 +74,9 @@ func New(rootPath string) (AcceleratorController, error) {
 		return nil, err
 	}
 
-	drvRegistry, err := drvregistry.New(nil, nil, c.RegisterDriver)
+	// driver registry needs query exists slots by QueryManagedSlots() for new registered drivers
+	// if driver state changed, it will call DriverNotify() to notify controller
+	drvRegistry, err := drvregistry.New(c.QueryManagedSlots, c.DriverNotify)
 	if err != nil {
 		return nil, err
 	}
@@ -183,6 +185,13 @@ func (c *controller) allocateSlot(s *slot) (retS *slot, retErr error) {
 				d.ReleaseSlot(sid)
 			}
 		}(s.id)
+
+		// query device for allocated device
+		si, err := d.Slot(s.id)
+		if err != nil {
+			return nil, err
+		}
+		s.device = si.Device
 	} else {
 		return nil, err
 	}
@@ -275,9 +284,42 @@ func (c *controller) WalkDrivers(walker drvregistry.DriverWalkFunc) {
 }
 
 // RegisterDriver is the callback function of docker plugin
-func (c *controller) RegisterDriver(name string, driver driverapi.Driver, capability driverapi.Capability) error {
-	log.Infof("Detect accelerator driver \"%s\", runtime support: %s", driver.Name(), capability.Runtimes)
+func (c *controller) DriverNotify(driverName string, driver driverapi.Driver, cap driverapi.Capability, invalidSlots []driverapi.SlotInfo) error {
+	log.Infof("Detect accelerator driver \"%s\", runtime support: %s", driver.Name(), cap.Runtimes)
+	// clean error state of all slots managed by this driver
+	c.WalkSlots(func(s Slot) bool {
+		if s.DriverName() == driverName {
+			if s, err := c.getSlot(s.ID()); err == nil {
+				s.unmarkNoDev()
+				s.unmarkBadDriver()
+			}
+		}
+		return false
+	})
+	// mark all invalid slots as NODEV
+	for _, si := range invalidSlots {
+		if s, err := c.getSlot(si.Sid); err == nil {
+			s.markNoDev()
+		}
+	}
 	return nil
+}
+
+func (c *controller) QueryManagedSlots(driverName string) ([]driverapi.SlotInfo, error) {
+	si := []driverapi.SlotInfo{}
+	c.WalkSlots(func(s Slot) bool {
+		if s.DriverName() == driverName {
+			si = append(si, driverapi.SlotInfo{
+				Sid:     s.ID(),
+				Name:    s.Name(),
+				Runtime: s.Runtime(),
+				Device:  s.Device(),
+				Options: s.Options(),
+			})
+		}
+		return false
+	})
+	return si, nil
 }
 
 func (c *controller) loadDriver(driverName string) error {

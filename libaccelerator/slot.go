@@ -59,6 +59,7 @@ type slot struct {
 	scope      string
 	driverName string
 	runtime    string
+	device     string
 	options    []string
 	owner      string
 	state      int
@@ -108,17 +109,9 @@ func (s *slot) DriverName() string {
 
 // Device returns the device used by the slot
 func (s *slot) Device() string {
-	d, err := s.driver(true)
-	if err != nil {
-		log.Errorf("Failed to connect to accelerator driver plugin: %v", err)
-		return ""
-	}
-	info, err := d.Slot(s.id)
-	if err != nil {
-		log.Errorf("Failed to get slot info: %v", err)
-		return ""
-	}
-	return info.Device
+	s.Lock()
+	defer s.Unlock()
+	return s.device
 }
 
 // Scope returns the scope of the slot
@@ -277,6 +270,7 @@ func (s *slot) CopyTo(o datastore.KVObject) error {
 	dstS.scope = s.scope
 	dstS.driverName = s.driverName
 	dstS.runtime = s.runtime
+	dstS.device = s.device
 	dstS.options = s.options
 	dstS.owner = s.owner
 	dstS.state = s.state
@@ -295,6 +289,7 @@ func (s *slot) MarshalJSON() ([]byte, error) {
 	slotMap["scope"] = s.scope
 	slotMap["driverName"] = s.driverName
 	slotMap["runtime"] = s.runtime
+	slotMap["device"] = s.device
 	slotMap["options"] = s.options
 	slotMap["owner"] = s.owner
 	slotMap["state"] = s.state
@@ -315,6 +310,7 @@ func (s *slot) UnmarshalJSON(b []byte) error {
 	s.driverName = slotMap["driverName"].(string)
 	s.runtime = slotMap["runtime"].(string)
 	s.owner = slotMap["owner"].(string)
+	s.device = slotMap["device"].(string)
 
 	// back-compatible
 	if options, ok := slotMap["options"].([]interface{}); ok {

@@ -15,6 +15,7 @@ type PluginEndpoint interface {
 
 type driver struct {
 	sync.Mutex
+	dc         driverapi.DriverCallback
 	endpoint   PluginEndpoint
 	driverName string
 	SeqNo      int
@@ -24,79 +25,114 @@ type maybeError interface {
 	GetError() error
 }
 
-func newDriver(name string, endpoint PluginEndpoint) driverapi.Driver {
-	return &driver{driverName: name, endpoint: endpoint, SeqNo: 0}
+func newDriver(name string, dc driverapi.DriverCallback, endpoint PluginEndpoint) driverapi.Driver {
+	return &driver{
+		driverName: name,
+		dc:         dc,
+		endpoint:   endpoint,
+		SeqNo:      0,
+	}
 }
 
 // Init is the initialzing function of remote driver, to get and register all the driver through docker plugin
 func Init(dc driverapi.DriverCallback, config map[string]interface{}) error {
 	plugins.Handle(driverapi.AcceleratorPluginEndpointType, func(name string, client *plugins.Client) {
-		d := newDriver(name, client)
-		c, err := d.(*driver).getCapabilities()
+		d := newDriver(name, dc, client)
+		cap, slots, err := d.(*driver).getCapabilities()
 		if err != nil {
 			log.Errorf("error getting capability for %s due to %v", name, err)
 			return
 		}
-		if err = dc.RegisterDriver(name, d, *c); err != nil {
+		if err = dc.RegisterDriver(name, d, *cap, *slots); err != nil {
 			log.Errorf("error registering driver for %s due to %v", name, err)
 		}
 	})
 	return nil
 }
 
-func (d *driver) getCapabilities() (*driverapi.Capability, error) {
-	var capResp api.GetCapabilityResponse
-	if err := d.call("GetCapability", nil, &capResp); err != nil {
-		return nil, err
+func (d *driver) getCapabilities() (*driverapi.Capability, *[]driverapi.SlotInfo, error) {
+	// walk slots, find all slots managed by this driver
+	slots, err := d.dc.QueryManagedSlots(d.driverName)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	c := &driverapi.Capability{Runtimes: capResp.Runtimes}
+	// send list to plugin, force state sync
+	capReq := api.GetCapabilityRequest{Slots: slots}
+	capResp := api.GetCapabilityResponse{}
+	if err := d.call("GetCapability", &capReq, &capResp); err != nil {
+		return nil, nil, err
+	}
 
-	return c, nil
+	// update driver capability
+	cap := driverapi.Capability{Runtimes: capResp.Runtimes}
+
+	return &cap, &capResp.Slots, nil
 }
 
-func (d *driver) call(methodName string, arg interface{}, retVal maybeError) (retErr error) {
-	method := driverapi.AcceleratorPluginEndpointType + "." + methodName
+func (d *driver) call(methodName string, arg interface{}, retVal maybeError) error {
+	// build method URL
+	methodCall := driverapi.AcceleratorPluginEndpointType + "." + methodName
+	methodSync := driverapi.AcceleratorPluginEndpointType + "." + "GetCapability"
 
+	// protect plugin call with lock
 	d.Lock()
 	defer func() {
 		d.SeqNo++
 		d.Unlock()
-		// check if we need recovery from ERR_RESP_NOTSYNC
-		if _, ok := retErr.(*driverapi.ErrNotSync); ok {
-			retErr = d.recall(method, arg, retVal)
+	}()
+
+	// -- STEP #1: request plugin
+	req := api.Request{SeqNo: d.SeqNo, Args: arg}
+	if err := d.endpoint.Call(methodCall, req, retVal); err != nil {
+		// endpoint error, just return
+		return err
+	}
+	if retErr := retVal.GetError(); retErr == nil {
+		// if everything is ok, return nil
+		return nil
+	} else if _, ok := retErr.(*driverapi.ErrNotSync); !ok {
+		// return unrecoverable error
+		return retVal.GetError()
+	}
+	// increase SeqNo for next plugin request
+	d.SeqNo++
+
+	// -- STEP #2: recovery from ERR_RESP_NOTSYNC
+	err := func() error {
+		// walk slots, find all slots managed by this driver
+		slots, err := d.dc.QueryManagedSlots(d.driverName)
+		if err != nil {
+			return err
 		}
+
+		log.Warnf("d.dc.QueryManagedSlots(%s) return %v", d.driverName, slots)
+
+		// send list to plugin, force state sync
+		capReq := api.GetCapabilityRequest{Slots: slots}
+		capResp := api.GetCapabilityResponse{}
+		if err := d.endpoint.Call(methodSync,
+			api.Request{SeqNo: d.SeqNo, Args: &capReq},
+			&capResp); err != nil {
+			return err
+		}
+		cap := driverapi.Capability{Runtimes: capResp.Runtimes}
+
+		// notify libaccelerator controller to update slots info for driver
+		return d.dc.UpdateDriver(d.driverName, cap, capResp.Slots)
 	}()
-
-	req := api.Request{SeqNo: d.SeqNo, Args: arg}
-	if err := d.endpoint.Call(method, req, retVal); err != nil {
+	if err != nil {
 		return err
 	}
+	// increase SeqNo for next plugin request
+	d.SeqNo++
 
-	return retVal.GetError()
-}
-
-func (d *driver) recall(method string, arg interface{}, retVal maybeError) error {
-	// Plugin & Daemon need state sync
-	// do state sync if plugin return ErrNotSync
-	if _, err := d.getCapabilities(); err != nil {
-		return err
-	}
-
-	d.Lock()
-	defer func() {
-		d.SeqNo++
-		d.Unlock()
-	}()
-
-	// restart call
-	req := api.Request{SeqNo: d.SeqNo, Args: arg}
-	if err := d.endpoint.Call(method, req, retVal); err != nil {
-		return err
-	}
-
+	// -- STEP #3: restart call
 	// if the restart call still failed, just return it.
-
+	req = api.Request{SeqNo: d.SeqNo, Args: arg}
+	if err := d.endpoint.Call(methodCall, req, retVal); err != nil {
+		return err
+	}
 	return retVal.GetError()
 }
 

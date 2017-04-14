@@ -72,8 +72,22 @@ func Init(dc driverapi.DriverCallback, config map[string]interface{}) (retErr er
 	d.devices["00ff:06:04.3"] = device
 	d.devices["00ff:06:04.4"] = device
 
+	// recovery Slots from controller
+	slots, err := dc.QueryManagedSlots(d.Name())
+	if err != nil {
+		return err
+	}
+	for _, slot := range slots {
+		dev := d.devices[slot.Device]
+		dev.configuredAccType = slot.Runtime
+		dev.avail = false
+		d.devices[slot.Device] = dev
+		d.slots[slot.Sid] = slot.Device
+	}
+
+	// register driver to controller
 	c := driverapi.Capability{Runtimes: d.Runtimes()}
-	if err := dc.RegisterDriver(d.Name(), d, c); err != nil {
+	if err := dc.RegisterDriver(d.Name(), d, c, []driverapi.SlotInfo{}); err != nil {
 		log.Errorf("%s: error registering driver: %v", d.Name(), err)
 		return err
 	}
@@ -195,6 +209,7 @@ func (d *driver) ListSlot() ([]string, error) {
 func (d *driver) Slot(sid string) (*driverapi.SlotInfo, error) {
 	if pci, ok := d.slots[sid]; ok {
 		return &driverapi.SlotInfo{
+			Sid:     sid,
 			Name:    "fake-fpga-dev",
 			Device:  pci,
 			Runtime: d.devices[pci].configuredAccType,

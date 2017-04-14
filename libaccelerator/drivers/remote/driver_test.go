@@ -21,13 +21,37 @@ func (plugin *TestPlugin) Call(serviceMethod string, args interface{}, ret inter
 	}
 
 	if serviceMethod == "AcceleratorDriver.GetCapability" {
+		resp, ok := ret.(*api.GetCapabilityResponse)
+		if !ok {
+			return fmt.Errorf("bad request")
+		}
+		capReq, ok := req.Args.(*api.GetCapabilityRequest)
+		if !ok {
+			return fmt.Errorf("internal error: covert GetCapabilityRequest failed")
+		}
+
+		// reset plugin SeqNo
 		plugin.SeqNo = req.SeqNo
+
+		// check Slot list
+		if len(capReq.Slots) != 3 {
+			return fmt.Errorf("invalid request args")
+		}
+
+		// feed resp Slot list
+		resp.Slots = []driverapi.SlotInfo{
+			{Name: "slot0", Device: "dev0", Runtime: "rt0"},
+		}
+
+		resp.ErrType = api.RESP_ERR_NOERROR
+		resp.ErrMsg = ""
+
 	} else if serviceMethod == "AcceleratorDriver.SlotInfo" {
 		resp, ok := ret.(*api.SlotInfoResponse)
 		if !ok {
 			return fmt.Errorf("bad request")
 		}
-		resp.ErrType = 0
+		resp.ErrType = api.RESP_ERR_NOERROR
 		resp.ErrMsg = ""
 
 		// check SeqNo
@@ -56,9 +80,30 @@ func (plugin *TestPlugin) Call(serviceMethod string, args interface{}, ret inter
 	return nil
 }
 
+type TestController struct{}
+
+func (c *TestController) RegisterDriver(driverName string, driver driverapi.Driver, cap driverapi.Capability, slots []driverapi.SlotInfo) error {
+	return nil
+}
+func (c *TestController) UpdateDriver(driverName string, cap driverapi.Capability, slots []driverapi.SlotInfo) error {
+	if len(slots) != 1 {
+		return fmt.Errorf("UpdateDriver need receive only 1-slot")
+	}
+	return nil
+}
+func (c *TestController) QueryManagedSlots(driverName string) ([]driverapi.SlotInfo, error) {
+	si := []driverapi.SlotInfo{
+		{Name: "slot0", Device: "dev0", Runtime: "rt0"},
+		{Name: "slot1", Device: "dev1", Runtime: "rt1"},
+		{Name: "slot2", Device: "dev2", Runtime: "rt2"},
+	}
+	return si, nil
+}
+
 func TestAccelRemoteDriverSeqNo(t *testing.T) {
 	plugin := &TestPlugin{SeqNo: 0}
-	d := newDriver("test-remote", plugin)
+	dc := &TestController{}
+	d := newDriver("test-remote", dc, plugin)
 	for i := 0; i < 10; i = i + 1 {
 		if _, err := d.Slot("sid"); err != nil {
 			t.Errorf("%v", err)

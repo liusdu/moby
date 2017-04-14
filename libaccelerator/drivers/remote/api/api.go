@@ -45,10 +45,16 @@ func (r *Response) GetError() error {
 	}
 }
 
+// GetCapabilityRequest defines the request content GetCapability needed
+type GetCapabilityRequest struct {
+	Slots []driverapi.SlotInfo
+}
+
 // GetCapabilityResponse is the response of GetCapability request.
 type GetCapabilityResponse struct {
 	Response
 	Runtimes []string
+	Slots    []driverapi.SlotInfo
 }
 
 // GetRuntimesResponse is the response of GetRuntimes request

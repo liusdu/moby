@@ -21,6 +21,7 @@ type driverTable map[string]*driverData
 type DrvRegistry struct {
 	sync.Mutex
 	drivers driverTable
+	qfn     QueryManagedSlotsFunc
 	dfn     DriverNotifyFunc
 }
 
@@ -32,13 +33,16 @@ type InitFunc func(driverapi.DriverCallback, map[string]interface{}) error
 // DriverWalkFunc defines the network driver table walker function signature.
 type DriverWalkFunc func(name string, driver driverapi.Driver, capability driverapi.Capability) bool
 
+type QueryManagedSlotsFunc func(driverName string) ([]driverapi.SlotInfo, error)
+
 // DriverNotifyFunc defines the notify function signature when a new network driver gets registered.
-type DriverNotifyFunc func(name string, driver driverapi.Driver, capability driverapi.Capability) error
+type DriverNotifyFunc func(driverName string, driver driverapi.Driver, capability driverapi.Capability, invalidSlots []driverapi.SlotInfo) error
 
 // New retruns a new driver registry handler.
-func New(lDs, gDs interface{}, dfn DriverNotifyFunc) (*DrvRegistry, error) {
+func New(qfn QueryManagedSlotsFunc, dfn DriverNotifyFunc) (*DrvRegistry, error) {
 	r := &DrvRegistry{
 		drivers: make(driverTable),
+		qfn:     qfn,
 		dfn:     dfn,
 	}
 
@@ -85,7 +89,7 @@ func (r *DrvRegistry) Driver(name string) (driverapi.Driver, *driverapi.Capabili
 }
 
 // RegisterDriver registers the accelerator driver when it gets discovered.
-func (r *DrvRegistry) RegisterDriver(name string, driver driverapi.Driver, capability driverapi.Capability) error {
+func (r *DrvRegistry) RegisterDriver(name string, driver driverapi.Driver, cap driverapi.Capability, invalidSlots []driverapi.SlotInfo) error {
 	if strings.TrimSpace(name) == "" {
 		return fmt.Errorf("accelerator name string cannot be empty")
 	}
@@ -99,16 +103,35 @@ func (r *DrvRegistry) RegisterDriver(name string, driver driverapi.Driver, capab
 	}
 
 	if r.dfn != nil {
-		if err := r.dfn(name, driver, capability); err != nil {
+		if err := r.dfn(name, driver, cap, invalidSlots); err != nil {
 			return err
 		}
 	}
 
-	dData := &driverData{driver, capability}
+	dData := &driverData{driver, cap}
 
 	r.Lock()
 	r.drivers[name] = dData
 	r.Unlock()
 
 	return nil
+}
+
+// QueryManagedSlots query libaccelerator controller for a list of slots
+// managed by requested driver.
+func (r *DrvRegistry) QueryManagedSlots(driverName string) ([]driverapi.SlotInfo, error) {
+	return r.qfn(driverName)
+}
+
+func (r *DrvRegistry) UpdateDriver(driverName string, cap driverapi.Capability, invalidSlots []driverapi.SlotInfo) error {
+	r.Lock()
+	defer r.Unlock()
+
+	// update driver capability if driver already registered
+	if _, ok := r.drivers[driverName]; ok {
+		r.drivers[driverName].capability = cap
+	}
+
+	// notify libacc.controller about driver state change
+	return r.dfn(driverName, r.drivers[driverName].driver, cap, invalidSlots)
 }
