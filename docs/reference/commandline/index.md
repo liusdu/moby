@@ -28,6 +28,7 @@ You start the Docker daemon with the command line. How you start the daemon affe
 ### Image commands
 
 * [build](build.md)
+* [combine](combine.md)
 * [commit](commit.md)
 * [export](export.md)
 * [history](history.md)

@@ -698,6 +698,23 @@ _docker_build() {
 	esac
 }
 
+_docker_combine() {
+	case "$prev" in
+		--tag|-t)
+			__docker_complete_image_repos_and_tags
+			return
+			;;
+	esac
+	case "$cur" in
+		-*)
+			COMPREPLY=( $( compgen -W "--help -t --tag " -- "$cur" ) )
+			;;
+		*)
+			__docker_complete_images
+			;;
+	esac
+}
+
 _docker_commit() {
 	case "$prev" in
 		--author|-a|--change|-c|--message|-m)
@@ -2170,6 +2187,7 @@ _docker() {
 	local commands=(
 		attach
 		build
+		combine
 		commit
 		cp
 		create

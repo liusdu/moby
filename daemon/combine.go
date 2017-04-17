@@ -168,9 +168,24 @@ func (daemon *Daemon) IsCompleteImage(refOrID string) (bool, error) {
 	return false, nil
 }
 
+func (daemon *Daemon) tagImageStr(tag, imgID string) error {
+	ref, err := reference.WithName(tag)
+	if err != nil {
+		return err
+	}
+
+	ref = reference.WithDefaultTag(ref)
+
+	if err := daemon.TagImage(ref, imgID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // CreateCompleteImage creates a image for running, and then return the new image's id for furture
 // use. It will find all it's parent images and combine them into be a complete image.
-func (daemon *Daemon) CreateCompleteImage(name string) (defaultName, imageID string, err error) {
+func (daemon *Daemon) CreateCompleteImage(name string, tags []string) (defaultName, imageID string, err error) {
 	defaultName, ids, err := daemon.combineName(name)
 	if err != nil {
 		return "", "", err
@@ -187,15 +202,15 @@ func (daemon *Daemon) CreateCompleteImage(name string) (defaultName, imageID str
 		}
 	}
 
-	ref, err := reference.WithName(defaultName)
-	if err != nil {
-		return "", "", err
+	// If no tag specified, use default tag.
+	if len(tags) == 0 {
+		tags = append(tags, defaultName)
 	}
 
-	ref = reference.WithDefaultTag(ref)
-
-	if err := daemon.TagImage(ref, rtImgID.String()); err != nil {
-		return "", "", err
+	for _, t := range tags {
+		if err := daemon.tagImageStr(t, rtImgID.String()); err != nil {
+			return "", "", err
+		}
 	}
 
 	return defaultName, rtImgID.String(), nil

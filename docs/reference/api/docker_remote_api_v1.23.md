@@ -1783,6 +1783,32 @@ Status Codes:
 -   **200** – no error
 -   **500** – server error
 
+### Combine images
+
+`POST /images/combine`
+
+Combine some partial images to one complete image
+
+**Example request**:
+
+    POST /images/combine HTTP/1.1
+    Content-Type: application/json
+
+    {
+      "Image":"test2:v1.0.0",
+      "Tags":["test3"]
+    }
+
+**Example response**:
+
+    HTTP/1.1 200 OK
+    Content-Type: application/json
+
+    {
+      "Image ID": "sha256:196d6ede73ef39f57a5c3b1d96689e7b96ac5c65d2c353670b0393630b54d174",
+      "Image Tag": "test2_v1.0.0-test_v1.0.0-busybox_v1.0.0"
+    }
+
 ### Inspect an image
 
 `GET /images/(name)/json`
