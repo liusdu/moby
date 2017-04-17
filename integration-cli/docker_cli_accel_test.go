@@ -95,6 +95,7 @@ func (s *DockerAccelSuite) TearDownSuite(c *check.C) {
 type remoteAccelDriver struct {
 	runtime string
 	slots   map[string]slot
+	SeqNo   int
 
 	// control flags for test
 	isNoService bool // if set, AllocateSlot call will reture NoService error
@@ -113,6 +114,12 @@ func (d *remoteAccelDriver) markNotFound() {
 func (d *remoteAccelDriver) unmarkNotFound() {
 	d.isNotFound = false
 }
+func (d *remoteAccelDriver) resetDriver() {
+	d.SeqNo = 0
+	d.slots = map[string]slot{}
+	d.isNoService = false
+	d.isNotFound = false
+}
 
 type slot struct {
 	name    string
@@ -124,6 +131,7 @@ type slot struct {
 var fakeDriver = remoteAccelDriver{
 	runtime: fakeRuntime,
 	slots:   make(map[string]slot),
+	SeqNo:   0,
 
 	isNoService: false,
 	isNotFound:  false,
@@ -142,57 +150,121 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.GetCapability", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		defer func() { fakeDriver.SeqNo++ }()
 
-		gcr := remoteapi.GetCapabilityResponse{}
-		gcr.Runtimes = append(gcr.Runtimes, fakeRuntime)
+		// get request
+		request := remoteapi.Request{
+			Args: &remoteapi.GetCapabilityRequest{},
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		capRequest, ok := request.Args.(*remoteapi.GetCapabilityRequest)
+		if !ok {
+			http.Error(w, "Unable to decode GetCapabilityRequest", http.StatusBadRequest)
+			return
+		}
 
-		ls, err := json.Marshal(gcr)
+		// sync plugin with daemon
+		fakeDriver.SeqNo = request.SeqNo
+		fakeDriver.slots = make(map[string]slot)
+		for _, s := range capRequest.Slots {
+			fakeDriver.slots[s.Sid] = slot{
+				name:    s.Name,
+				runtime: s.Runtime,
+				device:  s.Device,
+				options: s.Options,
+			}
+		}
+
+		// prepare response
+		resp := remoteapi.GetCapabilityResponse{
+			Runtimes: []string{fakeRuntime},
+			Slots:    []driverapi.SlotInfo{},
+		}
+		resp.ErrType = remoteapi.RESP_ERR_NOERROR
+		resp.ErrMsg = ""
+
+		jsonResp, err := json.Marshal(resp)
 		if err != nil {
 			http.Error(w, "Json Marshal capability error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		fmt.Fprintf(w, string(ls))
+		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		fmt.Fprintf(w, string(jsonResp))
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.GetRuntime", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		defer func() { fakeDriver.SeqNo++ }()
 
-		gcr := remoteapi.GetRuntimesResponse{}
-		gcr.Runtimes = append(gcr.Runtimes, fakeRuntime)
-
-		ls, err := json.Marshal(gcr)
-		if err != nil {
-			http.Error(w, "Json Marshal runtimes error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		fmt.Fprintf(w, string(ls))
-	})
-
-	mux.HandleFunc(fmt.Sprintf("/%s.QueryRuntime", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
-		request := remoteapi.Request{
-			Args: &remoteapi.QueryRuntimeRequest{},
-		}
+		request := remoteapi.Request{}
 		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
 			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		// prepare response
+		resp := remoteapi.GetRuntimesResponse{}
+		resp.ErrType = remoteapi.RESP_ERR_NOERROR
+		resp.ErrMsg = ""
+		if fakeDriver.SeqNo != request.SeqNo {
+			resp.ErrType = remoteapi.RESP_ERR_NOTSYNC
+			resp.ErrMsg = fmt.Sprintf("%d", fakeDriver.SeqNo)
+		} else {
+			resp.Runtimes = []string{fakeRuntime}
+		}
+
+		jsonResp, err := json.Marshal(resp)
+		if err != nil {
+			http.Error(w, "Json Marshal runtimes error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		fmt.Fprintf(w, string(jsonResp))
+	})
+
+	mux.HandleFunc(fmt.Sprintf("/%s.QueryRuntime", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
+		defer func() { fakeDriver.SeqNo++ }()
+
+		request := remoteapi.Request{
+			Args: &remoteapi.QueryRuntimeRequest{},
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
+			return
+		}
 		qsRequest, ok := request.Args.(*remoteapi.QueryRuntimeRequest)
 		if !ok {
-			http.Error(w, "Unable to decode QueryRuntimeRequest: "+err.Error(), http.StatusBadRequest)
+			http.Error(w, "Unable to decode QueryRuntimeRequest", http.StatusBadRequest)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
-		if qsRequest.Runtime != fakeDriver.runtime {
-			fmt.Fprintf(w, `{"Error":"specified runtime %s not support"}`, qsRequest.Runtime)
-		} else {
-			fmt.Fprintf(w, "null")
+		// prepare response
+		resp := remoteapi.Response{}
+		resp.ErrType = remoteapi.RESP_ERR_NOERROR
+		resp.ErrMsg = ""
+		if fakeDriver.SeqNo != request.SeqNo {
+			resp.ErrType = remoteapi.RESP_ERR_NOTSYNC
+			resp.ErrMsg = fmt.Sprintf("%d", fakeDriver.SeqNo)
+		} else if qsRequest.Runtime != fakeDriver.runtime {
+			resp.ErrType = remoteapi.RESP_ERR_NOTFOUND // FIXME: use another errtype
+			resp.ErrMsg = fmt.Sprintf("runtime %s not support", qsRequest.Runtime)
 		}
+
+		jsonResp, err := json.Marshal(resp)
+		if err != nil {
+			http.Error(w, "Json Marshal runtimes error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
+		fmt.Fprintf(w, string(jsonResp))
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.ListDevice", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
+		defer func() { fakeDriver.SeqNo++ }()
+
 		resp := remoteapi.ListDeviceResponse{
 			Devices: []driverapi.DeviceInfo{deviceInfo},
 		}
@@ -208,25 +280,29 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.AllocateSlot", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
+		defer func() { fakeDriver.SeqNo++ }()
+
 		request := remoteapi.Request{
 			Args: &remoteapi.AllocateSlotRequest{},
 		}
-		err := json.NewDecoder(r.Body).Decode(&request)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		asRequest, ok := request.Args.(*remoteapi.AllocateSlotRequest)
 		if !ok {
-			http.Error(w, "Unable to decode AllocateSlotRequest: "+err.Error(), http.StatusBadRequest)
+			http.Error(w, "Unable to decode AllocateSlotRequest", http.StatusBadRequest)
 			return
 		}
 
 		resp := remoteapi.AllocateSlotResponse{}
 		resp.ErrType = remoteapi.RESP_ERR_NOERROR
 		resp.ErrMsg = ""
-		// if NoService flags set, return error
-		if fakeDriver.isNoService {
+		if fakeDriver.SeqNo != request.SeqNo {
+			resp.ErrType = remoteapi.RESP_ERR_NOTSYNC
+			resp.ErrMsg = fmt.Sprintf("%d", fakeDriver.SeqNo)
+		} else if fakeDriver.isNoService {
+			// if NoService flags set, return error
 			resp.ErrType = remoteapi.RESP_ERR_NODEV
 			resp.ErrMsg = asRequest.Runtime
 		} else {
@@ -249,24 +325,28 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.ReleaseSlot", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
+		defer func() { fakeDriver.SeqNo++ }()
+
 		request := remoteapi.Request{
 			Args: &remoteapi.ReleaseSlotRequest{},
 		}
-		err := json.NewDecoder(r.Body).Decode(&request)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		rsRequest, ok := request.Args.(*remoteapi.ReleaseSlotRequest)
 		if !ok {
-			http.Error(w, "Unable to decode ReleaseSlotRequest: "+err.Error(), http.StatusBadRequest)
+			http.Error(w, "Unable to decode ReleaseSlotRequest", http.StatusBadRequest)
 			return
 		}
 
 		resp := remoteapi.ReleaseSlotResponse{}
 		resp.ErrType = remoteapi.RESP_ERR_NOERROR
 		resp.ErrMsg = ""
-		if _, ok := fakeDriver.slots[rsRequest.SlotID]; !ok || fakeDriver.isNotFound {
+		if fakeDriver.SeqNo != request.SeqNo {
+			resp.ErrType = remoteapi.RESP_ERR_NOTSYNC
+			resp.ErrMsg = fmt.Sprintf("%d", fakeDriver.SeqNo)
+		} else if _, ok := fakeDriver.slots[rsRequest.SlotID]; !ok || fakeDriver.isNotFound {
 			resp.ErrType = remoteapi.RESP_ERR_NOTFOUND
 			resp.ErrMsg = fmt.Sprintf("slot %s not found", rsRequest.SlotID)
 		} else {
@@ -283,48 +363,72 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.ListSlot", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
-		var sl []string
-		for name, _ := range fakeDriver.slots {
-			sl = append(sl, name)
+		defer func() { fakeDriver.SeqNo++ }()
+
+		request := remoteapi.Request{}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
+			return
 		}
 
-		ls, err := json.Marshal(sl)
+		resp := remoteapi.ListSlotResponse{}
+		resp.ErrType = remoteapi.RESP_ERR_NOERROR
+		resp.ErrMsg = ""
+
+		if fakeDriver.SeqNo != request.SeqNo {
+			resp.ErrType = remoteapi.RESP_ERR_NOTSYNC
+			resp.ErrMsg = fmt.Sprintf("%d", fakeDriver.SeqNo)
+		} else {
+			var sl []string
+			for name, _ := range fakeDriver.slots {
+				sl = append(sl, name)
+			}
+			resp.Slots = sl
+		}
+
+		respJson, err := json.Marshal(resp)
 		if err != nil {
 			http.Error(w, "Json Marshal slots error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/vnd.docker.plugins.v1+json")
-		fmt.Fprintf(w, string(ls))
+		fmt.Fprintf(w, string(respJson))
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.SlotInfo", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
+		defer func() { fakeDriver.SeqNo++ }()
+
 		request := remoteapi.Request{
 			Args: &remoteapi.SlotInfoRequest{},
 		}
-		err := json.NewDecoder(r.Body).Decode(&request)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		siRequest, ok := request.Args.(*remoteapi.SlotInfoRequest)
 		if !ok {
-			http.Error(w, "Unable to decode SlotInfoRequest: "+err.Error(), http.StatusBadRequest)
+			http.Error(w, "Unable to decode SlotInfoRequest", http.StatusBadRequest)
 			return
 		}
 
+		// prepare response
 		resp := remoteapi.SlotInfoResponse{}
 		resp.ErrType = remoteapi.RESP_ERR_NOERROR
 		resp.ErrMsg = ""
-
-		slot, ok := fakeDriver.slots[siRequest.SlotID]
-		if !ok || fakeDriver.isNotFound {
-			resp.ErrType = remoteapi.RESP_ERR_NOTFOUND
-			resp.ErrMsg = fmt.Sprintf("slot %s not found", siRequest.SlotID)
+		if fakeDriver.SeqNo != request.SeqNo {
+			resp.ErrType = remoteapi.RESP_ERR_NOTSYNC
+			resp.ErrMsg = fmt.Sprintf("%d", fakeDriver.SeqNo)
 		} else {
-			resp.SlotInfo.Name = slot.name
-			resp.SlotInfo.Device = slot.device
-			resp.SlotInfo.Runtime = slot.runtime
+			slot, ok := fakeDriver.slots[siRequest.SlotID]
+			if !ok || fakeDriver.isNotFound {
+				resp.ErrType = remoteapi.RESP_ERR_NOTFOUND
+				resp.ErrMsg = fmt.Sprintf("slot %s not found", siRequest.SlotID)
+			} else {
+				resp.SlotInfo.Name = slot.name
+				resp.SlotInfo.Device = slot.device
+				resp.SlotInfo.Runtime = slot.runtime
+			}
 		}
 
 		jsonResp, err := json.Marshal(resp)
@@ -338,44 +442,51 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 	})
 
 	mux.HandleFunc(fmt.Sprintf("/%s.PrepareSlot", driverapi.AcceleratorPluginEndpointType), func(w http.ResponseWriter, r *http.Request) {
+		defer func() { fakeDriver.SeqNo++ }()
+
 		request := remoteapi.Request{
 			Args: &remoteapi.PrepareSlotRequest{},
 		}
-		err := json.NewDecoder(r.Body).Decode(&request)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			http.Error(w, "Unable to decode JSON payload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		psRequest, ok := request.Args.(*remoteapi.PrepareSlotRequest)
 		if !ok {
-			http.Error(w, "Unable to decode PrepareSlotRequest: "+err.Error(), http.StatusBadRequest)
+			http.Error(w, "Unable to decode PrepareSlotRequest", http.StatusBadRequest)
 			return
 		}
 
+		// prepare response
 		resp := remoteapi.PrepareSlotResponse{}
 		resp.ErrType = remoteapi.RESP_ERR_NOERROR
 		resp.ErrMsg = ""
-		slot, ok := fakeDriver.slots[psRequest.SlotID]
-		if !ok || fakeDriver.isNotFound {
-			resp.ErrType = remoteapi.RESP_ERR_NOTFOUND
-			resp.ErrMsg = fmt.Sprintf("slot %s not found", psRequest.SlotID)
+		if fakeDriver.SeqNo != request.SeqNo {
+			resp.ErrType = remoteapi.RESP_ERR_NOTSYNC
+			resp.ErrMsg = fmt.Sprintf("%d", fakeDriver.SeqNo)
 		} else {
-			slot.device = "/dev/zero"
-			sConfig := driverapi.SlotConfig{
-				Envs: make(map[string]string),
+			slot, ok := fakeDriver.slots[psRequest.SlotID]
+			if !ok || fakeDriver.isNotFound {
+				resp.ErrType = remoteapi.RESP_ERR_NOTFOUND
+				resp.ErrMsg = fmt.Sprintf("slot %s not found", psRequest.SlotID)
+			} else {
+				slot.device = "/dev/zero"
+				sConfig := driverapi.SlotConfig{
+					Envs: make(map[string]string),
+				}
+				os.MkdirAll("/fakeAccelSource", 0755)
+
+				sConfig.Binds = append(sConfig.Binds, driverapi.Mount{
+					Source:      "/fakeAccelSource",
+					Destination: "/fakeDestination",
+					Mode:        "rw",
+				})
+				sConfig.Devices = append(sConfig.Devices, slot.device)
+				sConfig.Envs["fakeEnv"] = "fakeEnv"
+
+				resp.SlotConfig = sConfig
 			}
-			os.MkdirAll("/fakeAccelSource", 0755)
-
-			sConfig.Binds = append(sConfig.Binds, driverapi.Mount{
-				Source:      "/fakeAccelSource",
-				Destination: "/fakeDestination",
-				Mode:        "rw",
-			})
-			sConfig.Devices = append(sConfig.Devices, slot.device)
-			sConfig.Envs["fakeEnv"] = "fakeEnv"
-
-			resp.SlotConfig = sConfig
 		}
 
 		jsonResp, err := json.Marshal(resp)
@@ -732,6 +843,18 @@ func (s *DockerAccelSuite) TestDockerAccelInspectCustomUnspecified(c *check.C) {
 
 	dockerCmd(c, "accel", "rm", "accelicu1")
 	assertAccelNotAvailable(c, "accelicu1")
+}
+
+func (s *DockerAccelSuite) TestDockerAccelPluginSync(c *check.C) {
+	// create accel slot
+	out, _ := dockerCmd(c, "accel", "create", "--driver", dummyAccelDriver, "--runtime", fakeRuntime, "a0")
+	accelID := strings.TrimSpace(out)
+	defer dockerCmd(c, "accel", "rm", accelID)
+	// reset plugin
+	fakeDriver.resetDriver()
+	// call inspect on driver
+	out, _ = dockerCmd(c, "accel", "inspect", "--format", "{{.ID}}", "a0")
+	c.Assert(strings.TrimSpace(out), checker.Equals, accelID)
 }
 
 func (s *DockerAccelSuite) TestDockerAccelDriverUngracefulRestart(c *check.C) {
