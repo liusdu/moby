@@ -62,6 +62,7 @@ type Builder struct {
 	flags            *BFlags
 	tmpContainers    map[string]struct{}
 	image            string // imageID
+	holdOnImages     map[string]struct{}
 	noBaseImage      bool
 	maintainer       string
 	cmdSet           bool
@@ -105,6 +106,7 @@ func NewBuilder(clientCtx context.Context, config *types.ImageBuildOptions, back
 		context:          context,
 		runConfig:        new(container.Config),
 		tmpContainers:    map[string]struct{}{},
+		holdOnImages:     map[string]struct{}{},
 		cancelled:        make(chan struct{}),
 		id:               stringid.GenerateNonCryptoID(),
 		allowedBuildArgs: make(map[string]bool),
@@ -229,6 +231,7 @@ func (b *Builder) build(config *types.ImageBuildOptions, context builder.Context
 	}
 
 	images := b.docker.GetImages()
+	defer b.cleanupHoldOnImage()
 
 	var shortImgID string
 	for i, n := range b.dockerfile.Children {
@@ -271,6 +274,7 @@ func (b *Builder) build(config *types.ImageBuildOptions, context builder.Context
 	}
 
 	if b.parentImage != "" {
+		b.cleanupHoldOnImage()
 		if b.options.NoParent {
 			fmt.Fprintf(b.Stdout, "Stripping parent image\n")
 

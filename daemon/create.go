@@ -83,6 +83,11 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 				return nil, err
 			}
 		}
+		if err := daemon.imageStore.HoldOn(imgID); err != nil {
+			return nil, err
+		}
+		defer daemon.imageStore.HoldOff(imgID, true)
+
 	}
 
 	if err := daemon.mergeAndVerifyConfig(params.Config, img); err != nil {
