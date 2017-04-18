@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.11.2.22 (2017-4-18)
+
+- Bugfix: Fix 'RemoveDeviceDeferred dm_task_run failed' error(mr 403 DTS2017032104618)
+- Bugfix: devicemapper: remove redundant mountpoint when docker restart(mr 404 fix DTS2017041711043)
+
 ## v1.11.2.21 (2017-4-12)
 
 - Bugfix: Fix when containerd restarted, event handler may exit (mr 247 fix DTS2017041111320)
