@@ -211,6 +211,11 @@ func TestGetContainerMountId(t *testing.T) {
 		t.Fatalf("Expected container mount id [%s], but got [%s]", id, id1)
 	}
 
+	id1 = getContainerMountId("/var/lib/docker/devicemapper/mnt/" + id + "-init")
+	if id1 != id {
+		t.Fatalf("Expected container mount id [%s], but got [%s]", id, id1)
+	}
+
 	id1 = getContainerMountId("/var/lib/docker/overlay/" + id + "/merged")
 	if id1 != id {
 		t.Fatalf("Expected container mount id [%s], but got [%s]", id, id1)
@@ -222,6 +227,11 @@ func TestGetContainerMountId(t *testing.T) {
 	}
 
 	id1 = getContainerMountId("/var/lib/docker/devicemapper_err/mnt" + id)
+	if id1 != "" {
+		t.Fatalf("Expected a empty container mount id, but got [%s]", id1)
+	}
+
+	id1 = getContainerMountId("/var/lib/docker/devicemapper_err/mnt" + id + "-init")
 	if id1 != "" {
 		t.Fatalf("Expected a empty container mount id, but got [%s]", id1)
 	}

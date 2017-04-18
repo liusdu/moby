@@ -1226,7 +1226,7 @@ func getIdPatterns(id string) (regexps []*regexp.Regexp) {
 	if id == "" {
 		id = "(?P<id>[0-9a-f]{64})"
 	}
-	patterns = append(patterns, "aufs/mnt/"+id+"$", "overlay/"+id+"/merged$", "zfs/graph/"+id+"$", "devicemapper/mnt/"+id+"$")
+	patterns = append(patterns, "aufs/mnt/"+id+"$", "overlay/"+id+"/merged$", "zfs/graph/"+id+"$", "devicemapper/mnt/"+id+"$", "devicemapper/mnt/"+id+"-init"+"$")
 	for _, p := range patterns {
 		r, err := regexp.Compile(p)
 		if err == nil {
