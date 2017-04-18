@@ -2132,6 +2132,10 @@ func (devices *DeviceSet) deactivateDevice(info *devInfo) error {
 
 	if devices.deferredRemove {
 		if err := devicemapper.RemoveDeviceDeferred(info.Name()); err != nil {
+			if err == devicemapper.ErrEnxio {
+				logrus.Warnf("devmapper: device %s has gone", info.Name())
+				return nil
+			}
 			return err
 		}
 	} else {

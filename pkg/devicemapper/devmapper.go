@@ -397,8 +397,14 @@ func RemoveDeviceDeferred(name string) error {
 		return fmt.Errorf("devicemapper: Can not set cookie: %s", err)
 	}
 
+	dmSawEnxio = false
 	if err = task.run(); err != nil {
+
+		// A device might be being deleted already
 		UdevWait(&cookie)
+		if dmSawEnxio {
+			return ErrEnxio
+		}
 		return fmt.Errorf("devicemapper: Error running RemoveDeviceDeferred %s", err)
 	}
 
