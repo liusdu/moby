@@ -30,7 +30,7 @@ MAINTAINER Qiang Huang <h.huangqiang@huawei.com> (@hqhq)
 RUN  rm -rf /go/src/github.com/docker/docker/
 
 # Install runc
-ENV RUNC_COMMIT 4dfb960a154730fab09ce5ffba98e5f50d069ccb
+ENV RUNC_COMMIT ef0aa363341b9cd181c767b8a560b2915485f599
 RUN set -x \
         && export GOPATH="$(mktemp -d)" \
         && git clone http://code.huawei.com/docker/runc.git "$GOPATH/src/github.com/opencontainers/runc" \
