@@ -31,7 +31,7 @@ type client struct {
 	liveRestore   bool
 }
 
-func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendlyName string, specp Process, attachStdio StdioCallback) (err error) {
+func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendlyName string, specp Process, attachStdio StdioCallback) error {
 	clnt.lock(containerID)
 	defer clnt.unlock(containerID)
 	container, err := clnt.getContainer(containerID)
@@ -87,14 +87,7 @@ func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendly
 		Rlimits:         convertRlimits(sp.Rlimits),
 	}
 
-	fifoCtx, cancel := context.WithCancel(context.Background())
-	defer func() {
-		if err != nil {
-			cancel()
-		}
-	}()
-
-	iopipe, err := p.openFifos(fifoCtx, sp.Terminal)
+	iopipe, err := p.openFifos(sp.Terminal)
 	if err != nil {
 		return err
 	}
@@ -419,14 +412,7 @@ func (clnt *client) restore(cont *containerd.Container, lastEvent *containerd.Ev
 		}
 	}
 
-	fifoCtx, cancel := context.WithCancel(context.Background())
-	defer func() {
-		if err != nil {
-			cancel()
-		}
-	}()
-
-	iopipe, err := container.openFifos(fifoCtx, terminal)
+	iopipe, err := container.openFifos(terminal)
 	if err != nil {
 		return err
 	}
