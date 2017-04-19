@@ -186,10 +186,9 @@ func (daemon *Daemon) AccelRm(prefixOrName string, force bool) error {
 		return fmt.Errorf("Remove a NODEV slot may cause inconsistent of docker and accelerator plugin.\nTry to fix the plugin error and restart docker daemon to resolve NODEV, or use \"--force\" to force remove NODEV slot.")
 	}
 
-	if err := slot.Release(); err != nil {
+	if err := slot.Release(force); err != nil {
 		return err
 	}
-	// TODO: how to deal with force?
 
 	return nil
 }

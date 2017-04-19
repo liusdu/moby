@@ -47,7 +47,7 @@ type Slot interface {
 	// Prepare is used to prepare the slot environment used by the container
 	Prepare() ([]driverapi.Mount, []string, map[string]string, error)
 	// Release is used to release the slot
-	Release() error
+	Release(force bool) error
 }
 
 type slot struct {
@@ -161,11 +161,11 @@ func (s *slot) Prepare() ([]driverapi.Mount, []string, map[string]string, error)
 }
 
 // Release is used to release the slot
-func (s *slot) Release() error {
+func (s *slot) Release(force bool) error {
 	if s.scope == GlobalScope && s.owner != "" {
 		log.Debugf("Release GlobalScope slot %s with non null owner %s", s.id, s.owner)
 	}
-	return s.release(true)
+	return s.release(force)
 }
 
 func (s *slot) release(force bool) error {
@@ -174,22 +174,26 @@ func (s *slot) release(force bool) error {
 	id := s.id
 	s.Unlock()
 
-	// Mark the slot for deletion
-	if err := s.markInDelete(); err != nil {
-		return fmt.Errorf("error marking slot %s for deletion: %v", id, err)
-	}
-
+	// get driver
 	d, err := s.driver(true)
 	if err != nil {
 		if !force {
 			return fmt.Errorf("failed to load accelerator driver: %v", err)
 		}
 		log.Debugf("failed to load driver for slot %s: %v", id, err)
-	} else if err := d.ReleaseSlot(id); err != nil {
-		if !force {
-			return fmt.Errorf("failed to release accelerator slot: %v", err)
+	} else {
+		// mark the slot for deletion
+		if err := s.markInDelete(); err != nil {
+			return fmt.Errorf("error marking slot %s for deletion: %v", id, err)
 		}
-		log.Debugf("driver failed to delete stale slot %s: %v", id, err)
+
+		if err := d.ReleaseSlot(id); err != nil {
+			if !force {
+				s.unmarkInDelete()
+				return fmt.Errorf("failed to release accelerator slot: %v", err)
+			}
+			log.Debugf("driver failed to delete stale slot %s: %v", id, err)
+		}
 	}
 
 	if err = c.deleteFromStore(s); err != nil {
@@ -379,6 +383,19 @@ func (s *slot) markInDelete() error {
 	}
 	s.Lock()
 	s.state = s.state | SLOT_STATE_INDELETE
+	s.Unlock()
+	if err := s.ctrlr.updateToStore(s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *slot) unmarkInDelete() error {
+	if !s.isInDelete() {
+		return nil
+	}
+	s.Lock()
+	s.state = s.state &^ SLOT_STATE_INDELETE
 	s.Unlock()
 	if err := s.ctrlr.updateToStore(s); err != nil {
 		return err

@@ -60,7 +60,7 @@ func (daemon *Daemon) initAccelController(config *Config, activeAccelSlots map[s
 				//    which will stop all running container but without accel cleanup,
 				//    see releaseAccelResources()
 				log.Warnf(" ... invalid slots %s: unref container-scope slot", s.ID())
-				s.Release()
+				s.Release(true)
 			} else {
 				// valid slot
 				log.Debugf(" ... valid slot %s: driver %s", s.ID(), s.DriverName())
@@ -292,7 +292,7 @@ func (daemon *Daemon) allocatePersistentAccelResources(container *container.Cont
 			defer func(accel *containertypes.AcceleratorConfig, slot libaccelerator.Slot) {
 				if retErr != nil {
 					accel.Sid = ""
-					slot.Release()
+					slot.Release(true)
 				}
 			}(accel, slot)
 		}
@@ -344,7 +344,7 @@ func (daemon *Daemon) initializeAccelResources(container *container.Container) (
 		accel.Driver = driver
 		defer func(accel *containertypes.AcceleratorConfig, slot libaccelerator.Slot) {
 			if retErr != nil {
-				slot.Release()
+				slot.Release(true)
 				accel.Sid = ""
 				accel.Driver = ""
 			}
@@ -429,7 +429,7 @@ func (daemon *Daemon) releaseAccelResources(container *container.Container, rele
 					slot.SetOwner("")
 				} else {
 					// release slot for container-scoped slot
-					slot.Release()
+					slot.Release(true)
 				}
 			}
 		}
@@ -553,7 +553,7 @@ func (daemon *Daemon) releaseSlotsByID(slotIDs []string) {
 			if slot.Scope() == libaccelerator.GlobalScope {
 				slot.SetOwner("")
 			} else {
-				slot.Release()
+				slot.Release(true)
 			}
 		}
 	}
