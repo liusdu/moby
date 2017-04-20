@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.11.2.23 (2017-4-20)
+
+- Bugfix: change from to From when saving image(mr 413)
+
 ## v1.11.2.22 (2017-4-18)
 
 - Bugfix: Fix 'RemoveDeviceDeferred dm_task_run failed' error(mr 403 DTS2017032104618)
