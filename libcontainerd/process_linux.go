@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	containerd "github.com/docker/containerd/api/grpc/types"
 	"github.com/tonistiigi/fifo"
@@ -27,10 +28,12 @@ type process struct {
 	dir string
 }
 
-func (p *process) openFifos(ctx context.Context, terminal bool) (pipe *IOPipe, err error) {
+func (p *process) openFifos(terminal bool) (pipe *IOPipe, err error) {
 	if err := os.MkdirAll(p.dir, 0700); err != nil {
 		return nil, err
 	}
+
+	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
 
 	io := &IOPipe{}
 
