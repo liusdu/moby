@@ -236,6 +236,22 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 				<-errCh
 				return err
 			}
+			if !c.State.Running {
+				cancelFun()
+				<-errCh
+				return fmt.Errorf("You cannot attach output to a stopped container, start it first")
+			}
+			if c.State.Paused {
+				cancelFun()
+				<-errCh
+				return fmt.Errorf("You cannot attach output to a paused container, unpause it first")
+			}
+			if c.State.Restarting {
+				cancelFun()
+				<-errCh
+				return fmt.Errorf("You cannot attach output to a restarting container, wait until it is running")
+			}
+
 			options2 := types.ContainerAttachOptions{
 				ContainerID: c.ID,
 				Stream:      true,
