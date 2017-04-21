@@ -69,8 +69,7 @@ type slot struct {
 }
 
 const SLOT_STATE_BADDRIVER = 0x1
-const SLOT_STATE_INDELETE = 0x2
-const SLOT_STATE_NODEV = 0x4
+const SLOT_STATE_NODEV = 0x2
 
 // Name returns the name of the slot
 func (s *slot) Name() string {
@@ -182,14 +181,8 @@ func (s *slot) release(force bool) error {
 		}
 		log.Debugf("failed to load driver for slot %s: %v", id, err)
 	} else {
-		// mark the slot for deletion
-		if err := s.markInDelete(); err != nil {
-			return fmt.Errorf("error marking slot %s for deletion: %v", id, err)
-		}
-
 		if err := d.ReleaseSlot(id); err != nil {
 			if !force {
-				s.unmarkInDelete()
 				return fmt.Errorf("failed to release accelerator slot: %v", err)
 			}
 			log.Debugf("driver failed to delete stale slot %s: %v", id, err)
@@ -369,38 +362,6 @@ func (s *slot) getController() *controller {
 	s.Lock()
 	defer s.Unlock()
 	return s.ctrlr
-}
-
-func (s *slot) isInDelete() bool {
-	s.Lock()
-	defer s.Unlock()
-	return s.state&SLOT_STATE_INDELETE != 0
-}
-
-func (s *slot) markInDelete() error {
-	if s.isInDelete() {
-		return nil
-	}
-	s.Lock()
-	s.state = s.state | SLOT_STATE_INDELETE
-	s.Unlock()
-	if err := s.ctrlr.updateToStore(s); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *slot) unmarkInDelete() error {
-	if !s.isInDelete() {
-		return nil
-	}
-	s.Lock()
-	s.state = s.state &^ SLOT_STATE_INDELETE
-	s.Unlock()
-	if err := s.ctrlr.updateToStore(s); err != nil {
-		return err
-	}
-	return nil
 }
 
 // IsBadDriver check whether the slot is in BadDriver state

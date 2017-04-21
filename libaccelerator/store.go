@@ -206,17 +206,6 @@ func (c *controller) CleanupSlots(cleaner SlotWalker) {
 		// clear NODEV
 		s.unmarkNoDev()
 
-		// this is a deleting slot, continue deleting
-		//   - do delete after BADDRIVER check to avoid inconsistent, which
-		//     means an in-delete BADDRIVER slot can not be deleted automatically
-		if s.isInDelete() {
-			log.Debugf(" ... release stale slot %s, runtime %s@%s",
-				stringid.TruncateID(s.ID()), s.Runtime(), s.DriverName())
-			if err := s.release(true); err != nil {
-				log.Debugf("   ... error remove stale slot: %v", err)
-			}
-		}
-
 		// if driver report the slot is not exist, mark it as NODEV
 		if _, err := d.Slot(s.id); err != nil {
 			if _, isNotFound := err.(types.NotFoundError); isNotFound {

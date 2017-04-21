@@ -223,9 +223,6 @@ func (c *controller) Slots() []Slot {
 	}
 
 	for _, s := range slots {
-		if s.isInDelete() {
-			continue
-		}
 		list = append(list, s)
 	}
 
