@@ -1226,7 +1226,7 @@ func getIdPatterns(id string) (regexps []*regexp.Regexp) {
 	if id == "" {
 		id = "(?P<id>[0-9a-f]{64})"
 	}
-	patterns = append(patterns, "aufs/mnt/"+id+"$", "overlay/"+id+"/merged$", "zfs/graph/"+id+"$", "devicemapper/mnt/"+id+"$", "devicemapper/mnt/"+id+"-init"+"$")
+	patterns = append(patterns, "aufs/mnt/"+id+"(-init)?"+"$", "overlay/"+id+"(-init)?"+"/merged$", "zfs/graph/"+id+"(-init)?"+"$", "devicemapper/mnt/"+id+"(-init)?"+"$")
 	for _, p := range patterns {
 		r, err := regexp.Compile(p)
 		if err == nil {
@@ -1236,15 +1236,19 @@ func getIdPatterns(id string) (regexps []*regexp.Regexp) {
 	return
 }
 
-func getContainerMountId(path string) string {
+func getContainerMountId(path string) (bool, string) {
 	regs := getIdPatterns("")
 	for _, reg := range regs {
 		ret := reg.FindStringSubmatch(path)
-		if len(ret) == 2 {
-			return ret[1]
+		if len(ret) == 3 {
+			if ret[2] == "" {
+				return false, ret[1]
+			} else {
+				return true, ret[1]
+			}
 		}
 	}
-	return ""
+	return false, ""
 }
 
 func (daemon *Daemon) removeRedundantMounts(containers map[string]*container.Container) error {
@@ -1274,13 +1278,16 @@ func (daemon *Daemon) removeRedundantMounts(containers map[string]*container.Con
 		if !strings.HasPrefix(path, root) || path == root {
 			continue
 		}
-		id := getContainerMountId(path)
+		isInitdev, id := getContainerMountId(path)
 		if id == "" {
 			continue
 		}
 
 		if _, ok := activeContainers[id]; !ok {
 			logrus.Debugf("Umount legacy mountpoint [%s] [%s]", path, id)
+			if isInitdev {
+				id = fmt.Sprintf("%s-init", id)
+			}
 			if err := daemon.layerStore.DriverPut(id); err != nil {
 				logrus.Errorf("Umount legacy mountpoint [%v]", err)
 			}
