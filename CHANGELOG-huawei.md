@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.11.2.24 (2017-4-21)
+
+- Bugfix: deny attach-output to a paused container(mr 412 fix DTS2017041807694)
+- Bugfix: Revert "Remove timeout on fifos opening"(mr 409 fix DTS2017041410483)
+- Bugfix: builder: ignore errors when removing intermediate container failed(mr 414)
+- Bugfix: devicemapper: remove redundant mountpoint when docker restart(mr 410 DTS2017041711043)
+- bump containerd:
+   - Fix broken /dev/console when running system-container with systemd >=231(mr 40)
+
 ## v1.11.2.23 (2017-4-20)
 
 - Bugfix: change from to From when saving image(mr 413)
