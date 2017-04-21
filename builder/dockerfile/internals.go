@@ -581,6 +581,9 @@ func (b *Builder) removeContainer(c string) error {
 		RemoveVolume: true,
 	}
 	if err := b.docker.ContainerRm(c, rmConfig); err != nil {
+		if strings.Contains(err.Error(), "No such container") {
+			return nil
+		}
 		fmt.Fprintf(b.Stdout, "Error removing intermediate container %s: %v\n", stringid.TruncateID(c), err)
 		return err
 	}
@@ -590,7 +593,7 @@ func (b *Builder) removeContainer(c string) error {
 func (b *Builder) clearTmp() {
 	for c := range b.tmpContainers {
 		if err := b.removeContainer(c); err != nil {
-			return
+			continue
 		}
 		delete(b.tmpContainers, c)
 		fmt.Fprintf(b.Stdout, "Removing intermediate container %s\n", stringid.TruncateID(c))
