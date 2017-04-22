@@ -212,6 +212,7 @@ func (s *DockerTrustSuite) TestTrustedPullDelete(c *check.C) {
                     FROM busybox
                     CMD echo trustedpulldelete
                 `, true)
+	c.Assert(err, check.IsNil)
 
 	pushCmd := exec.Command(dockerBinary, "push", repoName)
 	s.trustedCmd(pushCmd)
@@ -300,12 +301,14 @@ func (s *DockerTrustSuite) TestTrustedPullReadsFromReleasesRole(c *check.C) {
 	pushCmd = exec.Command(dockerBinary, "push", targetName)
 	s.trustedCmd(pushCmd)
 	out, _, err = runCommandWithOutput(pushCmd)
+	c.Assert(err, check.IsNil, check.Commentf(out))
 	s.assertTargetInRoles(c, repoName, "latest", "targets", "targets/releases")
 
 	// Try pull, check we retrieve from targets/releases role
 	pullCmd = exec.Command(dockerBinary, "-D", "pull", repoName)
 	s.trustedCmd(pullCmd)
 	out, _, err = runCommandWithOutput(pullCmd)
+	c.Assert(err, check.IsNil, check.Commentf(out))
 	c.Assert(out, checker.Contains, "retrieving target for targets/releases role")
 
 	// Create another delegation that we'll sign with
@@ -317,12 +320,14 @@ func (s *DockerTrustSuite) TestTrustedPullReadsFromReleasesRole(c *check.C) {
 	pushCmd = exec.Command(dockerBinary, "push", targetName)
 	s.trustedCmd(pushCmd)
 	out, _, err = runCommandWithOutput(pushCmd)
+	c.Assert(err, check.IsNil, check.Commentf(out))
 	s.assertTargetInRoles(c, repoName, "latest", "targets", "targets/releases", "targets/other")
 
 	// Try pull, check we retrieve from targets/releases role
 	pullCmd = exec.Command(dockerBinary, "-D", "pull", repoName)
 	s.trustedCmd(pullCmd)
 	out, _, err = runCommandWithOutput(pullCmd)
+	c.Assert(err, check.IsNil, check.Commentf(out))
 	c.Assert(out, checker.Contains, "retrieving target for targets/releases role")
 }
 

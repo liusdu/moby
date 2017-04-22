@@ -407,6 +407,7 @@ func unpauseContainer(container string) error {
 	exitCode, err := runCommand(unpauseCmd)
 	if exitCode != 0 && err == nil {
 		err = fmt.Errorf("failed to unpause container")
+		return err
 	}
 
 	return nil

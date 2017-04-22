@@ -135,8 +135,7 @@ func (s *DockerSuite) TestEventsLimit(c *check.C) {
 }
 
 func (s *DockerSuite) TestEventsContainerEvents(c *check.C) {
-	containerID, _ := dockerCmd(c, "run", "--rm", "--name", "container-events-test", "busybox", "true")
-	containerID = strings.TrimSpace(containerID)
+	dockerCmd(c, "run", "--rm", "--name", "container-events-test", "busybox", "true")
 
 	out, _ := dockerCmd(c, "events", "--since=0", fmt.Sprintf("--until=%d", daemonTime(c).Unix()))
 	events := strings.Split(out, "\n")

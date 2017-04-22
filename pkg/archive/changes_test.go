@@ -199,6 +199,9 @@ func TestChangesWithChangesGH13590(t *testing.T) {
 		t.Skip("symlinks on Windows")
 	}
 	baseLayer, err := ioutil.TempDir("", "docker-changes-test.")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(baseLayer)
 
 	dir3 := path.Join(baseLayer, "dir1/dir2/dir3")
@@ -208,6 +211,9 @@ func TestChangesWithChangesGH13590(t *testing.T) {
 	ioutil.WriteFile(file, []byte("hello"), 0666)
 
 	layer, err := ioutil.TempDir("", "docker-changes-test2.")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(layer)
 
 	// Test creating a new file
@@ -232,6 +238,9 @@ func TestChangesWithChangesGH13590(t *testing.T) {
 
 	// Now test changing a file
 	layer, err = ioutil.TempDir("", "docker-changes-test3.")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(layer)
 
 	if err := copyDir(baseLayer+"/dir1", layer+"/"); err != nil {
@@ -523,6 +532,9 @@ func TestChangesSizeWithOnlyDeleteChanges(t *testing.T) {
 
 func TestChangesSize(t *testing.T) {
 	parentPath, err := ioutil.TempDir("", "docker-changes-test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(parentPath)
 	addition := path.Join(parentPath, "addition")
 	if err := ioutil.WriteFile(addition, []byte{0x01, 0x01, 0x01}, 0744); err != nil {

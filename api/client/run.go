@@ -336,7 +336,7 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 	if *flAutoRemove {
 		// Autoremove: wait for the container to finish, retrieve
 		// the exit code and remove the container
-		if status, err = cli.client.ContainerWait(context.Background(), createResponse.ID); err != nil {
+		if _, err = cli.client.ContainerWait(context.Background(), createResponse.ID); err != nil {
 			return runStartContainerErr(err)
 		}
 		if _, status, err = getExitCode(cli, createResponse.ID); err != nil {

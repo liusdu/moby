@@ -48,7 +48,7 @@ func (daemon *Daemon) createSpec(c *container.Container) (*libcontainerd.Spec, e
 	}
 
 	// Are we going to run as a Hyper-V container?
-	hv := false
+	var hv bool
 	if c.HostConfig.Isolation.IsDefault() {
 		// Container is set to use the default, so take the default from the daemon configuration
 		hv = daemon.defaultIsolation.IsHyperV()

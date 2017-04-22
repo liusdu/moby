@@ -415,6 +415,7 @@ func (s *DockerSuite) TestDockerInspectMultipleNetwork(c *check.C) {
 	networkResources = []types.NetworkResource{}
 	inspectOut := strings.SplitN(out, "\nError: No such network: nonexistent\n", 2)[0]
 	err = json.Unmarshal([]byte(inspectOut), &networkResources)
+	c.Assert(err, check.IsNil)
 	c.Assert(networkResources, checker.HasLen, 1)
 
 	// Should print an error and return an exitCode, nothing else
@@ -768,7 +769,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkAnonymousEndpoint(c *check.C) {
 	out, _ = dockerCmd(c, "run", "-d", "--net", cstmBridgeNw, "busybox", "top")
 	cid2 := strings.TrimSpace(out)
 
-	hosts2, err := readContainerFileWithExec(cid2, hostsFile)
+	_, err = readContainerFileWithExec(cid2, hostsFile)
 	c.Assert(err, checker.IsNil)
 
 	// verify first container etc/hosts file has not changed
@@ -784,7 +785,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkAnonymousEndpoint(c *check.C) {
 
 	dockerCmd(c, "network", "connect", cstmBridgeNw1, cid2)
 
-	hosts2, err = readContainerFileWithExec(cid2, hostsFile)
+	hosts2, err := readContainerFileWithExec(cid2, hostsFile)
 	c.Assert(err, checker.IsNil)
 
 	hosts1post, err = readContainerFileWithExec(cid1, hostsFile)

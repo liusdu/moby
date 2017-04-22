@@ -147,6 +147,9 @@ func (s *DockerSuite) TestBuildCancellationKillsSleep(c *check.C) {
 	buildCmd.Dir = ctx.Dir
 
 	stdoutBuild, err := buildCmd.StdoutPipe()
+	if err != nil {
+		c.Fatal(err)
+	}
 	if err := buildCmd.Start(); err != nil {
 		c.Fatalf("failed to run build: %s", err)
 	}

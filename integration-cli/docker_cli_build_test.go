@@ -1708,7 +1708,7 @@ func (s *DockerSuite) TestBuildAddBadLinksVolume(c *check.C) {
 	)
 	var (
 		name       = "test-link-absolute-volume"
-		dockerfile = ""
+		dockerfile string
 	)
 
 	tempDir, err := ioutil.TempDir("", "test-link-absolute-volume-temp-")
@@ -6133,7 +6133,7 @@ func (s *DockerSuite) TestBuildBuildTimeArgCacheHit(c *check.C) {
 		ARG %s
 		RUN echo $%s`, envKey, envKey)
 
-	origImgID := ""
+	var origImgID string
 	var err error
 	if origImgID, err = buildImage(imgName, dockerfile, true, args...); err != nil {
 		c.Fatal(err)
@@ -6164,7 +6164,7 @@ func (s *DockerSuite) TestBuildBuildTimeArgCacheMissExtraArg(c *check.C) {
 		ARG %s
 		RUN echo $%s`, envKey, extraEnvKey, envKey)
 
-	origImgID := ""
+	var origImgID string
 	var err error
 	if origImgID, err = buildImage(imgName, dockerfile, true, args...); err != nil {
 		c.Fatal(err)
@@ -6194,7 +6194,7 @@ func (s *DockerSuite) TestBuildBuildTimeArgCacheMissSameArgDiffVal(c *check.C) {
 		ARG %s
 		RUN echo $%s`, envKey, envKey)
 
-	origImgID := ""
+	var origImgID string
 	var err error
 	if origImgID, err = buildImage(imgName, dockerfile, true, args...); err != nil {
 		c.Fatal(err)
@@ -6329,8 +6329,7 @@ func (s *DockerSuite) TestBuildBuildTimeArgExpansion(c *check.C) {
 
 	var resMap map[string]interface{}
 	var resArr []string
-	res := ""
-	res = inspectField(c, imgName, "Config.WorkingDir")
+	res := inspectField(c, imgName, "Config.WorkingDir")
 	if res != filepath.ToSlash(filepath.Clean(wdVal)) {
 		c.Fatalf("Config.WorkingDir value mismatch. Expected: %s, got: %s", filepath.ToSlash(filepath.Clean(wdVal)), res)
 	}

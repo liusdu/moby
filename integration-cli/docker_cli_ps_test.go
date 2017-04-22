@@ -693,14 +693,14 @@ func (s *DockerSuite) TestPsImageIDAfterUpdate(c *check.C) {
 	updatedImageName := "busybox:TestPsImageIDAfterUpdate-updated"
 
 	runCmd := exec.Command(dockerBinary, "tag", "busybox:latest", originalImageName)
-	out, _, err := runCommandWithOutput(runCmd)
+	_, _, err := runCommandWithOutput(runCmd)
 	c.Assert(err, checker.IsNil)
 
 	originalImageID, err := getIDByName(originalImageName)
 	c.Assert(err, checker.IsNil)
 
 	runCmd = exec.Command(dockerBinary, append([]string{"run", "-d", originalImageName}, defaultSleepCommand...)...)
-	out, _, err = runCommandWithOutput(runCmd)
+	out, _, err := runCommandWithOutput(runCmd)
 	c.Assert(err, checker.IsNil)
 	containerID := strings.TrimSpace(out)
 
@@ -718,11 +718,11 @@ func (s *DockerSuite) TestPsImageIDAfterUpdate(c *check.C) {
 	}
 
 	runCmd = exec.Command(dockerBinary, "commit", containerID, updatedImageName)
-	out, _, err = runCommandWithOutput(runCmd)
+	_, _, err = runCommandWithOutput(runCmd)
 	c.Assert(err, checker.IsNil)
 
 	runCmd = exec.Command(dockerBinary, "tag", "-f", updatedImageName, originalImageName)
-	out, _, err = runCommandWithOutput(runCmd)
+	_, _, err = runCommandWithOutput(runCmd)
 	c.Assert(err, checker.IsNil)
 
 	linesOut, err = exec.Command(dockerBinary, "ps", "--no-trunc").CombinedOutput()

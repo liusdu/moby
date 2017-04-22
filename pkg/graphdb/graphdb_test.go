@@ -15,6 +15,9 @@ import (
 func newTestDb(t *testing.T) (*Database, string) {
 	p := path.Join(os.TempDir(), "sqlite.db")
 	conn, err := sql.Open("sqlite3", p)
+	if err != nil {
+		t.Fatal(err)
+	}
 	db, err := NewDatabase(conn)
 	if err != nil {
 		t.Fatal(err)

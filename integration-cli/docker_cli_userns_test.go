@@ -52,11 +52,13 @@ func (s *DockerDaemonSuite) TestDaemonUserNamespaceRootSetting(c *check.C) {
 	out, rc1, err := runCommandPipelineWithOutput(
 		exec.Command("cat", "/proc/"+strings.TrimSpace(pid)+"/uid_map"),
 		exec.Command("grep", "-E", fmt.Sprintf("0[[:space:]]+%d[[:space:]]+", uid)))
+	c.Assert(err, checker.IsNil, check.Commentf("Output: %s", out))
 	c.Assert(rc1, checker.Equals, 0, check.Commentf("Didn't match uid_map: output: %s", out))
 
 	out, rc2, err := runCommandPipelineWithOutput(
 		exec.Command("cat", "/proc/"+strings.TrimSpace(pid)+"/gid_map"),
 		exec.Command("grep", "-E", fmt.Sprintf("0[[:space:]]+%d[[:space:]]+", gid)))
+	c.Assert(err, checker.IsNil, check.Commentf("Output: %s", out))
 	c.Assert(rc2, checker.Equals, 0, check.Commentf("Didn't match gid_map: output: %s", out))
 
 	// check that the touched file is owned by remapped uid:gid

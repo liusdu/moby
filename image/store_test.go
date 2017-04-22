@@ -73,12 +73,12 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("invalid comment for image2: expected %q, got %q", expected, actual)
 	}
 
-	p, err := is.GetParent(ID(id1))
+	_, err = is.GetParent(ID(id1))
 	if err == nil {
 		t.Fatal("expected error for getting parent")
 	}
 
-	p, err = is.GetParent(ID(id2))
+	p, err := is.GetParent(ID(id2))
 	if err != nil {
 		t.Fatal(err)
 	}

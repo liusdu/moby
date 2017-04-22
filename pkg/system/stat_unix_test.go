@@ -15,6 +15,9 @@ func TestFromStatT(t *testing.T) {
 
 	stat := &syscall.Stat_t{}
 	err := syscall.Lstat(file, stat)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	s, err := fromStatT(stat)
 	if err != nil {

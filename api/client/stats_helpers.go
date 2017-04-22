@@ -96,7 +96,7 @@ func (s *containerStats) Collect(cli client.APIClient, streamStats bool, waitFir
 			}
 
 			var memPercent = 0.0
-			var cpuPercent = 0.0
+			var cpuPercent float64
 
 			// MemoryStats.Limit will never be 0 unless the container is not running and we haven't
 			// got any data from cgroup

@@ -151,12 +151,12 @@ func GetAllDrivers() ([]volume.Driver, error) {
 	}
 
 	for _, p := range plugins {
-		ext, ok := drivers.extensions[p.Name]
+		_, ok := drivers.extensions[p.Name]
 		if ok {
 			continue
 		}
 
-		ext = NewVolumeDriver(p.Name, p.Client)
+		ext := NewVolumeDriver(p.Name, p.Client)
 		drivers.extensions[p.Name] = ext
 		ds = append(ds, ext)
 	}

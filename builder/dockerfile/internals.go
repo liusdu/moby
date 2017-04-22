@@ -114,7 +114,6 @@ func (b *Builder) runContextCommand(args []string, allowRemote bool, allowLocalD
 	var err error
 	for _, orig := range args[0 : len(args)-1] {
 		var fi builder.FileInfo
-		decompress := allowLocalDecompression
 		if urlutil.IsURL(orig) {
 			if !allowRemote {
 				return fmt.Errorf("Source can't be a URL for %s", cmdName)
@@ -124,8 +123,7 @@ func (b *Builder) runContextCommand(args []string, allowRemote bool, allowLocalD
 				return err
 			}
 			defer os.RemoveAll(filepath.Dir(fi.Path()))
-			decompress = false
-			infos = append(infos, copyInfo{fi, decompress})
+			infos = append(infos, copyInfo{fi, false})
 			continue
 		}
 		// not a URL

@@ -213,7 +213,7 @@ func (s *journald) readLogs(logWatcher *logger.LogWatcher, config logger.ReadCon
 	var stamp C.uint64_t
 	var sinceUnixMicro uint64
 	var pipes [2]C.int
-	cursor := ""
+	var cursor string
 
 	// Get a handle to the journal.
 	rc := C.sd_journal_open(&j, C.int(0))

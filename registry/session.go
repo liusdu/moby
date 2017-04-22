@@ -270,7 +270,7 @@ func (r *Session) GetRemoteImageJSON(imgID, registry string) ([]byte, int64, err
 // GetRemoteImageLayer retrieves an image layer from the registry
 func (r *Session) GetRemoteImageLayer(imgID, registry string, imgSize int64) (io.ReadCloser, error) {
 	var (
-		statusCode = 0
+		statusCode int
 		res        *http.Response
 		err        error
 		imageURL   = fmt.Sprintf("%simages/%s/layer", registry, imgID)

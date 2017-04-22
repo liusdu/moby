@@ -444,8 +444,6 @@ func (clnt *client) Signal(containerID string, sig int) error {
 		// Terminate Process
 		if err = hcsshim.TerminateProcessInComputeSystem(containerID, cont.systemPid); err != nil {
 			logrus.Warnf("Failed to terminate pid %d in %s: %q", cont.systemPid, containerID, err)
-			// Ignore errors
-			err = nil
 		}
 
 		// Shutdown the compute system

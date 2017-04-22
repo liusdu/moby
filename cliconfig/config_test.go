@@ -546,6 +546,9 @@ func TestJsonSaveWithNoFile(t *testing.T) {
 		"psFormat": "table {{.ID}}\\t{{.Label \"com.docker.label.cpu\"}}"
 }`
 	config, err := LoadFromReader(strings.NewReader(js))
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = config.Save()
 	if err == nil {
 		t.Fatalf("Expected error. File should not have been able to save with no file name.")
@@ -578,6 +581,9 @@ func TestLegacyJsonSaveWithNoFile(t *testing.T) {
 
 	js := `{"https://index.docker.io/v1/":{"auth":"am9lam9lOmhlbGxv","email":"user@example.com"}}`
 	config, err := LegacyLoadFromReader(strings.NewReader(js))
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = config.Save()
 	if err == nil {
 		t.Fatalf("Expected error. File should not have been able to save with no file name.")
