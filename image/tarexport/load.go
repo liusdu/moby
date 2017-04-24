@@ -63,22 +63,6 @@ func (l *tarexporter) Load(inTar io.ReadCloser, outStream io.Writer, quiet bool)
 	var parentLinks []parentLink
 
 	for _, m := range manifest {
-		// This is not a nice way, but we need to inform docker rmi
-		// that image load is in progress to avoid contend
-		// We protect repo tags with refcount
-		// defer in for loop is ugly ,but the most convinient way.
-		for _, repoTag := range m.RepoTags {
-			named, err := reference.ParseNamed(repoTag)
-			if err != nil {
-				return err
-			}
-			if !reference.TryUpdateRepoTagHandlingStatus(named.String(), true) {
-				return fmt.Errorf("Repo tag(%s) loading or deleting in progress, please try later", named.String())
-			}
-
-			defer reference.UpdateRepoTagHandlingStatus(named.String(), false)
-		}
-
 		configPath, err := safePath(tmpDir, m.Config)
 		if err != nil {
 			return err
