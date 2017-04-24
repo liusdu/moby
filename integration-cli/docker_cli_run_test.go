@@ -4474,13 +4474,13 @@ func (s *DockerSuite) TestRunUseExternalRootfs(c *check.C) {
 	dockerCmd(c, "run", "-d", "--name", "testContainer", "--external-rootfs", rootfsDir, "busybox", "top")
 	c.Assert(waitRun("testContainer"), check.IsNil)
 	cmds := map[string][]string{
-		"can't copy file from a container with external rootfs":                           []string{"cp", "testContainer:/home", "."},
-		"can't commit a container with external rootfs":                                   []string{"commit", "testContainer"},
-		"can't diff a container with external rootfs":                                     []string{"diff", "testContainer"},
-		"can't export content of container with external rootfs":                          []string{"export", "-o", filepath.Join(tempFile, "testtar"), "testContainer"},
-		"external rootfs tmp/rootfs is not a absolute path":                               []string{"run", "--external-rootfs", "tmp/rootfs", "busybox", "ls"},
-		fmt.Sprintf("stat external rootfs %s with error", filepath.Join(tempFile, "tmp")): []string{"run", "--external-rootfs", filepath.Join(tempFile, "tmp"), "busybox", "ls"},
-		fmt.Sprintf("external rootfs %s is not a directory", testFile):                    []string{"run", "--external-rootfs", testFile, "busybox", "ls"},
+		"can't copy file from a container with external rootfs":                           {"cp", "testContainer:/home", "."},
+		"can't commit a container with external rootfs":                                   {"commit", "testContainer"},
+		"can't diff a container with external rootfs":                                     {"diff", "testContainer"},
+		"can't export content of container with external rootfs":                          {"export", "-o", filepath.Join(tempFile, "testtar"), "testContainer"},
+		"external rootfs tmp/rootfs is not a absolute path":                               {"run", "--external-rootfs", "tmp/rootfs", "busybox", "ls"},
+		fmt.Sprintf("stat external rootfs %s with error", filepath.Join(tempFile, "tmp")): {"run", "--external-rootfs", filepath.Join(tempFile, "tmp"), "busybox", "ls"},
+		fmt.Sprintf("external rootfs %s is not a directory", testFile):                    {"run", "--external-rootfs", testFile, "busybox", "ls"},
 	}
 	for msg, subcmd := range cmds {
 		out, _, err := dockerCmdWithError(subcmd...)
