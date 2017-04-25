@@ -15,6 +15,7 @@ func (s *DockerSuite) TestRenameStoppedContainer(c *check.C) {
 	dockerCmd(c, "wait", cleanedContainerID)
 
 	name := inspectField(c, cleanedContainerID, "Name")
+	c.Assert(name, checker.Equals, "/first_name", check.Commentf("Failed to inspect container's name"))
 	newName := "new_name" + stringid.GenerateNonCryptoID()
 	dockerCmd(c, "rename", "first_name", newName)
 

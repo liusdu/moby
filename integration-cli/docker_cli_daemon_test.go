@@ -424,10 +424,10 @@ func (s *DockerDaemonSuite) TestDaemonIPv6FixedCIDRAndMac(c *check.C) {
 	err = s.d.StartWithBusybox("--ipv6", "--fixed-cidr-v6='2001:db8:1::/64'")
 	c.Assert(err, checker.IsNil)
 
-	out, err := s.d.Cmd("run", "-itd", "--name=ipv6test", "--mac-address", "AA:BB:CC:DD:EE:FF", "busybox")
+	_, err = s.d.Cmd("run", "-itd", "--name=ipv6test", "--mac-address", "AA:BB:CC:DD:EE:FF", "busybox")
 	c.Assert(err, checker.IsNil)
 
-	out, err = s.d.Cmd("inspect", "--format", "'{{.NetworkSettings.Networks.bridge.GlobalIPv6Address}}'", "ipv6test")
+	out, err := s.d.Cmd("inspect", "--format", "'{{.NetworkSettings.Networks.bridge.GlobalIPv6Address}}'", "ipv6test")
 	c.Assert(err, checker.IsNil)
 	c.Assert(strings.Trim(out, " \r\n'"), checker.Equals, "2001:db8:1::aabb:ccdd:eeff")
 
@@ -687,7 +687,7 @@ func (s *DockerDaemonSuite) TestDaemonBridgeIP(c *check.C) {
 		check.Commentf("iptables output should have contained %q, but was %q",
 			ipTablesSearchString, out))
 
-	out, err = d.Cmd("run", "-d", "--name", "test", "busybox", "top")
+	_, err = d.Cmd("run", "-d", "--name", "test", "busybox", "top")
 	c.Assert(err, check.IsNil)
 
 	containerIP := d.findContainerIP("test")
@@ -777,6 +777,7 @@ func (s *DockerDaemonSuite) TestDaemonBridgeFixedCidr2(c *check.C) {
 	defer d.Cmd("stop", "bb")
 
 	out, err = d.Cmd("exec", "bb", "/bin/sh", "-c", "ifconfig eth0 | awk '/inet addr/{print substr($2,6)}'")
+	c.Assert(err, check.IsNil)
 	c.Assert(out, checker.Equals, "10.2.2.0\n")
 
 	out, err = d.Cmd("run", "--rm", "busybox", "/bin/sh", "-c", "ifconfig eth0 | awk '/inet addr/{print substr($2,6)}'")
@@ -819,6 +820,7 @@ func (s *DockerDaemonSuite) TestDaemonDefaultGatewayIPv4Implicit(c *check.C) {
 
 	expectedMessage := fmt.Sprintf("default via %s dev", bridgeIP)
 	out, err := d.Cmd("run", "busybox", "ip", "-4", "route", "list", "0/0")
+	c.Assert(err, check.IsNil)
 	c.Assert(strings.Contains(out, expectedMessage), check.Equals, true,
 		check.Commentf("Implicit default gateway should be bridge IP %s, but default route was '%s'",
 			bridgeIP, strings.TrimSpace(out)))
@@ -841,6 +843,7 @@ func (s *DockerDaemonSuite) TestDaemonDefaultGatewayIPv4Explicit(c *check.C) {
 
 	expectedMessage := fmt.Sprintf("default via %s dev", gatewayIP)
 	out, err := d.Cmd("run", "busybox", "ip", "-4", "route", "list", "0/0")
+	c.Assert(err, check.IsNil)
 	c.Assert(strings.Contains(out, expectedMessage), check.Equals, true,
 		check.Commentf("Explicit default gateway should be %s, but default route was '%s'",
 			gatewayIP, strings.TrimSpace(out)))
@@ -1882,6 +1885,7 @@ func (s *DockerDaemonSuite) TestDaemonNoSpaceLeftOnDeviceError(c *check.C) {
 
 	// pull a repository large enough to fill the mount point
 	out, err = s.d.Cmd("pull", "registry:2")
+	c.Assert(err, check.IsNil)
 	c.Assert(out, checker.Contains, "no space left on device")
 }
 
@@ -2014,11 +2018,12 @@ func (s *DockerDaemonSuite) TestDaemonRestartWithNames(c *check.C) {
 	test2ID := strings.TrimSpace(out)
 
 	out, err = s.d.Cmd("run", "-d", "--name=test3", "--link", "test2:abc", "busybox", "top")
+	c.Assert(err, check.IsNil, check.Commentf(out))
 	test3ID := strings.TrimSpace(out)
 
 	c.Assert(s.d.Restart(), check.IsNil)
 
-	out, err = s.d.Cmd("create", "--name=test", "busybox")
+	_, err = s.d.Cmd("create", "--name=test", "busybox")
 	c.Assert(err, check.NotNil, check.Commentf("expected error trying to create container with duplicate name"))
 	// this one is no longer needed, removing simplifies the remainder of the test
 	out, err = s.d.Cmd("rm", "-f", "test")

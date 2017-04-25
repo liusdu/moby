@@ -69,7 +69,7 @@ func (daemon *Daemon) getNamesRecursive(name string, id image.ID, flexablePrefix
 		return nil, nil, err
 	}
 
-	imgID := ""
+	var imgID string
 	if img.From != "" {
 		name, imgID, err = reference.ParseFrom(img.From)
 		if err != nil {

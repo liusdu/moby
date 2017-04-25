@@ -84,6 +84,9 @@ func TestIsArchivePathTar(t *testing.T) {
 	cmd := exec.Command("sh", "-c", "touch /tmp/archivedata && tar -cf /tmp/archive /tmp/archivedata && gzip --stdout /tmp/archive > /tmp/archive.gz")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err != nil {
 		t.Fatalf("Fail to create an archive file for test : %s.", output)
 	}
 	if !IsArchivePath(tmp + "/archive") {
@@ -101,6 +104,9 @@ func TestDecompressStreamGzip(t *testing.T) {
 		t.Fatalf("Fail to create an archive file for test : %s.", output)
 	}
 	archive, err := os.Open(tmp + "archive.gz")
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, err = DecompressStream(archive)
 	if err != nil {
 		t.Fatalf("Failed to decompress a gzip file.")
@@ -111,9 +117,15 @@ func TestDecompressStreamBzip2(t *testing.T) {
 	cmd := exec.Command("sh", "-c", "touch /tmp/archive && bzip2 -f /tmp/archive")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err != nil {
 		t.Fatalf("Fail to create an archive file for test : %s.", output)
 	}
 	archive, err := os.Open(tmp + "archive.bz2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, err = DecompressStream(archive)
 	if err != nil {
 		t.Fatalf("Failed to decompress a bzip2 file.")
@@ -130,6 +142,9 @@ func TestDecompressStreamXz(t *testing.T) {
 		t.Fatalf("Fail to create an archive file for test : %s.", output)
 	}
 	archive, err := os.Open(tmp + "archive.xz")
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, err = DecompressStream(archive)
 	if err != nil {
 		t.Fatalf("Failed to decompress a xz file.")
@@ -1135,8 +1150,14 @@ func TestUntarInvalidSymlink(t *testing.T) {
 func TestTempArchiveCloseMultipleTimes(t *testing.T) {
 	reader := ioutil.NopCloser(strings.NewReader("hello"))
 	tempArchive, err := NewTempArchive(reader, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	buf := make([]byte, 10)
 	n, err := tempArchive.Read(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if n != 5 {
 		t.Fatalf("Expected to read 5 bytes. Read %d instead", n)
 	}

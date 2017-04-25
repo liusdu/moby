@@ -1175,6 +1175,7 @@ func (s *DockerSuite) TestContainerApiDeleteRemoveVolume(c *check.C) {
 	c.Assert(waitRun(id), checker.IsNil)
 
 	source, err := inspectMountSourceField(id, vol)
+	c.Assert(err, checker.IsNil)
 	_, err = os.Stat(source)
 	c.Assert(err, checker.IsNil)
 

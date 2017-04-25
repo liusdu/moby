@@ -203,7 +203,7 @@ func from(b *Builder, args []string, attributes map[string]bool, original string
 	} else {
 		// TODO: don't use `name`, instead resolve it to a digest
 		if !b.options.PullParent {
-			image, err = b.docker.GetImageOnBuild(name)
+			image, _ = b.docker.GetImageOnBuild(name)
 			// TODO: shouldn't we error out if error is different from "not found" ?
 		}
 		if image == nil {

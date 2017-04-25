@@ -65,14 +65,14 @@ func (s *DockerSuite) TestVolumeCliInspectMulti(c *check.C) {
 
 func (s *DockerSuite) TestVolumeCliLs(c *check.C) {
 	prefix, _ := getPrefixAndSlashFromDaemonPlatform()
-	out, _ := dockerCmd(c, "volume", "create", "--name", "aaa")
+	dockerCmd(c, "volume", "create", "--name", "aaa")
 
 	dockerCmd(c, "volume", "create", "--name", "test")
 
 	dockerCmd(c, "volume", "create", "--name", "soo")
 	dockerCmd(c, "run", "-v", "soo:"+prefix+"/foo", "busybox", "ls", "/")
 
-	out, _ = dockerCmd(c, "volume", "ls")
+	out, _ := dockerCmd(c, "volume", "ls")
 	outArr := strings.Split(strings.TrimSpace(out), "\n")
 	c.Assert(len(outArr), check.Equals, 4, check.Commentf("\n%s", out))
 
@@ -247,10 +247,10 @@ func (s *DockerSuite) TestVolumeCliCreateLabel(c *check.C) {
 	testLabel := "foo"
 	testValue := "bar"
 
-	out, _, err := dockerCmdWithError("volume", "create", "--label", testLabel+"="+testValue, "--name", testVol)
+	_, _, err := dockerCmdWithError("volume", "create", "--label", testLabel+"="+testValue, "--name", testVol)
 	c.Assert(err, check.IsNil)
 
-	out, _ = dockerCmd(c, "volume", "inspect", "--format='{{ .Labels."+testLabel+" }}'", testVol)
+	out, _ := dockerCmd(c, "volume", "inspect", "--format='{{ .Labels."+testLabel+" }}'", testVol)
 	c.Assert(strings.TrimSpace(out), check.Equals, testValue)
 }
 
@@ -273,11 +273,11 @@ func (s *DockerSuite) TestVolumeCliCreateLabelMultiple(c *check.C) {
 		args = append(args, "--label", k+"="+v)
 	}
 
-	out, _, err := dockerCmdWithError(args...)
+	_, _, err := dockerCmdWithError(args...)
 	c.Assert(err, check.IsNil)
 
 	for k, v := range testLabels {
-		out, _ = dockerCmd(c, "volume", "inspect", "--format='{{ .Labels."+k+" }}'", testVol)
+		out, _ := dockerCmd(c, "volume", "inspect", "--format='{{ .Labels."+k+" }}'", testVol)
 		c.Assert(strings.TrimSpace(out), check.Equals, v)
 	}
 }

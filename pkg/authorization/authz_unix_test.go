@@ -259,6 +259,9 @@ func (t *authZPluginTestServer) auth(w http.ResponseWriter, r *http.Request) {
 	t.recordedRequest = Request{}
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
 	json.Unmarshal(body, &t.recordedRequest)
 	b, err := json.Marshal(t.replayResponse)
 	if err != nil {

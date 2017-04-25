@@ -393,6 +393,9 @@ func restoreCustomImage(is image.Store, ls layer.Store, rs reference.Store) erro
 			RootFS:  rootFS,
 			History: []image.History{},
 		})
+		if err != nil {
+			return err
+		}
 
 		named, err := reference.ParseNamed(name)
 		if err != nil {

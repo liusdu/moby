@@ -250,7 +250,7 @@ func TestEmptyTar(t *testing.T) {
 	}
 	buf.Reset()
 
-	n, err = io.Copy(buf, ts)
+	_, err = io.Copy(buf, ts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,6 +258,9 @@ func TestEmptyTar(t *testing.T) {
 	bufgz := new(bytes.Buffer)
 	gz := gzip.NewWriter(bufgz)
 	n, err = io.Copy(gz, bytes.NewBuffer(zeroBlock))
+	if err != nil {
+		t.Fatal(err)
+	}
 	gz.Close()
 	gzBytes := bufgz.Bytes()
 

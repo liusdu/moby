@@ -25,6 +25,9 @@ func TestDirectory(templateDir string) (dir string, err error) {
 		prefix = "docker-test-"
 	}
 	dir, err = ioutil.TempDir("", prefix)
+	if err != nil {
+		return
+	}
 	if err = os.Remove(dir); err != nil {
 		return
 	}

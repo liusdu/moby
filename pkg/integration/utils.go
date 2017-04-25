@@ -62,7 +62,6 @@ func IsKilled(err error) bool {
 // RunCommandWithOutput runs the specified command and returns the combined output (stdout/stderr)
 // with the exitCode different from 0 and the error if something bad happened
 func RunCommandWithOutput(cmd *exec.Cmd) (output string, exitCode int, err error) {
-	exitCode = 0
 	out, err := cmd.CombinedOutput()
 	exitCode = ProcessExitCode(err)
 	output = string(out)
@@ -75,7 +74,6 @@ func RunCommandWithStdoutStderr(cmd *exec.Cmd) (stdout string, stderr string, ex
 	var (
 		stderrBuffer, stdoutBuffer bytes.Buffer
 	)
-	exitCode = 0
 	cmd.Stderr = &stderrBuffer
 	cmd.Stdout = &stdoutBuffer
 	err = cmd.Run()
@@ -157,7 +155,6 @@ func RunCommandWithOutputAndTimeout(cmd *exec.Cmd, timeout time.Duration) (outpu
 // RunCommand runs the specified command and returns the exitCode different from 0
 // and the error if something bad happened.
 func RunCommand(cmd *exec.Cmd) (exitCode int, err error) {
-	exitCode = 0
 	err = cmd.Run()
 	exitCode = ProcessExitCode(err)
 	return

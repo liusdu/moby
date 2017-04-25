@@ -81,6 +81,7 @@ func (s *DockerSuite) TestCpToErrDstParentNotExists(c *check.C) {
 	// Try with a directory source.
 	srcPath = cpPath(tmpDir, "dir1")
 
+	err = runDockerCp(c, srcPath, dstPath)
 	c.Assert(err, checker.NotNil)
 
 	c.Assert(isCpNotExist(err), checker.True, check.Commentf("expected IsNotExist error, but got %T: %s", err, err))

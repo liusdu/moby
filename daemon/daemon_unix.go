@@ -560,7 +560,7 @@ func UsingSystemd(config *Config) bool {
 // verifyPlatformContainerSettings performs platform-specific validation of the
 // hostconfig and config structures.
 func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *containertypes.HostConfig, config *containertypes.Config, update bool) ([]string, error) {
-	warnings := []string{}
+	var warnings []string
 	sysInfo := sysinfo.New(true)
 
 	warnings, err := daemon.verifyExperimentalContainerSettings(hostConfig, config)
@@ -996,7 +996,6 @@ func parseRemappedRoot(usergrp string) (string, string, error) {
 			if err != nil {
 				return "", "", fmt.Errorf("Error during gid lookup for %q: %v", lookupName, err)
 			}
-			groupID = group.Gid
 			groupname = group.Name
 		}
 	}

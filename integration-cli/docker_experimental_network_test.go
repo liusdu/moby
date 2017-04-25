@@ -128,7 +128,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkMacvlanOverlapParent(c *check.C) {
 	dockerCmd(c, "network", "create", "--driver=macvlan", "-o", "parent=dm-dummy0.40", "dm-subinterface")
 	assertNwIsAvailable(c, "dm-subinterface")
 	// attempt to create another network using the same parent iface that should fail
-	out, _, err = dockerCmdWithError("network", "create", "--driver=macvlan", "-o", "parent=dm-dummy0.40", "dm-parent-net-overlap")
+	_, _, err = dockerCmdWithError("network", "create", "--driver=macvlan", "-o", "parent=dm-dummy0.40", "dm-parent-net-overlap")
 	// verify that the overlap returns an error
 	c.Assert(err, check.NotNil)
 	// cleanup the master interface which also collects the slave dev
@@ -148,7 +148,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkIpvlanOverlapParent(c *check.C) {
 	dockerCmd(c, "network", "create", "--driver=ipvlan", "-o", "parent=di-dummy0.30", "di-subinterface")
 	assertNwIsAvailable(c, "di-subinterface")
 	// attempt to create another network using the same parent iface that should fail
-	out, _, err = dockerCmdWithError("network", "create", "--driver=ipvlan", "-o", "parent=di-dummy0.30", "di-parent-net-overlap")
+	_, _, err = dockerCmdWithError("network", "create", "--driver=ipvlan", "-o", "parent=di-dummy0.30", "di-parent-net-overlap")
 	// verify that the overlap returns an error
 	c.Assert(err, check.NotNil)
 	// cleanup the master interface which also collects the slave dev

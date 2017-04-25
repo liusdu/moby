@@ -35,7 +35,7 @@ func (s *DockerSuite) TestApiStatsNoStreamGetCpu(c *check.C) {
 	c.Assert(err, checker.IsNil)
 	body.Close()
 
-	var cpuPercent = 0.0
+	var cpuPercent float64
 	cpuDelta := float64(v.CPUStats.CPUUsage.TotalUsage - v.PreCPUStats.CPUUsage.TotalUsage)
 	systemDelta := float64(v.CPUStats.SystemUsage - v.PreCPUStats.SystemUsage)
 	cpuPercent = (cpuDelta / systemDelta) * float64(len(v.CPUStats.CPUUsage.PercpuUsage)) * 100.0

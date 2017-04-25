@@ -14,7 +14,7 @@ func TestToBytes(t *testing.T) {
 		t.Fatalf("Expected '1' '97', got '%d' '%d'", codes[0], codes[1])
 	}
 
-	codes, err = ToBytes("shift-z")
+	_, err = ToBytes("shift-z")
 	if err == nil {
 		t.Fatalf("Expected error, got none")
 	}

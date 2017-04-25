@@ -47,7 +47,7 @@ func (s *DockerSuite) TestCommitPausedContainer(c *check.C) {
 
 	dockerCmd(c, "pause", cleanedContainerID)
 
-	out, _ = dockerCmd(c, "commit", cleanedContainerID)
+	dockerCmd(c, "commit", cleanedContainerID)
 
 	out = inspectField(c, cleanedContainerID, "State.Paused")
 	// commit should not unpause a paused container
@@ -75,8 +75,7 @@ func (s *DockerSuite) TestCommitHardlink(c *check.C) {
 	chunks = strings.SplitAfterN(strings.TrimSpace(firstOutput), " ", 2)
 	c.Assert(chunks[1], checker.Contains, chunks[0], check.Commentf("Failed to create hardlink in a container. Expected to find %q in %q", inode, chunks[1:]))
 
-	imageID, _ := dockerCmd(c, "commit", "hardlinks", "hardlinks")
-	imageID = strings.TrimSpace(imageID)
+	dockerCmd(c, "commit", "hardlinks", "hardlinks")
 
 	secondOutput, _ := dockerCmd(c, "run", "-t", "hardlinks", "ls", "-di", "file1", "file2")
 
@@ -90,8 +89,7 @@ func (s *DockerSuite) TestCommitTTY(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 	dockerCmd(c, "run", "-t", "--name", "tty", "busybox", "/bin/ls")
 
-	imageID, _ := dockerCmd(c, "commit", "tty", "ttytest")
-	imageID = strings.TrimSpace(imageID)
+	dockerCmd(c, "commit", "tty", "ttytest")
 
 	dockerCmd(c, "run", "ttytest", "/bin/ls")
 }
@@ -100,8 +98,7 @@ func (s *DockerSuite) TestCommitWithHostBindMount(c *check.C) {
 	testRequires(c, DaemonIsLinux)
 	dockerCmd(c, "run", "--name", "bind-commit", "-v", "/dev/null:/winning", "busybox", "true")
 
-	imageID, _ := dockerCmd(c, "commit", "bind-commit", "bindtest")
-	imageID = strings.TrimSpace(imageID)
+	dockerCmd(c, "commit", "bind-commit", "bindtest")
 
 	dockerCmd(c, "run", "bindtest", "true")
 }

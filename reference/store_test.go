@@ -65,6 +65,9 @@ func TestSave(t *testing.T) {
 		t.Fatalf("error creating temp file: %v", err)
 	}
 	_, err = jsonFile.Write([]byte(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
 	jsonFile.Close()
 	defer os.RemoveAll(jsonFile.Name())
 
@@ -325,6 +328,9 @@ func TestAddDeleteGet(t *testing.T) {
 
 func TestInvalidTags(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "tag-store-test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(tmpDir)
 
 	store, err := NewReferenceStore(filepath.Join(tmpDir, "repositories.json"))
