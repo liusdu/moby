@@ -71,13 +71,6 @@ func (daemon *Daemon) ImageDelete(imageRef string, force, prune bool) ([]types.I
 
 	repoRefs := daemon.referenceStore.References(imgID)
 
-	for _, repoRef := range repoRefs {
-		if !reference.TryUpdateRepoTagHandlingStatus(repoRef.String(), true) {
-			err := fmt.Errorf("Repo tag(%s) loading or deleting in progress, please try later", repoRef.String())
-			return nil, errors.NewRequestConflictError(err)
-		}
-		defer reference.UpdateRepoTagHandlingStatus(repoRef.String(), false)
-	}
 	var removedRepositoryRef bool
 	if !isImageIDPrefix(imgID.String(), imageRef) {
 		// A repository reference was given and should be removed
@@ -99,6 +92,7 @@ func (daemon *Daemon) ImageDelete(imageRef string, force, prune bool) ([]types.I
 		if err != nil {
 			return nil, err
 		}
+
 		parsedRef, err = daemon.removeImageRef(parsedRef)
 		if err != nil {
 			return nil, err
