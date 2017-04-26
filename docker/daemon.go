@@ -16,6 +16,7 @@ import (
 	"github.com/docker/distribution/uuid"
 	apiserver "github.com/docker/docker/api/server"
 	"github.com/docker/docker/api/server/router"
+	"github.com/docker/docker/api/server/router/accelerator"
 	"github.com/docker/docker/api/server/router/build"
 	"github.com/docker/docker/api/server/router/container"
 	"github.com/docker/docker/api/server/router/image"
@@ -419,6 +420,9 @@ func initRouter(s *apiserver.Server, d *daemon.Daemon) {
 	}
 	if d.NetworkControllerEnabled() {
 		routers = append(routers, network.NewRouter(d))
+	}
+	if d.AcceleratorControllerEnabled() {
+		routers = append(routers, accelerator.NewRouter(d))
 	}
 
 	s.InitRouter(utils.IsDebugEnabled(), routers...)

@@ -18,13 +18,13 @@ import (
 func (cli *DockerCli) CmdInspect(args ...string) error {
 	cmd := Cli.Subcmd("inspect", []string{"CONTAINER|IMAGE [CONTAINER|IMAGE...]"}, Cli.DockerCommands["inspect"].Description, true)
 	tmplStr := cmd.String([]string{"f", "-format"}, "", "Format the output using the given go template")
-	inspectType := cmd.String([]string{"-type"}, "", "Return JSON for specified type, (e.g image or container)")
+	inspectType := cmd.String([]string{"-type"}, "", "Return JSON for specified type, (e.g image or container or accel)")
 	size := cmd.Bool([]string{"s", "-size"}, false, "Display total file sizes if the type is container")
 	cmd.Require(flag.Min, 1)
 
 	cmd.ParseFlags(args, true)
 
-	if *inspectType != "" && *inspectType != "container" && *inspectType != "image" {
+	if *inspectType != "" && *inspectType != "container" && *inspectType != "image" && *inspectType != "accel" {
 		return fmt.Errorf("%q is not a valid value for --type", *inspectType)
 	}
 
@@ -34,6 +34,8 @@ func (cli *DockerCli) CmdInspect(args ...string) error {
 		elementSearcher = cli.inspectContainers(*size)
 	case "image":
 		elementSearcher = cli.inspectImages(*size)
+	case "accel":
+		elementSearcher = cli.inspectAccels(*size)
 	default:
 		elementSearcher = cli.inspectAll(*size)
 	}
@@ -53,24 +55,37 @@ func (cli *DockerCli) inspectImages(getSize bool) inspectSearcher {
 	}
 }
 
+func (cli *DockerCli) inspectAccels(getSize bool) inspectSearcher {
+	return func(ref string) (interface{}, []byte, error) {
+		return cli.client.AccelInspectWithRaw(context.Background(), ref, getSize)
+	}
+}
+
 func (cli *DockerCli) inspectAll(getSize bool) inspectSearcher {
 	return func(ref string) (interface{}, []byte, error) {
 		c, rawContainer, err := cli.client.ContainerInspectWithRaw(context.Background(), ref, getSize)
-		if err != nil {
-			// Search for image with that id if a container doesn't exist.
-			if client.IsErrContainerNotFound(err) {
-				i, rawImage, err := cli.client.ImageInspectWithRaw(context.Background(), ref, getSize)
-				if err != nil {
-					if client.IsErrImageNotFound(err) {
-						return nil, nil, fmt.Errorf("Error: No such image or container: %s", ref)
-					}
-					return nil, nil, err
-				}
-				return i, rawImage, err
-			}
+		if err == nil {
+			return c, rawContainer, err
+		} else if !client.IsErrContainerNotFound(err) {
 			return nil, nil, err
 		}
-		return c, rawContainer, err
+
+		// Search for image with that id if a container doesn't exist.
+		i, rawImage, err := cli.client.ImageInspectWithRaw(context.Background(), ref, getSize)
+		if err == nil {
+			return i, rawImage, err
+		} else if !client.IsErrImageNotFound(err) {
+			return nil, nil, err
+		}
+
+		// Search for accel with that id if a container or image doesn't exist
+		a, rawAccel, err := cli.client.AccelInspectWithRaw(context.Background(), ref, getSize)
+		if err == nil {
+			return a, rawAccel, err
+		} else if !client.IsErrAccelNotFound(err) {
+			return nil, nil, err
+		}
+		return nil, nil, fmt.Errorf("Error: No such image or container or accelerator: %s", ref)
 	}
 }
 

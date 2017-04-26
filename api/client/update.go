@@ -29,6 +29,8 @@ func (cli *DockerCli) CmdUpdate(args ...string) error {
 	flMemorySwap := cmd.String([]string{"-memory-swap"}, "", "Swap limit equal to memory plus swap: '-1' to enable unlimited swap")
 	flKernelMemory := cmd.String([]string{"-kernel-memory"}, "", "Kernel memory limit")
 	flRestartPolicy := cmd.String([]string{"-restart"}, "", "Restart policy to apply when a container exits")
+	flAccel := opts.NewAccelOpt(opts.ValidateAccel)
+	cmd.Var(&flAccel, []string{"-accel"}, "Accelerator for the container")
 
 	cmd.Require(flag.Min, 1)
 	cmd.ParseFlags(args, true)
@@ -97,6 +99,7 @@ func (cli *DockerCli) CmdUpdate(args ...string) error {
 	updateConfig := container.UpdateConfig{
 		Resources:     resources,
 		RestartPolicy: restartPolicy,
+		Accelerators:  flAccel.GetAll(),
 	}
 
 	names := cmd.Args()

@@ -72,6 +72,12 @@ type APIClient interface {
 	VolumeInspect(ctx context.Context, volumeID string) (types.Volume, error)
 	VolumeList(ctx context.Context, filter filters.Args) (types.VolumesListResponse, error)
 	VolumeRemove(ctx context.Context, volumeID string) error
+	AccelCreate(ctx context.Context, options types.AccelCreateRequest) (types.Accel, error)
+	AccelInspect(ctx context.Context, name string) (types.Accel, error)
+	AccelInspectWithRaw(ctx context.Context, name string, getSize bool) (types.Accel, []byte, error)
+	AccelDriversList(ctx context.Context) (types.AccelDriversResponse, error)
+	AccelList(ctx context.Context, filter filters.Args) (types.AccelsListResponse, error)
+	AccelRemove(ctx context.Context, name string, force bool) error
 }
 
 // Ensure that Client always implements APIClient.

@@ -64,7 +64,7 @@ func (s *DockerSuite) TestRenameCheckNames(c *check.C) {
 
 	name, err := inspectFieldWithError("first_name", "Name")
 	c.Assert(err, checker.NotNil, check.Commentf(name))
-	c.Assert(err.Error(), checker.Contains, "No such image or container: first_name")
+	c.Assert(err.Error(), checker.Contains, "No such image or container or accelerator: first_name")
 }
 
 func (s *DockerSuite) TestRenameInvalidName(c *check.C) {

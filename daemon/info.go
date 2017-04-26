@@ -169,6 +169,10 @@ func (daemon *Daemon) showPluginsInfo() types.PluginsInfo {
 	}
 
 	pluginsInfo.Authorization = daemon.configStore.AuthorizationPlugins
+	drvs, _, _ := daemon.AccelDrivers()
+	for _, drv := range drvs {
+		pluginsInfo.Accel = append(pluginsInfo.Accel, drv.Name)
+	}
 
 	return pluginsInfo
 }

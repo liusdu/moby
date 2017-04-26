@@ -280,6 +280,36 @@ type UpdateConfig struct {
 	// Contains container's resources (cgroups, ulimits)
 	Resources
 	RestartPolicy RestartPolicy
+	Accelerators  []AcceleratorConfig // Accelerator configs
+}
+
+// AcceleratorConfig holds the attributes of an Accelerator
+// Configs from cli and image will be merge into this struct
+type AcceleratorConfig struct {
+	// Following fileds will be filled in Cli, and merge with image in create stage
+	Name    string
+	Runtime string
+	Driver  string
+	Options []string
+	// persistent means this accel will reserved until delete,
+	// otherwise it will be release when container stop.
+	// Cli allocated accelerators are always persistent.
+	IsPersistent bool
+	// Usually, this filed is filled in start stage. But if Cli use slotname-binding,
+	// it will be filled in create stage.
+	Sid string
+}
+
+// AccelMount holds the attribultes of accelerator volume mounts
+// Accelerator need to mount one or more volumes into container to provide lib and binary
+// These volume or directories may need to be merged
+type AccelMount struct {
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
+	RW          bool   `json:"writable"`
+	Propagation string `json:"mountpropagation"`
+	Mode        string
+	Cover       bool `json:"cover"`
 }
 
 // HostConfig the non-portable Config structure of a container.
@@ -327,6 +357,13 @@ type HostConfig struct {
 	ConsoleSize [2]int    // Initial console size
 	Isolation   Isolation // Isolation technology of the container (eg default, hyperv)
 	HookSpec    string    // specification file containing custom hook definition
+
+	// Container's accelerators config
+	Accelerators []AcceleratorConfig // List of accelerators to be used for the container
+	// TODO: move these Accel* to Accelerators
+	AccelBindings     map[string]AccelMount `json:",omitempty"` // Bind mount for accelerator
+	AccelDevices      map[string]string     `json:",omitempty"` // Devices for accelerator
+	AccelEnvironments map[string]string     `json:",omitempty"` // Envs for accelerator
 
 	// Contains container's resources (cgroups, ulimits)
 	Resources

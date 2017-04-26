@@ -16,6 +16,10 @@ func (daemon *Daemon) ContainerUpdate(name string, hostConfig *container.HostCon
 		return warnings, err
 	}
 
+	if err := daemon.verifyAccelUpdateConfig(hostConfig); err != nil {
+		return nil, err
+	}
+
 	if err := daemon.update(name, hostConfig); err != nil {
 		return warnings, err
 	}
@@ -65,8 +69,18 @@ func (daemon *Daemon) update(name string, hostConfig *container.HostConfig) erro
 	if container.IsRunning() && hostConfig.KernelMemory != 0 {
 		return errCannotUpdate(container.ID, fmt.Errorf("Can not update kernel memory to a running container, please stop it first."))
 	}
+	// If container is running, accelerator can not be updated
+	if container.IsRunning() && len(hostConfig.Accelerators) > 0 {
+		return errCannotUpdate(container.ID, fmt.Errorf("Container is running, accelerator config cannot be updated."))
+	}
 
 	if err := container.UpdateContainer(hostConfig); err != nil {
+		restoreConfig = true
+		return errCannotUpdate(container.ID, err)
+	}
+
+	// Update accelerator resources
+	if err := daemon.updateAccelConfig(hostConfig, container); err != nil {
 		restoreConfig = true
 		return errCannotUpdate(container.ID, err)
 	}

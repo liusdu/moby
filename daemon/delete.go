@@ -115,6 +115,11 @@ func (daemon *Daemon) cleanupContainer(container *container.Container, forceRemo
 		}
 	}()
 
+	// Release accelerator resources
+	if err = daemon.releaseAccelResources(container, true); err != nil {
+		return fmt.Errorf("Unable to release accelerator resources: %v", err)
+	}
+
 	if err = os.RemoveAll(container.Root); err != nil {
 		return fmt.Errorf("Unable to remove filesystem for %v: %v", container.ID, err)
 	}

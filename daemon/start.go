@@ -132,6 +132,10 @@ func (daemon *Daemon) containerStart(container *container.Container, resetRestar
 		return err
 	}
 
+	if err := daemon.initializeAccelResources(container); err != nil {
+		return err
+	}
+
 	spec, err := daemon.createSpec(container)
 	if err != nil {
 		return err
@@ -172,6 +176,10 @@ func (daemon *Daemon) Cleanup(container *container.Container) {
 	daemon.releaseNetwork(container)
 
 	container.UnmountIpcMounts(detachMounted)
+
+	if err := daemon.releaseAccelResources(container, false); err != nil {
+		logrus.Warnf("%s stop: Failed to release non-persistent acceleartor slots: %v", container.ID, err)
+	}
 
 	if err := daemon.conditionalUnmountOnCleanup(container); err != nil {
 		// FIXME: remove once reference counting for graphdrivers has been refactored
