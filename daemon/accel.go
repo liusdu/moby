@@ -160,7 +160,7 @@ func (daemon *Daemon) verifyAccelConfig(hostConfig *containertypes.HostConfig) e
 	}
 
 	// Firstly, we check hostConfig.Accelerators filled by cli "--accel-runtime" options
-	for idx, _ := range hostConfig.Accelerators {
+	for idx := range hostConfig.Accelerators {
 		accel := &hostConfig.Accelerators[idx]
 
 		// validate parameters
@@ -221,7 +221,7 @@ func (daemon *Daemon) mergeAndVerifyAccelRuntime(hostConfig *containertypes.Host
 	}
 
 	// Check availiability of all accelerators
-	for idx, _ := range hostConfig.Accelerators {
+	for idx := range hostConfig.Accelerators {
 		accel := &hostConfig.Accelerators[idx]
 
 		// check availiability
@@ -248,7 +248,7 @@ func (daemon *Daemon) allocatePersistentAccelResources(container *container.Cont
 	c := daemon.accelController
 
 	log.Debugf("Allocate persistent accelerator resources for container \"%s\"", container.Name)
-	for idx, _ := range container.HostConfig.Accelerators {
+	for idx := range container.HostConfig.Accelerators {
 		accel := &container.HostConfig.Accelerators[idx]
 
 		if accel.IsPersistent && accel.Sid != "" {
@@ -309,7 +309,7 @@ func (daemon *Daemon) initializeAccelResources(container *container.Container) (
 
 	c := daemon.accelController
 
-	for idx, _ := range container.HostConfig.Accelerators {
+	for idx := range container.HostConfig.Accelerators {
 		accel := &container.HostConfig.Accelerators[idx]
 
 		// "persistent" accelerators are allocated at start stage
@@ -405,7 +405,7 @@ func (daemon *Daemon) releaseAccelResources(container *container.Container, rele
 	removeMergedMounts(container.Root)
 
 	// release accelerators
-	for idx, _ := range container.HostConfig.Accelerators {
+	for idx := range container.HostConfig.Accelerators {
 		accel := &container.HostConfig.Accelerators[idx]
 
 		if (releasePersistent || !accel.IsPersistent) && accel.Sid != "" {
@@ -444,7 +444,7 @@ func (daemon *Daemon) verifyAccelUpdateConfig(hostConfig *containertypes.HostCon
 	}
 	// check accel runtime availiability
 	c := daemon.accelController
-	for idx, _ := range hostConfig.Accelerators {
+	for idx := range hostConfig.Accelerators {
 		accelCfg := &hostConfig.Accelerators[idx]
 
 		d, err := c.Query(accelCfg.Runtime, accelCfg.Driver)

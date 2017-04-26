@@ -380,7 +380,7 @@ func setupRemoteAccelDrivers(c *check.C, mux *http.ServeMux, url, accelDrv strin
 			resp.ErrMsg = fmt.Sprintf("%d", fakeDriver.SeqNo)
 		} else {
 			var sl []string
-			for name, _ := range fakeDriver.slots {
+			for name := range fakeDriver.slots {
 				sl = append(sl, name)
 			}
 			resp.Slots = sl
@@ -901,7 +901,7 @@ func (s *DockerAccelSuite) TestDockerAccelDriverUngracefulRestart(c *check.C) {
 	}
 
 	// trying to reuse the same slot
-	out, err = s.d.Cmd("start", contID)
+	_, err = s.d.Cmd("start", contID)
 	c.Assert(err, checker.IsNil)
 
 	out, err = s.d.Cmd("accel", "inspect", "--format", "{{.Owner}}", accelId)
@@ -1045,9 +1045,9 @@ func (s *DockerAccelSuite) TestDockerAccelMultipleAccelsUngracefulDaemonRestart(
 
 	_, err = s.d.Cmd("accel", "create", "--runtime", fakeRuntime, "acceludr1")
 	c.Assert(err, check.IsNil)
-	out, err := s.d.Cmd("accel", "create", "--runtime", fakeRuntime, "acceludr2")
+	_, err = s.d.Cmd("accel", "create", "--runtime", fakeRuntime, "acceludr2")
 	c.Assert(err, check.IsNil)
-	out, err = s.d.Cmd("run", "-d", "--accel=acceludr1", "--accel=acceludr2", "busybox", "top")
+	out, err := s.d.Cmd("run", "-d", "--accel=acceludr1", "--accel=acceludr2", "busybox", "top")
 	c.Assert(err, check.IsNil)
 	id := strings.TrimSpace(out)
 	c.Assert(s.waitRun(id), check.IsNil)

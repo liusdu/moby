@@ -437,11 +437,8 @@ func isDir(p string) bool {
 	fi, err := os.Stat(p)
 	if err != nil {
 		return os.IsExist(err)
-	} else {
-		return fi.IsDir()
 	}
-
-	return false
+	return fi.IsDir()
 }
 
 func isSameFile(f1, f2 string) bool {

@@ -241,7 +241,7 @@ func (c *controller) CleanupSlots(cleaner SlotWalker) {
 	invalidCnt := 0
 	log.Infof("libacc: Accelerator slots summary")
 	c.WalkSlots(func(s Slot) bool {
-		state := ""
+		var state string
 		if s.State() == 0 {
 			validCnt = validCnt + 1
 			if s.Owner() == "" {

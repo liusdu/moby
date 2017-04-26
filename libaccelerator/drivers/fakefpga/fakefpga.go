@@ -199,7 +199,7 @@ func (d *driver) ReleaseSlot(sid string) error {
 // ListSlot lists all the slots fakefpga has
 func (d *driver) ListSlot() ([]string, error) {
 	ret := []string{}
-	for sid, _ := range d.slots {
+	for sid := range d.slots {
 		ret = append(ret, sid)
 	}
 	return ret, nil
