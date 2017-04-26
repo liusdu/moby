@@ -21,7 +21,7 @@ type Store interface {
 	Get(id ID) (*Image, error)
 	Delete(id ID) ([]layer.Metadata, error)
 	HoldOn(id ID) error
-	HoldOff(id ID, remove bool) error
+	HoldOff(id ID) error
 	Search(partialID string) (ID, error)
 	SetParent(id ID, parent ID) error
 	GetParent(id ID) (ID, error)
@@ -103,7 +103,7 @@ func (is *store) restore() error {
 		imageMeta := &imageMeta{
 			layer:          l,
 			children:       make(map[ID]struct{}),
-			referenceCount: 1,
+			referenceCount: 0,
 		}
 
 		is.images[ID(id)] = imageMeta
@@ -176,7 +176,7 @@ func (is *store) Create(config []byte) (ID, error) {
 	imageMeta := &imageMeta{
 		layer:          l,
 		children:       make(map[ID]struct{}),
-		referenceCount: 1,
+		referenceCount: 0,
 	}
 
 	is.images[imageID] = imageMeta
@@ -236,7 +236,6 @@ func (is *store) delete(id ID) ([]layer.Metadata, error) {
 		return nil, fmt.Errorf("unrecognized image ID %s", id.String())
 	}
 
-	imageMeta.referenceCount--
 	if imageMeta.referenceCount > 0 {
 		return nil, ErrReferenceCountNotZero
 	}
@@ -266,66 +265,38 @@ func (is *store) HoldOn(id ID) error {
 	is.Lock()
 	defer is.Unlock()
 
-	var (
-		iter ID = id
-		err  error
-	)
-	if imageMeta := is.images[id]; imageMeta == nil {
-		return fmt.Errorf("unrecognized image ID %s", id.String())
-	}
-	for {
-		imageMeta := is.images[iter]
-		if imageMeta == nil {
-			break
-		}
-		imageMeta.referenceCount++
-		if iter, err = is.GetParent(iter); err != nil {
-			break
-		}
-
-	}
-	return nil
-}
-
-// HoldOff will decrease the reference count for image
-func (is *store) HoldOff(id ID, remove bool) error {
-	is.Lock()
-	defer is.Unlock()
-
-	var (
-		err        error
-		iter       ID   = id
-		needRemove bool = false
-	)
 	imageMeta := is.images[id]
 	if imageMeta == nil {
 		return fmt.Errorf("unrecognized image ID %s", id.String())
 	}
-	if remove && imageMeta.referenceCount == 1 {
-		needRemove = true
-	}
-	for {
-		imageMeta := is.images[iter]
-		if imageMeta == nil {
-			break
-		}
-		imageMeta.referenceCount--
-		if !remove && imageMeta.referenceCount == 0 {
-			// If need to keep this image, and the reference count is zero
-			// here need to reset it to 1. 1 stands for could be removed if a delete operation comes.
-			imageMeta.referenceCount = 1
-		}
+	imageMeta.referenceCount++
 
-		if iter, err = is.GetParent(iter); err != nil {
-			break
+	if parent, err := is.GetParent(id); err == nil {
+		if parentMeta := is.images[parent]; parentMeta != nil {
+			parentMeta.referenceCount++
 		}
 	}
-	if needRemove {
-		if _, err := is.delete(id); err != nil {
-			logrus.Errorf("Deleting image %s error: %v", id.String(), err)
-			return err
+
+	return nil
+}
+
+// HoldOff will decrease the reference count for image
+func (is *store) HoldOff(id ID) error {
+	is.Lock()
+	defer is.Unlock()
+
+	imageMeta := is.images[id]
+	if imageMeta == nil {
+		return fmt.Errorf("unrecognized image ID %s", id.String())
+	}
+
+	imageMeta.referenceCount--
+	if parent, err := is.GetParent(id); err == nil {
+		if parentMeta := is.images[parent]; parentMeta != nil {
+			parentMeta.referenceCount--
 		}
 	}
+
 	return nil
 }
 

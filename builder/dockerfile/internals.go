@@ -471,7 +471,7 @@ func (b *Builder) holdOnImage(id string) error {
 
 func (b *Builder) cleanupHoldOnImage() {
 	for id := range b.holdOnImages {
-		b.docker.HoldOffImageByID(id, true)
+		b.docker.HoldOffImageByID(id)
 		delete(b.holdOnImages, id)
 	}
 }
