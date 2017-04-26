@@ -127,6 +127,8 @@ type Backend interface {
 	ContainerWait(containerID string, timeout time.Duration) (int, error)
 	// ContainerUpdateCmd updates container.Path and container.Args
 	ContainerUpdateCmdOnBuild(containerID string, cmd []string) error
+	HoldOnImageByID(id string) error
+	HoldOffImageByID(id string, remove bool) error
 
 	// ContainerCopy copies/extracts a source FileInfo to a destination path inside a container
 	// specified by a container object.

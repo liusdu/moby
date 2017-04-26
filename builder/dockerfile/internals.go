@@ -82,6 +82,7 @@ func (b *Builder) commit(id string, autoCmd strslice.StrSlice, comment string) e
 	if err != nil {
 		return err
 	}
+	b.holdOnImage(string(imageID))
 
 	b.image = imageID
 	return nil
@@ -188,7 +189,6 @@ func (b *Builder) runContextCommand(args []string, allowRemote bool, allowLocalD
 		return err
 	}
 	b.tmpContainers[container.ID] = struct{}{}
-
 	comment := fmt.Sprintf("%s %s in %s", cmdName, origPaths, dest)
 
 	// Twiddle the destination when its a relative path - meaning, make it
@@ -396,6 +396,7 @@ func containsWildcards(name string) bool {
 func (b *Builder) processImageFrom(img builder.Image) error {
 	if img != nil {
 		b.image = img.ImageID()
+		b.holdOnImage(b.image)
 
 		if img.RunConfig() != nil {
 			b.runConfig = img.RunConfig()
@@ -457,6 +458,24 @@ func (b *Builder) processImageFrom(img builder.Image) error {
 	return nil
 }
 
+func (b *Builder) holdOnImage(id string) error {
+	if _, exist := b.holdOnImages[id]; exist {
+		return nil
+	}
+	if err := b.docker.HoldOnImageByID(id); err != nil {
+		return err
+	}
+	b.holdOnImages[id] = struct{}{}
+	return nil
+}
+
+func (b *Builder) cleanupHoldOnImage() {
+	for id := range b.holdOnImages {
+		b.docker.HoldOffImageByID(id, true)
+		delete(b.holdOnImages, id)
+	}
+}
+
 // probeCache checks if `b.docker` implements builder.ImageCache and image-caching
 // is enabled (`b.UseCache`).
 // If so attempts to look up the current `b.image` and `b.runConfig` pair with `b.docker`.
@@ -478,9 +497,15 @@ func (b *Builder) probeCache() (bool, error) {
 		return false, nil
 	}
 
+	if err := b.holdOnImage(string(cache)); err != nil {
+		b.cacheBusted = true
+		return false, nil
+	}
+
+	b.image = string(cache)
+
 	fmt.Fprintf(b.Stdout, " ---> Using cache\n")
 	logrus.Debugf("[BUILDER] Use cached version: %s", b.runConfig.Cmd)
-	b.image = string(cache)
 
 	return true, nil
 }

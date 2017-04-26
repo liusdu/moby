@@ -1198,6 +1198,14 @@ func (daemon *Daemon) GetRemappedUIDGID() (int, int) {
 	return uid, gid
 }
 
+func (daemon *Daemon) HoldOnImageByID(id string) error {
+	return daemon.imageStore.HoldOn(image.ID(id))
+}
+
+func (daemon *Daemon) HoldOffImageByID(id string, remove bool) error {
+	return daemon.imageStore.HoldOff(image.ID(id), remove)
+}
+
 // GetCachedImage returns the most recent created image that is a child
 // of the image with imgID, that had the same config when it was
 // created. nil is returned if a child cannot be found. An error is
