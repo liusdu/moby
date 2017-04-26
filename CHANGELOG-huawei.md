@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.11.2.25 (2017-4-26)
+
+- bump containerd: 
+   - Kill the runtime process if the bundle is not exist (mr 42 fix DTS2017041109100)
+   - Add timeout check to avoid block when shim open pipe (mr 42 fix DTS2017041109100)
+   - Fix the busy loop for system-container (mr 41)
+- Bugfix: fix failed to build a image while deleting it at the same time (mr 405 fix DTS2017041804117 DTS2017041804117)
+- Bugfix: Revert "fix 'unrecognize image ID' error" (mr 425 fix DTS2017041803349)
+- Feature: Add accelerator support for CloudRAN (mr 296)
+
 ## v1.11.2.24 (2017-4-21)
 
 - Bugfix: deny attach-output to a paused container(mr 412 fix DTS2017041807694)
