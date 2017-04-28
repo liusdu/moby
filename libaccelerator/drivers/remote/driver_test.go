@@ -74,7 +74,7 @@ func (plugin *TestPlugin) Call(serviceMethod string, args interface{}, ret inter
 			resp.ErrMsg = siReq.SlotID
 		}
 	} else {
-		return &driverapi.ErrNotImplemented{}
+		return driverapi.ErrNotImplemented(serviceMethod)
 	}
 
 	return nil
