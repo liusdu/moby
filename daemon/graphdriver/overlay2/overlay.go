@@ -21,7 +21,6 @@ import (
 	"github.com/docker/docker/pkg/directory"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/mount"
-	"github.com/docker/docker/pkg/parsers/kernel"
 
 	"github.com/opencontainers/runc/libcontainer/label"
 )
@@ -94,15 +93,6 @@ func init() {
 func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (graphdriver.Driver, error) {
 
 	if err := supportsOverlay(); err != nil {
-		return nil, graphdriver.ErrNotSupported
-	}
-
-	// require kernel 4.0.0 to ensure multiple lower dirs are supported
-	v, err := kernel.GetKernelVersion()
-	if err != nil {
-		return nil, err
-	}
-	if kernel.CompareKernelVersion(*v, kernel.VersionInfo{Kernel: 4, Major: 0, Minor: 0}) < 0 {
 		return nil, graphdriver.ErrNotSupported
 	}
 
