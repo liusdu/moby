@@ -15,7 +15,6 @@ import (
 
 	"github.com/docker/docker/daemon/graphdriver"
 	"github.com/docker/docker/pkg/archive"
-	"github.com/docker/docker/pkg/chrootarchive"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/locker"
 	"github.com/opencontainers/runc/libcontainer/label"
@@ -72,8 +71,8 @@ func (d *naiveDiffDriverWithApply) ApplyDiff(id, parent string, diff archive.Rea
 // layer in the overlay. The overlay itself is mounted in the "merged"
 // directory, and the "work" dir is needed for overlay to work.
 
-// When a overlay layer is created there are two cases, either the
-// parent has a "root" dir, then we start out with a empty "upper"
+// When an overlay layer is created there are two cases, either the
+// parent has a "root" dir, then we start out with an empty "upper"
 // directory overlaid on the parents root. This is typically the
 // case with the init layer of a container which is based on an image.
 // If there is no "root" in the parent, we inherit the lower-id from
@@ -104,7 +103,7 @@ func init() {
 
 // Init returns the NaiveDiffDriver, a native diff driver for overlay filesystem.
 // If overlay filesystem is not supported on the host, graphdriver.ErrNotSupported is returned as error.
-// If a overlay filesystem is not supported over a existing filesystem then error graphdriver.ErrIncompatibleFS is returned.
+// If an overlay filesystem is not supported over an existing filesystem then error graphdriver.ErrIncompatibleFS is returned.
 func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (graphdriver.Driver, error) {
 
 	if err := supportsOverlay(); err != nil {
@@ -223,6 +222,12 @@ func (d *Driver) Cleanup() error {
 	return nil
 }
 
+// CreateReadWrite creates a layer that is writable for use as a container
+// file system.
+func (d *Driver) CreateReadWrite(id, parent, mountLabel string, storageOpt map[string]string) error {
+	return d.Create(id, parent, mountLabel, storageOpt)
+}
+
 // Create is used to create the upper, lower, and merge directories required for overlay fs for a given id.
 // The parent filesystem is used to configure these directories for the overlay.
 func (d *Driver) Create(id, parent, mountLabel string, storageOpt map[string]string) (retErr error) {
@@ -266,7 +271,7 @@ func (d *Driver) Create(id, parent, mountLabel string, storageOpt map[string]str
 		return err
 	}
 
-	// If parent has a root, just do a overlay to it
+	// If parent has a root, just do an overlay to it
 	parentRoot := path.Join(parentDir, "root")
 
 	if s, err := os.Lstat(parentRoot); err == nil {
@@ -379,10 +384,6 @@ func (d *Driver) Get(id string, mountLabel string) (s string, err error) {
 	return mergedDir, nil
 }
 
-func (d *Driver) mounted(dir string) (bool, error) {
-	return graphdriver.Mounted(graphdriver.FsMagicOverlay, dir)
-}
-
 // Put unmounts the mount path created for the give id.
 func (d *Driver) Put(id string) error {
 	d.locker.Lock(id)
@@ -397,7 +398,7 @@ func (d *Driver) Put(id string) error {
 	return nil
 }
 
-// ApplyDiff applies the new layer on top of the root, if parent does not exist with will return a ErrApplyDiffFallback error.
+// ApplyDiff applies the new layer on top of the root, if parent does not exist with will return an ErrApplyDiffFallback error.
 func (d *Driver) ApplyDiff(id string, parent string, diff archive.Reader) (size int64, err error) {
 	dir := d.dir(id)
 
@@ -437,7 +438,7 @@ func (d *Driver) ApplyDiff(id string, parent string, diff archive.Reader) (size 
 	}
 
 	options := &archive.TarOptions{UIDMaps: d.uidMaps, GIDMaps: d.gidMaps}
-	if size, err = chrootarchive.ApplyUncompressedLayer(tmpRootDir, diff, options); err != nil {
+	if size, err = graphdriver.ApplyUncompressedLayer(tmpRootDir, diff, options); err != nil {
 		return 0, err
 	}
 

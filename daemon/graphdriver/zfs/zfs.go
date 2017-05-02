@@ -40,7 +40,7 @@ func (*Logger) Log(cmd []string) {
 }
 
 // Init returns a new ZFS driver.
-// It takes base mount path and a array of options which are represented as key value pairs.
+// It takes base mount path and an array of options which are represented as key value pairs.
 // Each option is in the for key=value. 'zfs.fsname' is expected to be a valid key in the options.
 func Init(base string, opt []string, uidMaps, gidMaps []idtools.IDMap) (graphdriver.Driver, error) {
 	var err error
@@ -240,6 +240,12 @@ func (d *Driver) zfsPath(id string) string {
 
 func (d *Driver) mountPath(id string) string {
 	return path.Join(d.options.mountPath, "graph", getMountpoint(id))
+}
+
+// CreateReadWrite creates a layer that is writable for use as a container
+// file system.
+func (d *Driver) CreateReadWrite(id, parent, mountLabel string, storageOpt map[string]string) error {
+	return d.Create(id, parent, mountLabel, storageOpt)
 }
 
 // Create prepares the dataset and filesystem for the ZFS driver for the given id under the parent.
