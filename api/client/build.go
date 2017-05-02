@@ -256,6 +256,7 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 			}
 			return Cli.StatusError{Status: jerr.Message, StatusCode: jerr.Code}
 		}
+		return err
 	}
 
 	// Windows: show error message about modified file permissions if the
