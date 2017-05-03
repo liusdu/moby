@@ -3,6 +3,7 @@ package daemon
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -53,10 +54,21 @@ func (daemon *Daemon) containerStop(container *container.Container, seconds int)
 	// 2. Wait for the process to exit on its own
 	if _, err := container.WaitStop(time.Duration(seconds) * time.Second); err != nil {
 		logrus.Infof("Container %v failed to exit within %d seconds of signal %d - using the force", container.ID, seconds, stopSignal)
-		// 3. If it doesn't, then send SIGKILL
-		if err := daemon.Kill(container); err != nil {
+		for {
+			// 3. If it doesn't, then send SIGKILL
+			err := daemon.Kill(container)
+			if err == nil {
+				break
+			}
+			// If rpc error, means docker can not send rpc to containerd or receive event from containerd,
+			// Just try again.
+			if strings.Contains(err.Error(), "rpc error") {
+				time.Sleep(200 * time.Millisecond)
+				continue
+			}
 			container.WaitStop(-1 * time.Second)
 			logrus.Warn(err) // Don't return error because we only care that container is stopped, not what function stopped it
+			break
 		}
 	}
 
