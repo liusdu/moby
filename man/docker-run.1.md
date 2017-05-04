@@ -535,7 +535,12 @@ its root filesystem mounted as read only prohibiting any writes.
 
    $ docker run -it --storage-opt size=120G fedora /bin/bash
 
-   This (size) will allow to set the container rootfs size to 120G at creation time. User cannot pass a size less than the Default BaseFS Size.
+   This (size) will allow to set the container rootfs size to 120G at creation time.
+   This option is only available for the `devicemapper`. For the `devicemapper` graph drivers,
+   user cannot pass a size less than the Default BaseFS Size.
+   For the `overlay2` storage driver, the size option is only available if the
+   backing fs is `xfs` and mounted with the `pquota` mount option.
+   Under these conditions, user can pass any size less then the backing fs size.
   
 **--stop-signal**=*SIGTERM*
   Signal to stop a container. Default is SIGTERM.
