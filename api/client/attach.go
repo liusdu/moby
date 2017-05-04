@@ -26,21 +26,9 @@ func (cli *DockerCli) CmdAttach(args ...string) error {
 
 	cmd.ParseFlags(args, true)
 
-	c, err := cli.client.ContainerInspect(context.Background(), cmd.Arg(0))
+	c, err := cli.getRuningContainer(cmd.Arg(0))
 	if err != nil {
 		return err
-	}
-
-	if !c.State.Running {
-		return fmt.Errorf("You cannot attach to a stopped container, start it first")
-	}
-
-	if c.State.Paused {
-		return fmt.Errorf("You cannot attach to a paused container, unpause it first")
-	}
-
-	if c.State.Restarting {
-		return fmt.Errorf("You cannot attach to a restarting container, wait until it is running")
 	}
 
 	if err := cli.CheckTtyInput(!*noStdin, c.Config.Tty); err != nil {
@@ -76,6 +64,19 @@ func (cli *DockerCli) CmdAttach(args ...string) error {
 	}
 	defer resp.Close()
 
+	// If use docker attach command to attach to a stop container, it will return
+	// "You cannot attach to a stopped container" error, it's ok, but when
+	// attach to a running container, it(docker attach) use inspect to check
+	// the container's state, if it pass the state check on the client side,
+	// and then the container is stopped, docker attach command still attach to
+	// the container and not exit.
+	//
+	// Recheck the container's state again to avoid attach block.
+	_, err = cli.getRuningContainer(cmd.Arg(0))
+	if err != nil {
+		return err
+	}
+
 	if c.Config.Tty && cli.isTerminalOut {
 		height, width := cli.getTtySize()
 		// To handle the case where a user repeatedly attaches/detaches without resizing their
@@ -103,4 +104,24 @@ func (cli *DockerCli) CmdAttach(args ...string) error {
 	}
 
 	return nil
+}
+
+func (cli *DockerCli) getRuningContainer(args string) (*types.ContainerJSON, error) {
+	c, err := cli.client.ContainerInspect(context.Background(), args)
+	if err != nil {
+		return nil, err
+	}
+
+	if !c.State.Running {
+		return nil, fmt.Errorf("You cannot attach to a stopped container, start it first")
+	}
+
+	if c.State.Paused {
+		return nil, fmt.Errorf("You cannot attach to a paused container, unpause it first")
+	}
+
+	if c.State.Restarting {
+		return nil, fmt.Errorf("You cannot attach to a restarting container, wait until it is running")
+	}
+	return &c, nil
 }
