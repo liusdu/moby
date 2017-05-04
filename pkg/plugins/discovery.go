@@ -13,6 +13,8 @@ import (
 )
 
 var (
+	// ErrForbidden plugin sock/spec outside allowed location
+	ErrForbidden = errors.New("plugin outside allowed location")
 	// ErrNotFound plugin not found
 	ErrNotFound = errors.New("plugin not found")
 	socketsPath = "/run/docker/plugins"
@@ -60,7 +62,10 @@ func Scan() ([]string, error) {
 
 // Plugin returns the plugin registered with the given name (or returns an error).
 func (l *localRegistry) Plugin(name string) (*Plugin, error) {
-	socketpaths := pluginPaths(socketsPath, name, ".sock")
+	socketpaths, err := pluginPaths(socketsPath, name, ".sock")
+	if err != nil {
+		return nil, ErrForbidden
+	}
 
 	for _, p := range socketpaths {
 		if fi, err := os.Stat(p); err == nil && fi.Mode()&os.ModeSocket != 0 {
@@ -70,8 +75,10 @@ func (l *localRegistry) Plugin(name string) (*Plugin, error) {
 
 	var txtspecpaths []string
 	for _, p := range specsPaths {
-		txtspecpaths = append(txtspecpaths, pluginPaths(p, name, ".spec")...)
-		txtspecpaths = append(txtspecpaths, pluginPaths(p, name, ".json")...)
+		for _, ext := range []string{".spec", ".json"} {
+			paths, _ := pluginPaths(p, name, ext)
+			txtspecpaths = append(txtspecpaths, paths...)
+		}
 	}
 
 	for _, p := range txtspecpaths {
@@ -124,9 +131,15 @@ func readPluginJSONInfo(name, path string) (*Plugin, error) {
 	return &p, nil
 }
 
-func pluginPaths(base, name, ext string) []string {
-	return []string{
-		filepath.Join(base, name+ext),
-		filepath.Join(base, name, name+ext),
+func pluginPaths(base, name, ext string) ([]string, error) {
+	paths := []string{
+		filepath.Clean(filepath.Join(base, name+ext)),
+		filepath.Clean(filepath.Join(base, name, name+ext)),
 	}
+	for _, p := range paths {
+		if !strings.HasPrefix(p, base) {
+			return nil, ErrForbidden
+		}
+	}
+	return paths, nil
 }
