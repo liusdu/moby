@@ -70,10 +70,10 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 		return daemon.postRunProcessing(c, e)
 
 	case libcontainerd.StateExitProcess:
-		c.Lock()
-		defer c.Unlock()
 		if execConfig := c.ExecCommands.Get(e.ProcessID); execConfig != nil {
 			ec := int(e.ExitCode)
+			execConfig.Lock()
+			defer execConfig.Unlock()
 			execConfig.ExitCode = &ec
 			execConfig.Running = false
 			execConfig.StreamConfig.Wait()
