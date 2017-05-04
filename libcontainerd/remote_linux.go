@@ -94,7 +94,13 @@ func New(stateDir string, options ...RemoteOption) (_ Remote, err error) {
 
 	// don't output the grpc reconnect logging
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
-	dialOpts := append([]grpc.DialOption{grpc.WithInsecure()},
+	backoffConfig := grpc.DefaultBackoffConfig
+	backoffConfig.MaxDelay = 2 * time.Second
+	grpcOptions := []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithBackoffConfig(backoffConfig),
+	}
+	dialOpts := append(grpcOptions,
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
 			return net.DialTimeout("unix", addr, timeout)
 		}),
