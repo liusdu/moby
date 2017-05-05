@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.11.2.26 (2017-5-05)
+
+- bump containerd:
+   - fix event lost after continuous containerd restart (mr 449 fix DTS2017042509842)
+- Bugfix: Fix remove none image when HoldOff the image (mr 430 fix DTS2017042800691)
+- Bugfix: Recheck the container's state to avoid attach block (mr 419 fix DTS2017041703963)
+- Bugfix: if failed to stop container with rpc error, just retry it (mr 437 fix DTS2017042807580)
+- Bugfix: Enhance accelerator driver plugin error processing and fakefpga buildin driver (mr 433)
+- Bugfix: docker rename fix to address the issue of renaming with the same name issue #23319 (mr 446 fix DTS2017050408229)
+- Bugfix: Limit max backoff delay to 2 seconds for GRPC connection (mr 445 )
+- Bugfix: Stop holding container lock while waiting on streams to fix deadlock (mr 432 fix DTS2017042502681)
+- Bugfix: fix when rpc reports "xx is closing" error, health check go routine will exit (mr 441 fix DTS2017050304742)
+- Bugfix: plugin,bugfix: Fix plugin security bug caused by unchecked plugin name (mr 442 fix DTS2017050300240)
+- Feature: support overlay2 graphdriver
+
 ## v1.11.2.25 (2017-4-26)
 
 - bump containerd: 
