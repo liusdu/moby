@@ -1202,8 +1202,8 @@ func (daemon *Daemon) HoldOnImageByID(id string) error {
 	return daemon.imageStore.HoldOn(image.ID(id))
 }
 
-func (daemon *Daemon) HoldOffImageByID(id string, remove bool) error {
-	return daemon.imageStore.HoldOff(image.ID(id), remove)
+func (daemon *Daemon) HoldOffImageByID(id string) error {
+	return daemon.imageStore.HoldOff(image.ID(id))
 }
 
 // GetCachedImage returns the most recent created image that is a child

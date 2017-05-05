@@ -128,7 +128,7 @@ type Backend interface {
 	// ContainerUpdateCmd updates container.Path and container.Args
 	ContainerUpdateCmdOnBuild(containerID string, cmd []string) error
 	HoldOnImageByID(id string) error
-	HoldOffImageByID(id string, remove bool) error
+	HoldOffImageByID(id string) error
 
 	// ContainerCopy copies/extracts a source FileInfo to a destination path inside a container
 	// specified by a container object.
