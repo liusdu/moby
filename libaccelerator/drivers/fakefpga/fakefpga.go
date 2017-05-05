@@ -1,5 +1,3 @@
-// +build accdrv
-
 package fakefpga
 
 import (
@@ -21,14 +19,13 @@ type deviceInfo struct {
 	avail             bool
 }
 
-type driver struct {
+type Driver struct {
 	devices map[string]deviceInfo // map[pci] = deviceInfo
 	slots   map[string]string     // map[sid] = runtime
 }
 
-// Init is the initializing function of fakefpga driver
-func Init(dc driverapi.DriverCallback, config map[string]interface{}) (retErr error) {
-	d := &driver{
+func NewDriver() (d *Driver, retErr error) {
+	d = &Driver{
 		devices: make(map[string]deviceInfo),
 		slots:   make(map[string]string),
 	}
@@ -42,7 +39,7 @@ func Init(dc driverapi.DriverCallback, config map[string]interface{}) (retErr er
 	if err := syscall.Mknod(devPath,
 		syscall.S_IREAD|syscall.S_IWRITE|syscall.S_IFCHR,
 		99<<16|99); err != nil && err != syscall.EEXIST {
-		return types.ForbiddenErrorf("can not create char dev %s", devPath)
+		return nil, types.ForbiddenErrorf("can not create char dev %s", devPath)
 	}
 	defer func() {
 		if retErr != nil {
@@ -51,7 +48,7 @@ func Init(dc driverapi.DriverCallback, config map[string]interface{}) (retErr er
 	}()
 	for _, p := range libPath {
 		if err := os.MkdirAll(p, 0755); err != nil && err != os.ErrExist {
-			return types.ForbiddenErrorf("failed to create lib dir %s: %v", p, err)
+			return nil, types.ForbiddenErrorf("failed to create lib dir %s: %v", p, err)
 		}
 		defer func(path string) {
 			if retErr != nil {
@@ -72,40 +69,37 @@ func Init(dc driverapi.DriverCallback, config map[string]interface{}) (retErr er
 	d.devices["00ff:06:04.3"] = device
 	d.devices["00ff:06:04.4"] = device
 
-	// recovery Slots from controller
-	slots, err := dc.QueryManagedSlots(d.Name())
-	if err != nil {
-		return err
-	}
+	return d, nil
+}
+
+func (d *Driver) SyncState(slots []driverapi.SlotInfo) ([]driverapi.SlotInfo, error) {
+	invalidSlots := []driverapi.SlotInfo{}
 	for _, slot := range slots {
-		dev := d.devices[slot.Device]
+		dev, ok := d.devices[slot.Device]
+		if !ok {
+			invalidSlots = append(invalidSlots, slot)
+			continue
+		}
 		dev.configuredAccType = slot.Runtime
 		dev.avail = false
 		d.devices[slot.Device] = dev
 		d.slots[slot.Sid] = slot.Device
 	}
-
-	// register driver to controller
-	c := driverapi.Capability{Runtimes: d.Runtimes()}
-	if err := dc.RegisterDriver(d.Name(), d, c, []driverapi.SlotInfo{}); err != nil {
-		log.Errorf("%s: error registering driver: %v", d.Name(), err)
-		return err
-	}
-	return nil
+	return invalidSlots, nil
 }
 
 // Name return driver name of fakefpga
-func (d *driver) Name() string {
+func (d *Driver) Name() string {
 	return "fakefpga"
 }
 
 // Runtimes returns the runtime supported by fakefpga
-func (d *driver) Runtimes() []string {
+func (d *Driver) Runtimes() []string {
 	return []string{"ipsec.dh", "ipsec.aes", "snow3g"}
 }
 
 // QueryRuntime checks whether specified runtime supported by fakefpga
-func (d *driver) QueryRuntime(runtime string) error {
+func (d *Driver) QueryRuntime(runtime string) error {
 	for _, r := range d.Runtimes() {
 		if r == runtime {
 			return nil
@@ -115,7 +109,7 @@ func (d *driver) QueryRuntime(runtime string) error {
 }
 
 // ListDevice lists all the device fakefpga has
-func (d *driver) ListDevice() ([]driverapi.DeviceInfo, error) {
+func (d *Driver) ListDevice() ([]driverapi.DeviceInfo, error) {
 	devices := make([]driverapi.DeviceInfo, 0)
 	for pci, info := range d.devices {
 		info := driverapi.DeviceInfo{
@@ -132,7 +126,7 @@ func (d *driver) ListDevice() ([]driverapi.DeviceInfo, error) {
 }
 
 // AllocateSlot is used to allocate a new fakefpga slot with specifed sid, runtime and options
-func (d *driver) AllocateSlot(sid, runtime string, options []string) error {
+func (d *Driver) AllocateSlot(sid, runtime string, options []string) error {
 	if sid == "" {
 		return types.BadRequestErrorf("slot id can't be empty")
 	}
@@ -178,7 +172,7 @@ func (d *driver) AllocateSlot(sid, runtime string, options []string) error {
 }
 
 // ReleaseSlot is used to release slot specifed by sid
-func (d *driver) ReleaseSlot(sid string) error {
+func (d *Driver) ReleaseSlot(sid string) error {
 	if _, ok := d.slots[sid]; !ok {
 		return types.NotFoundErrorf("slot %s not found", sid)
 	}
@@ -197,7 +191,7 @@ func (d *driver) ReleaseSlot(sid string) error {
 }
 
 // ListSlot lists all the slots fakefpga has
-func (d *driver) ListSlot() ([]string, error) {
+func (d *Driver) ListSlot() ([]string, error) {
 	ret := []string{}
 	for sid := range d.slots {
 		ret = append(ret, sid)
@@ -206,7 +200,7 @@ func (d *driver) ListSlot() ([]string, error) {
 }
 
 // Slot returns the slot information of specified sid
-func (d *driver) Slot(sid string) (*driverapi.SlotInfo, error) {
+func (d *Driver) Slot(sid string) (*driverapi.SlotInfo, error) {
 	if pci, ok := d.slots[sid]; ok {
 		return &driverapi.SlotInfo{
 			Sid:     sid,
@@ -220,7 +214,7 @@ func (d *driver) Slot(sid string) (*driverapi.SlotInfo, error) {
 }
 
 // PrepareSlot is used to provide runtime environment for container to use specified slot
-func (d *driver) PrepareSlot(sid string) (*driverapi.SlotConfig, error) {
+func (d *Driver) PrepareSlot(sid string) (*driverapi.SlotConfig, error) {
 	sConfig := &driverapi.SlotConfig{
 		Envs: make(map[string]string),
 	}
@@ -243,7 +237,7 @@ type FpgaSlotOption struct {
 	Bandwidth int
 }
 
-func (d *driver) parseFpgaSlotOptions(options []string) (*FpgaSlotOption, error) {
+func (d *Driver) parseFpgaSlotOptions(options []string) (*FpgaSlotOption, error) {
 	slotOpts := &FpgaSlotOption{
 		Device:    "",
 		Bandwidth: 0,
@@ -253,7 +247,11 @@ func (d *driver) parseFpgaSlotOptions(options []string) (*FpgaSlotOption, error)
 		pair := strings.SplitN(opt, "=", 2)
 		if len(pair) == 2 {
 			if pair[0] == "device" {
-				slotOpts.Device = pair[1]
+				if pair[1] != "" {
+					slotOpts.Device = pair[1]
+				} else {
+					return nil, fmt.Errorf("invalid device \"%s\"", pair[1])
+				}
 			} else if pair[0] == "bandwidth" {
 				if bw, err := strconv.Atoi(pair[1]); err == nil {
 					slotOpts.Bandwidth = bw

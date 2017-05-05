@@ -26,7 +26,7 @@ func (ens ErrNoSlot) NotFound() {}
 type ErrNoDev string
 
 func (end ErrNoDev) Error() string {
-	return fmt.Sprintf("no available device for %s", string(end))
+	return fmt.Sprintf("No available device for %s", string(end))
 }
 
 // NoService denotes the type of this error
@@ -37,29 +37,29 @@ func (end ErrNoDev) NoService() {}
  */
 
 // ErrNotImplemented is returned when a Driver has not implemented an API yet
-type ErrNotImplemented struct{}
+type ErrNotImplemented string
 
-func (eni *ErrNotImplemented) Error() string {
+func (eni ErrNotImplemented) Error() string {
 	return "The API is not implemented yet"
 }
 
 // NotImplemented denotes the type of this error
-func (eni *ErrNotImplemented) NotImplemented() {}
+func (eni ErrNotImplemented) NotImplemented() {}
 
 /*
  * ErrNotSync -> remote.api.RESP_ERR_NOSYNC
  */
 
 // ErrNotSync s returned if driver is not sync with daemon (e.g. crash recovery)
-type ErrNotSync struct{}
+type ErrNotSync string
 
 // Error interface for ErrNotSync
-func (ens *ErrNotSync) Error() string {
+func (ens ErrNotSync) Error() string {
 	return "plugin not sync with daemon"
 }
 
 // Forbidden denotes the type of this error
-func (ens *ErrNotSync) Forbidden() {}
+func (ens ErrNotSync) Forbidden() {}
 
 /*
  * ErrActiveRegistration represents an error when a driver is registered

@@ -20,9 +20,10 @@ type Response struct {
 
 const (
 	// code 0x0[0-9]: for plugin internal error
-	RESP_ERR_NOERROR = 0x0
-	RESP_ERR_NOTIMPL = 0x1
-	RESP_ERR_NOTSYNC = 0x2
+	RESP_ERR_NOERROR  = 0x0
+	RESP_ERR_NOTIMPL  = 0x1
+	RESP_ERR_NOTSYNC  = 0x2
+	RESP_ERR_INTERNAL = 0x3
 	// code 0x1[0-9]: for accelerator operation error
 	RESP_ERR_NOTFOUND = 0x10
 	RESP_ERR_NODEV    = 0x11
@@ -30,18 +31,41 @@ const (
 
 // GetError returns the error from the response, if any.
 func (r *Response) GetError() error {
-	if r.ErrType == RESP_ERR_NOERROR {
-		return nil
-	} else if r.ErrType == RESP_ERR_NOTIMPL {
-		return &driverapi.ErrNotImplemented{}
-	} else if r.ErrType == RESP_ERR_NOTSYNC {
-		return &driverapi.ErrNotSync{}
-	} else if r.ErrType == RESP_ERR_NOTFOUND {
-		return driverapi.ErrNoSlot(r.ErrMsg)
-	} else if r.ErrType == RESP_ERR_NODEV {
-		return driverapi.ErrNoDev(r.ErrMsg)
-	} else {
+	switch r.ErrType {
+	default:
 		return fmt.Errorf("remote: %s", r.ErrMsg)
+	case RESP_ERR_NOERROR:
+		return nil
+	case RESP_ERR_NOTIMPL:
+		return driverapi.ErrNotImplemented(r.ErrMsg)
+	case RESP_ERR_NOTSYNC:
+		return driverapi.ErrNotSync(r.ErrMsg)
+	case RESP_ERR_NOTFOUND:
+		return driverapi.ErrNoSlot(r.ErrMsg)
+	case RESP_ERR_NODEV:
+		return driverapi.ErrNoDev(r.ErrMsg)
+	}
+}
+
+func (r *Response) SetError(err error) {
+	if err == nil {
+		r.ErrType = RESP_ERR_NOERROR
+		r.ErrMsg = ""
+	} else {
+		// check error type
+		switch err.(type) {
+		default:
+			r.ErrType = RESP_ERR_INTERNAL
+		case driverapi.ErrNotImplemented:
+			r.ErrType = RESP_ERR_NOTIMPL
+		case driverapi.ErrNotSync:
+			r.ErrType = RESP_ERR_NOTSYNC
+		case driverapi.ErrNoSlot:
+			r.ErrType = RESP_ERR_NOTFOUND
+		case driverapi.ErrNoDev:
+			r.ErrType = RESP_ERR_NODEV
+		}
+		r.ErrMsg = err.Error()
 	}
 }
 

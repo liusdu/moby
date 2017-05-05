@@ -91,7 +91,7 @@ func (d *driver) call(methodName string, arg interface{}, retVal maybeError) err
 	if retErr := retVal.GetError(); retErr == nil {
 		// if everything is ok, return nil
 		return nil
-	} else if _, ok := retErr.(*driverapi.ErrNotSync); !ok {
+	} else if _, ok := retErr.(driverapi.ErrNotSync); !ok {
 		// return unrecoverable error
 		return retVal.GetError()
 	}
@@ -105,8 +105,6 @@ func (d *driver) call(methodName string, arg interface{}, retVal maybeError) err
 		if err != nil {
 			return err
 		}
-
-		log.Warnf("d.dc.QueryManagedSlots(%s) return %v", d.driverName, slots)
 
 		// send list to plugin, force state sync
 		capReq := api.GetCapabilityRequest{Slots: slots}
