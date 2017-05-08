@@ -156,7 +156,7 @@ func (d *Driver) Remove(id string) error {
 
 	mp := path.Join(d.home, "mnt", id)
 	if err := os.RemoveAll(mp); err != nil && !os.IsNotExist(err) {
-		return err
+		logrus.Warnf("devmapper: Warning removing %s error: %v", mp, err)
 	}
 
 	return nil
