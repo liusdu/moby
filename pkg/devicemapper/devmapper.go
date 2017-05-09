@@ -275,7 +275,7 @@ func UdevWait(cookie *uint) error {
 	chError := make(chan error)
 	go func() {
 		if res := DmUdevWait(*cookie); res != Success {
-			logrus.Debugf("Failed to wait on udev cookie %d", *cookie)
+			logrus.Debugf("Failed to wait on udev cookie %d, %d", *cookie, res)
 			chError <- ErrUdevWait
 		}
 		chError <- nil
@@ -287,7 +287,7 @@ func UdevWait(cookie *uint) error {
 		logrus.Errorf("Failed to wait on udev cookie %d: timeout %v", *cookie, dmUdevWaitTimeout)
 		if res := DmUdevComplete(*cookie); res != Success {
 			// This is bad to return here
-			logrus.Errorf("Failed to complete udev cookie %d on udev wait timeout", *cookie)
+			logrus.Errorf("Failed to complete udev cookie %d, %d on udev wait timeout", *cookie, res)
 			return ErrUdevWaitTimeout
 		}
 		// wait DmUdevWait return after DmUdevComplete
