@@ -8,10 +8,6 @@ import (
 	"github.com/docker/engine-api/types/container"
 )
 
-const anonAccelNamePrefix = "anon_cli_accel_"
-
-var anonAccelNo = 0
-
 // --accel args format: [<name>=]<runtime>[@<driver>[,<options>]]
 var nameExpStr = `[\w][\w\.-]*`
 var rtExpStr = `[\w:\.-]+`
@@ -27,7 +23,7 @@ type ValidatorAccelType func(accel *container.AcceleratorConfig, accelerators []
 func ValidateAccel(accel *container.AcceleratorConfig, accelerators []container.AcceleratorConfig) (*container.AcceleratorConfig, error) {
 	// check duplicate name
 	for _, cfg := range accelerators {
-		if cfg.Name == accel.Name {
+		if accel.Name != "" && cfg.Name == accel.Name {
 			return nil, fmt.Errorf("Duplicated accelerator name: %s", accel.Name)
 		}
 	}
@@ -57,12 +53,6 @@ func parseAccelOpt(accel string) (*container.AcceleratorConfig, error) {
 	}
 	if len(copts["options"]) > 0 {
 		accelConfig.Options = strings.Split(copts["options"], ",")
-	}
-
-	// check accelerator name
-	if len(accelConfig.Name) == 0 {
-		accelConfig.Name = fmt.Sprintf("%s%d", anonAccelNamePrefix, anonAccelNo)
-		anonAccelNo = anonAccelNo + 1
 	}
 
 	return accelConfig, nil
