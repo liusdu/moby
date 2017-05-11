@@ -15,6 +15,10 @@ import (
 	containertypes "github.com/docker/engine-api/types/container"
 )
 
+// Name prefix for anonymous cli&image accelerator
+var anonCliAccelNamePrefix = "anon_cli_accel_"
+var anonImgAccelNamePrefix = "anon_img_accel_"
+
 // AcceleratorControllerEnabled shows whether accelerator controller is availible
 func (daemon *Daemon) AcceleratorControllerEnabled() bool {
 	return daemon.accelController != nil
@@ -91,7 +95,6 @@ func mergeAccelConfig(hostConfig *containertypes.HostConfig, img *image.Image) e
 	imgAccelConfigs := make([]containertypes.AcceleratorConfig, 0)
 	if runtimeLabel, accelNeeded := img.Config.Labels["runtime"]; accelNeeded {
 		var anonAccelNo = 0
-		var anonAccelNamePrefix = "anon_img_accel_"
 
 		for _, rt := range strings.Split(runtimeLabel, ";") {
 			cfg := containertypes.AcceleratorConfig{
@@ -109,7 +112,7 @@ func mergeAccelConfig(hostConfig *containertypes.HostConfig, img *image.Image) e
 				cfg.Runtime = spt[1]
 			} else if len(spt) == 1 &&
 				runconfigopts.ValidateAccelRuntime(spt[0]) {
-				cfg.Name = fmt.Sprintf("%s%d", anonAccelNamePrefix, anonAccelNo)
+				cfg.Name = fmt.Sprintf("%s%d", anonImgAccelNamePrefix, anonAccelNo)
 				cfg.Runtime = spt[0]
 				anonAccelNo = anonAccelNo + 1
 			} else {
@@ -153,6 +156,9 @@ func mergeAccelConfig(hostConfig *containertypes.HostConfig, img *image.Image) e
 }
 
 func (daemon *Daemon) verifyAccelConfig(hostConfig *containertypes.HostConfig) error {
+	var anonAccelNo = 0
+	accelNameMap := make(map[string]bool)
+
 	// The Accelerators field in hostConfig maybe nil if no accelerator is required,
 	// in which case, we just allocate an empty map for it.
 	if hostConfig.Accelerators == nil {
@@ -163,10 +169,20 @@ func (daemon *Daemon) verifyAccelConfig(hostConfig *containertypes.HostConfig) e
 	for idx := range hostConfig.Accelerators {
 		accel := &hostConfig.Accelerators[idx]
 
+		// if accelerator name is empty, build a contianer-scoped unique name for it
+		if accel.Name == "" {
+			accel.Name = fmt.Sprintf("%s%d", anonCliAccelNamePrefix, anonAccelNo)
+			anonAccelNo = anonAccelNo + 1
+		}
+		// check name conflict
+		if _, ok := accelNameMap[accel.Name]; ok {
+			return fmt.Errorf("invalid accelerator config: name \"%s\" conflict", accel.Name)
+		}
+		accelNameMap[accel.Name] = true
+
 		// validate parameters
 		if !accel.IsPersistent || // accelerators from cli must "persistent"
 			accel.Runtime == "" || // runtime must not empty, it can fill with either slot-name or *real* runtime
-			accel.Name == "" || // accel can not have empty name
 			// Runtime&Name must validate
 			!runconfigopts.ValidateAccelRuntime(accel.Runtime) ||
 			!runconfigopts.ValidateAccelName(accel.Name) {
