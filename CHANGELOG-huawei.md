@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.11.2.27 (2017-0-11)
+
+- bump containerd: 
+   - Use temp console path for consoleSocket (containerd mr 46 fix DTS2017050909332)
+   - Delay io closure until process exit (containerd mr 45)
+   - Close stdin after copy returns (containerd mr 47)
+- Backport: Revert "Revert "Remove timeout on fifos opening""  (mr 454)
+- Bugfix: accel,bugfix: Move empty accelerator name check to daemon (mr 456 fix DTS2017051007724)
+- Bugfix: fix inconsistent state string with containerd (mr fix 452 fix DTS2017042511512)
+
+
 ## v1.11.2.26 (2017-5-05)
 
 - bump containerd:
