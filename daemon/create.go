@@ -116,6 +116,14 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 		}
 	}()
 
+	// allocate resources for "persistent" accelerators
+	//  - this allocation needs long-time plugin call, so we do it as early as
+	//    possible to avoid in-complete container config caused by daemon crash.
+	container.HostConfig = params.HostConfig
+	if err := daemon.allocatePersistentAccelResources(container); err != nil {
+		return nil, err
+	}
+
 	if err := daemon.setSecurityOptions(container, params.HostConfig); err != nil {
 		return nil, err
 	}
@@ -140,11 +148,6 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 	}
 
 	if err := daemon.createContainerPlatformSpecificSettings(container, params.Config, params.HostConfig); err != nil {
-		return nil, err
-	}
-
-	// allocate resources for "persistent" accelerators
-	if err := daemon.allocatePersistentAccelResources(container); err != nil {
 		return nil, err
 	}
 

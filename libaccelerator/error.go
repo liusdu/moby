@@ -30,7 +30,7 @@ func (ind ErrInvalidAccelDriver) BadRequest() {}
 type ErrInvalidID string
 
 func (ii ErrInvalidID) Error() string {
-	return fmt.Sprintf("Invalid id: %s", string(ii))
+	return fmt.Sprintf("Invalid accelerator slot ID: \"%s\"", string(ii))
 }
 
 // BadRequest denotes the type of this error
