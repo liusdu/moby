@@ -44,7 +44,14 @@ func (c *controller) initStore(rootPath string) error {
 }
 
 func (c *controller) closeStores() {
-	for _, store := range c.getStores() {
+	// remove all stores from controller
+	c.Lock()
+	stores := c.stores
+	c.stores = []datastore.DataStore{}
+	c.Unlock()
+
+	// close stores
+	for _, store := range stores {
 		store.Close()
 	}
 }
