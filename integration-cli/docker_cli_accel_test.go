@@ -33,7 +33,7 @@ var deviceInfo = driverapi.DeviceInfo{
 
 var accelDevice = types.AccelDevice{
 	SupportedRuntimes: deviceInfo.SupportedRuntimes,
-	DeviceIdentify:    deviceInfo.DeviceIdentify,
+	Device:            deviceInfo.DeviceIdentify,
 	Capacity:          deviceInfo.Capacity,
 	Driver:            dummyAccelDriver,
 	Status:            deviceInfo.Status,

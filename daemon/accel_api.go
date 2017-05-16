@@ -103,7 +103,7 @@ func (daemon *Daemon) AccelDevices(driverName string) ([]types.AccelDevice, []st
 	for _, info := range devInfos {
 		devices = append(devices, types.AccelDevice{
 			SupportedRuntimes: info.SupportedRuntimes,
-			DeviceIdentify:    info.DeviceIdentify,
+			Device:            info.DeviceIdentify,
 			Capacity:          info.Capacity,
 			Driver:            driverName,
 			Status:            info.Status,
