@@ -329,7 +329,10 @@ func (daemon *Daemon) initializeAccelResources(container *container.Container) (
 		accel := &container.HostConfig.Accelerators[idx]
 
 		// "persistent" accelerators are allocated at start stage
-		if accel.IsPersistent {
+		// **BUT** The daemon may crash during allocation, which may cause
+		// un-allocated persistent accelerator. We will try to allocate resources
+		// for such accelerators here
+		if accel.IsPersistent && accel.Sid != "" {
 			continue
 		}
 

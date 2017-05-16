@@ -270,6 +270,13 @@ func (daemon *Daemon) restore() error {
 		for _, accel := range c.HostConfig.Accelerators {
 			if accel.Sid != "" {
 				activeAccelSlots[accel.Sid] = c.ID
+			} else {
+				// Un-allocated persistent accelerator detected, which is caused by
+				// daemon crash when calling plugin. We just warn user about this,
+				// and will try to re-allocate resource when start this container
+				if accel.IsPersistent {
+					logrus.Warnf("container \"%s\": detected un-allocated persistent accelerator \"%s\", will try to re-allocate it when start.", c.Name, accel.Name)
+				}
 			}
 		}
 	}
