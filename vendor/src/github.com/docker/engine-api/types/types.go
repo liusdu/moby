@@ -453,11 +453,11 @@ type AccelDriversResponse struct {
 
 // AccelDevice defines the accel device data struct used in docker cli
 type AccelDevice struct {
-	SupportedRuntimes []string          `json:"supportedAccType"`
-	DeviceIdentify    string            `json:"device"`
-	Capacity          map[string]string `json:"capacity"`
-	Driver            string            `json:"driver"`
-	Status            string            `json:"status"`
+	SupportedRuntimes []string
+	Device            string
+	Capacity          map[string]string
+	Driver            string
+	Status            string
 }
 
 // AccelDevicesResponse defines the data struct used to display accel devices

@@ -32,7 +32,7 @@ func (s *DockerAccelSuite) TestDockerAccelListDevice(c *check.C) {
 			return
 		}
 	}
-	c.Fatalf("%s not in /accelerators/devices: %v", accelDevice.DeviceIdentify, resp.Devices)
+	c.Fatalf("%s not in /accelerators/devices: %v", accelDevice.Device, resp.Devices)
 }
 
 func (s *DockerAccelSuite) TestDockerAccelListDeviceByDriver(c *check.C) {
