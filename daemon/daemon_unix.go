@@ -21,6 +21,7 @@ import (
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/layer"
 	"github.com/docker/docker/pkg/idtools"
+	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/parsers"
 	"github.com/docker/docker/pkg/parsers/kernel"
 	"github.com/docker/docker/pkg/sysinfo"
@@ -1250,6 +1251,29 @@ func getContainerMountId(path string) (bool, string) {
 	return false, ""
 }
 
+func isContainerMount(path string) (bool, string) {
+	var regs []*regexp.Regexp
+	var patterns []string
+	var id = "(?P<id>[0-9a-f]{64})"
+
+	// TODO: fill in patterns with other mounts info
+	patterns = append(patterns, "containers/"+id+"/shm$")
+	for _, p := range patterns {
+		r, err := regexp.Compile(p)
+		if err == nil {
+			regs = append(regs, r)
+		}
+	}
+
+	for _, reg := range regs {
+		ret := reg.FindStringSubmatch(path)
+		if len(ret) == 2 {
+			return true, ret[1]
+		}
+	}
+	return false, ""
+}
+
 func (daemon *Daemon) removeRedundantMounts(containers map[string]*container.Container) error {
 	f, err := os.Open("/proc/self/mountinfo")
 	if err != nil {
@@ -1260,6 +1284,7 @@ func (daemon *Daemon) removeRedundantMounts(containers map[string]*container.Con
 	activeContainers := map[string]string{}
 	for _, c := range containers {
 		if c.IsRunning() {
+			activeContainers[c.ID] = c.ID
 			if mountid, err := daemon.layerStore.GetMountID(c.ID); err == nil {
 				activeContainers[mountid] = c.ID
 			}
@@ -1274,21 +1299,36 @@ func (daemon *Daemon) removeRedundantMounts(containers map[string]*container.Con
 			return fmt.Errorf("%s", "/proc/self/mountinfo format err")
 		}
 		path := fields[4]
-		if !strings.HasPrefix(path, root) || path == root {
+		if !strings.HasPrefix(path, daemon.root) || path == root {
 			continue
 		}
-		isInitdev, id := getContainerMountId(path)
+
+		var (
+			isShmMount, isInitdev bool
+			id                    string
+		)
+		isShmMount, id = isContainerMount(path)
+		if !isShmMount {
+			isInitdev, id = getContainerMountId(path)
+		}
 		if id == "" {
 			continue
 		}
 
 		if _, ok := activeContainers[id]; !ok {
 			logrus.Debugf("Umount legacy mountpoint [%s] [%s]", path, id)
-			if isInitdev {
-				id = fmt.Sprintf("%s-init", id)
-			}
-			if err := daemon.layerStore.DriverPut(id); err != nil {
-				logrus.Errorf("Umount legacy mountpoint [%v]", err)
+			if isShmMount {
+				if err := mount.Unmount(path); err != nil {
+					logrus.Errorf("Umount legacy mountpoint: %s failed with %s", path, err)
+				}
+
+			} else {
+				if isInitdev {
+					id = fmt.Sprintf("%s-init", id)
+				}
+				if err := daemon.layerStore.DriverPut(id); err != nil {
+					logrus.Errorf("Umount legacy mountpoint [%v]", err)
+				}
 			}
 		}
 	}
