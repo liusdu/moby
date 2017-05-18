@@ -19,6 +19,7 @@ import (
 	"github.com/docker/docker/volume/store"
 	containertypes "github.com/docker/engine-api/types/container"
 	"github.com/docker/go-connections/nat"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 //
@@ -529,4 +530,81 @@ func TestDaemonDiscoveryReloadOnlyClusterAdvertise(t *testing.T) {
 		t.Fatal(e)
 	}
 
+}
+
+func TestRegisterDaemonHooks(t *testing.T) {
+	daemon := &Daemon{}
+	hookSpecFile := "/tmp/myhookspec"
+	root := "/tmp/docker/"
+	daemon.configStore = &Config{
+		CommonConfig: CommonConfig{
+			Root:     root,
+			HookSpec: hookSpecFile,
+		},
+	}
+
+	// file not exist
+	if err := daemon.registerDaemonHooks(hookSpecFile); err == nil {
+		t.Fatal("register nonexist hookspec should report error for nonexist file")
+	}
+
+	file, err := os.OpenFile(hookSpecFile, os.O_RDWR|os.O_CREATE, 0755)
+	if err != nil {
+		t.Fatal("create spec file error: %v", err)
+	}
+
+	// make an invalid format
+	hookstr := `
+{
+	"prestart": [
+	{
+		"path": "/bin/ls", "ls",
+		"args": ["ls"]
+	}],
+	"poststart":[
+	{
+		"path": "/bin/ls",
+		"args": ["ls"]
+	}]
+}
+	`
+
+	if _, err := file.WriteString(hookstr); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	if err := daemon.registerDaemonHooks(hookSpecFile); err == nil {
+		t.Fatal("register nonexist hookspec should report error for malformed hook spec")
+	}
+}
+
+func TestValidateHook(t *testing.T) {
+	daemon := &Daemon{}
+
+	hooks := &specs.Hooks{
+		Poststart: []specs.Hook{{
+			Path: "ls",
+			Args: []string{"ls"},
+		},
+		},
+	}
+
+	if err := daemon.validateHook(hooks); err == nil {
+		t.Fatal("validate hook should report error for non-absolute path")
+	}
+}
+
+func TestSanitizeHookSpec(t *testing.T) {
+	daemon := &Daemon{}
+	if _, err := daemon.sanitizeHookSpec("aaa"); err == nil {
+		t.Fatal("sanitizeHookSpec should report error for non-absolute path")
+	}
+
+	if _, err := daemon.sanitizeHookSpec("/tmp/aaxbsa"); err == nil {
+		t.Fatal("sanitizeHookSpec should report error for non-exist hook spec file")
+	}
+
+	if _, err := daemon.sanitizeHookSpec("/bin"); err == nil {
+		t.Fatal("sanitizeHookSpec should report error for directory")
+	}
 }
