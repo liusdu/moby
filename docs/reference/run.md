@@ -675,6 +675,8 @@ container in. This allows you to create and manage cgroups on their own. You can
 define custom resources for those cgroups and put containers under a common
 parent group.
 
+> **Note**: You cannot specify a parent cgroup which is "FROZEN".
+
 ## Runtime constraints on resources
 
 The operator can also adjust the performance parameters of the
