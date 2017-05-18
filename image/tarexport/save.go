@@ -25,9 +25,10 @@ type imageDescriptor struct {
 
 type saveSession struct {
 	*tarexporter
-	outDir      string
-	images      map[image.ID]*imageDescriptor
-	savedLayers map[string]struct{}
+	outDir       string
+	images       map[image.ID]*imageDescriptor
+	savedLayers  map[string]struct{}
+	holdonImages map[image.ID]struct{}
 }
 
 func (l *tarexporter) Save(names []string, outStream io.Writer) error {
@@ -36,7 +37,18 @@ func (l *tarexporter) Save(names []string, outStream io.Writer) error {
 		return err
 	}
 
-	return (&saveSession{tarexporter: l, images: images}).save(outStream)
+	s := &saveSession{
+		tarexporter:  l,
+		images:       images,
+		savedLayers:  make(map[string]struct{}),
+		holdonImages: make(map[image.ID]struct{}),
+	}
+	defer s.holdOffImages()
+	if err := s.holdOnImages(); err != nil {
+		return err
+	}
+
+	return s.save(outStream)
 }
 
 func (l *tarexporter) parseNames(names []string) (map[image.ID]*imageDescriptor, error) {
@@ -113,10 +125,24 @@ func (l *tarexporter) parseNames(names []string) (map[image.ID]*imageDescriptor,
 	}
 	return imgDescr, nil
 }
+func (s *saveSession) holdOnImages() error {
+	for id := range s.images {
+		if err := s.is.HoldOn(id); err != nil {
+			return err
+		}
+		s.holdonImages[id] = struct{}{}
+	}
+	return nil
+}
+
+func (s *saveSession) holdOffImages() error {
+	for imageID := range s.holdonImages {
+		s.is.HoldOff(imageID)
+	}
+	return nil
+}
 
 func (s *saveSession) save(outStream io.Writer) error {
-	s.savedLayers = make(map[string]struct{})
-
 	// get image json
 	tempDir, err := ioutil.TempDir("", "docker-export-")
 	if err != nil {
