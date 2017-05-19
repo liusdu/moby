@@ -887,6 +887,7 @@ func (daemon *Daemon) PullImage(ctx context.Context, ref reference.Named, metaHe
 		RegistryService:  daemon.RegistryService,
 		ImageEventLogger: daemon.LogImageEvent,
 		MetadataStore:    daemon.distributionMetadataStore,
+		LayerStore:       daemon.layerStore,
 		ImageStore:       daemon.imageStore,
 		ReferenceStore:   daemon.referenceStore,
 		DownloadManager:  daemon.downloadManager,

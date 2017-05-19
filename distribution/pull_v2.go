@@ -495,10 +495,17 @@ func (p *v2Puller) pullSchema2(ctx context.Context, ref reference.Named, mfst *s
 
 	target := mfst.Target()
 	imageID = image.ID(target.Digest)
-	if _, err := p.config.ImageStore.Get(imageID); err == nil {
-		// If the image already exists locally, no need to pull
-		// anything.
-		return imageID, manifestDigest, nil
+	if img, err := p.config.ImageStore.Get(imageID); err == nil {
+		if chainID := img.RootFS.ChainID(); chainID != "" {
+			l, err := p.config.LayerStore.Get(chainID)
+			if err == nil {
+				layer.ReleaseAndLog(p.config.LayerStore, l)
+				// If the image already exists locally, no need to pull anything.
+				return imageID, manifestDigest, nil
+			}
+		} else {
+			return imageID, manifestDigest, nil
+		}
 	}
 
 	configChan := make(chan []byte, 1)

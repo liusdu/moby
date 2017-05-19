@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/distribution/metadata"
 	"github.com/docker/docker/distribution/xfer"
 	"github.com/docker/docker/image"
+	"github.com/docker/docker/layer"
 	"github.com/docker/docker/pkg/progress"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
@@ -33,6 +34,8 @@ type ImagePullConfig struct {
 	// MetadataStore is the storage backend for distribution-specific
 	// metadata.
 	MetadataStore metadata.Store
+	// LayerStore manages layers
+	LayerStore layer.Store
 	// ImageStore manages images.
 	ImageStore image.Store
 	// ReferenceStore manages tags.
