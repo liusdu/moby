@@ -1,10 +1,13 @@
 package client
 
 import (
+	"bytes"
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
@@ -68,7 +71,21 @@ func (cli *Client) postHijacked(ctx context.Context, path string, query url.Valu
 	defer clientconn.Close()
 
 	// Server hijacks the connection, error 'connection closed' expected
-	clientconn.Do(req)
+	resp, err := clientconn.Do(req)
+	if err != nil {
+		return types.HijackedResponse{}, err
+	}
+	if resp != nil {
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusSwitchingProtocols {
+			defer resp.Body.Close()
+
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return types.HijackedResponse{}, err
+			}
+			return types.HijackedResponse{}, fmt.Errorf("Error response from daemon: %s", bytes.TrimSpace(body))
+		}
+	}
 
 	rwc, br := clientconn.Hijack()
 
