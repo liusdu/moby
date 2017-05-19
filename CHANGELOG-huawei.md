@@ -1,6 +1,19 @@
 # Changelog
 
-## v1.11.2.27 (2017-0-11)
+## v1.11.2.28 (2017-05-19)
+
+- bump containerd:
+   - Fix close a nil chan err (containerd mr 49 fix DTS2017051803220)
+   - Add transaction to containerd (containerd mr 48 fix DTS2017051004714)
+- Bugfix: Fix save & rmi image competition (mr 472 fix DTS2017051508777)
+- Bugfix: Add a error check in postHijacked to avoid docker exec command blocking (mr 457 fix DTS2017050904057)
+- Bugfix: Update docs for `--cgroup-parent` flag (mr 474 fix DTS2017051801560)
+- Bugfix: remove redundant containers/xxx/shm mountpoint (mr 463 fix DTS2017051117457)
+- Bugfix: Fix bad slot store reference during daemon stop (mr 469 fix DTS2017051505870)
+- Bugfix: Fix bug of un-allocated persistent accelerator (mr 462 fix DTS2017051202238)
+- Bugfix: Fix can't pull image while the image is not in `docker images` (mr 482 fix DTS2017051903916)
+
+## v1.11.2.27 (2017-05-11)
 
 - bump containerd: 
    - Use temp console path for consoleSocket (containerd mr 46 fix DTS2017050909332)
