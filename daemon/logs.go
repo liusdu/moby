@@ -104,11 +104,16 @@ func (daemon *Daemon) ContainerLogs(containerName string, config *backend.Contai
 	}
 }
 
-func (daemon *Daemon) getLogger(container *container.Container) (logger.Logger, error) {
-	if container.LogDriver != nil && container.IsRunning() {
-		return container.LogDriver, nil
+func (daemon *Daemon) getLogger(container *container.Container) (l logger.Logger, err error) {
+	container.Lock()
+	if container.State.Running {
+		l = container.LogDriver
 	}
-	return container.StartLogger(container.HostConfig.LogConfig)
+	container.Unlock()
+	if l == nil {
+		l, err = container.StartLogger(container.HostConfig.LogConfig)
+	}
+	return
 }
 
 // mergeLogConfig merges the daemon log config to the container's log config if the container's log driver is not specified.
