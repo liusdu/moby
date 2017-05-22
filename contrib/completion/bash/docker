@@ -1224,7 +1224,7 @@ _docker_load() {
 
 	case "$cur" in
 		-*)
-			COMPREPLY=( $( compgen -W "--help --input -i --quiet -q" -- "$cur" ) )
+			COMPREPLY=( $( compgen -W "--help --input -i --quiet -q --to-be-pulled -p" -- "$cur" ) )
 			;;
 	esac
 }

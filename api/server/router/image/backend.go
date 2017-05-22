@@ -32,7 +32,7 @@ type imageBackend interface {
 }
 
 type importExportBackend interface {
-	LoadImage(inTar io.ReadCloser, outStream io.Writer, quiet bool) error
+	LoadImage(inTar io.ReadCloser, outStream io.Writer, quiet bool, toBePulled bool) error
 	ImportImage(src string, newRef reference.Named, msg string, inConfig io.ReadCloser, outStream io.Writer, config *container.Config) error
 	ExportImage(names []string, outStream io.Writer) error
 }

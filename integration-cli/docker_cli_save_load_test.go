@@ -372,3 +372,40 @@ func (s *DockerSuite) TestSaveLoadPartialImage(c *check.C) {
 
 	dockerCmd(c, "rmi", imgName)
 }
+
+func (s *DockerSuite) TestSaveLoadBaseImage(c *check.C) {
+	testRequires(c, DaemonIsLinux)
+
+	name1 := "imagetobepulled1:latest"
+	name2 := "imagetobepulled2:latest"
+	name3 := "imagetobepulled3:latest"
+
+	buildImageFrom(c, "busybox", name1, true)
+	buildImageFrom(c, name1, name2, true)
+	buildImageFrom(c, name2, name3, true)
+
+	id := inspectField(c, name1, "Id")
+	expectedToBePulled := fmt.Sprintf("ToBePulled: %s@%s\n", name1, id)
+
+	dockerCmd(c, "rmi", name1)
+	imagesExist(c, false, name1)
+
+	id = inspectField(c, name3, "Id")
+
+	// If image is built with option --no-parent, it should print 'From' when use option -b
+	out, _, err := runCommandPipelineWithOutput(
+		exec.Command(dockerBinary, "save", id),
+		exec.Command(dockerBinary, "load", "-q", "-p"))
+	c.Assert(err, checker.IsNil, check.Commentf("failed to save and load repo: %s, %v", out, err))
+	c.Assert(out, checker.Equals, expectedToBePulled)
+
+	dockerCmd(c, "rmi", name2, name3)
+	imagesExist(c, false, name2, name3)
+
+	// If image is not built with option --no-parent, it should not print 'From' when use option -b
+	out, _, err = runCommandPipelineWithOutput(
+		exec.Command(dockerBinary, "save", "busybox"),
+		exec.Command(dockerBinary, "load", "-p"))
+	c.Assert(err, checker.IsNil, check.Commentf("failed to save and load repo: %s, %v", out, err))
+	c.Assert(out, checker.Not(checker.Contains), "ToBePulled: ")
+}
