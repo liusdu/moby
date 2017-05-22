@@ -629,6 +629,34 @@ func NewDaemon(config *Config, registryService *registry.Service, containerdRemo
 		return nil, fmt.Errorf("Couldn't create Tag store repositories: %s", err)
 	}
 
+	// delete reference of image not nornamlly loaded to imageStore
+	for _, imageID := range referenceStore.List() {
+		if img, err := d.imageStore.Get(imageID); err == nil {
+			isExist := false
+			if chainID := img.RootFS.ChainID(); chainID != "" {
+				l, err := d.layerStore.Get(chainID)
+				if err == nil {
+					layer.ReleaseAndLog(d.layerStore, l)
+					isExist = true
+				}
+			} else {
+				isExist = true
+			}
+			// If the image not exist locally, delete its reference
+			if !isExist {
+				for _, ref := range referenceStore.References(imageID) {
+					isDelete, err := referenceStore.Delete(ref)
+					if isDelete {
+						logrus.Warnf("Delete reference %s for image id %s from reference store", ref.String(), imageID)
+					}
+					if err != nil {
+						logrus.Warnf("Faild to delete reference %s for image id %s: %v", ref.String(), imageID, err)
+					}
+				}
+			}
+		}
+	}
+
 	if err := restoreCustomImage(d.imageStore, d.layerStore, referenceStore); err != nil {
 		return nil, fmt.Errorf("Couldn't restore custom images: %s", err)
 	}

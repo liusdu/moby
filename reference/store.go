@@ -34,6 +34,7 @@ type Store interface {
 	AddDigest(ref Canonical, id image.ID, force bool) error
 	Delete(ref Named) (bool, error)
 	Get(ref Named) (image.ID, error)
+	List() []image.ID
 }
 
 type store struct {
@@ -197,6 +198,19 @@ func (store *store) Get(ref Named) (image.ID, error) {
 	}
 
 	return id, nil
+}
+
+// List retrieves list of image ID, return nil if no image
+func (store *store) List() []image.ID {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+
+	var ids []image.ID
+	for id, _ := range store.referencesByIDCache {
+		ids = append(ids, id)
+	}
+
+	return ids
 }
 
 // References returns a slice of references to the given image ID. The slice
