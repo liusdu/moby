@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.2.29 (2017-05-23)
+
+- bump containerd
+  - Fix exit transaction handler type convert issue (fix DTS2017052304178)
+- Bugfix: Fix can't run image while the image is not in `docker images` (mr 489 fix DTS2017052208437)
+
 ## v1.11.2.28 (2017-05-19)
 
 - bump containerd:
