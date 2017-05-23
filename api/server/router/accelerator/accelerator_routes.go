@@ -2,6 +2,7 @@ package accelerator
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/docker/docker/api/server/httputils"
@@ -10,11 +11,22 @@ import (
 	"golang.org/x/net/context"
 )
 
+const (
+	MaxFilterLength  = 1024
+	MaxNameLength    = 256
+	MaxOptionsCount  = 128
+	MaxOptionsLength = 1024
+)
+
 func (a *accelRouter) getAccelsList(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
 	if err := httputils.ParseForm(r); err != nil {
 		return err
 	}
 	filter := r.Form.Get("filters")
+
+	if len(filter) > MaxFilterLength {
+		return fmt.Errorf("Input filter length exceed limit")
+	}
 	accelFilters, err := filters.FromParam(filter)
 	if err != nil {
 		return err
@@ -38,6 +50,10 @@ func (a *accelRouter) getAccelByName(ctx context.Context, w http.ResponseWriter,
 		return err
 	}
 
+	if len(vars["name"]) > MaxNameLength {
+		return fmt.Errorf("Input name length exceed limit")
+	}
+
 	accel, err := a.backend.AccelInspect(vars["name"])
 	if err != nil {
 		return err
@@ -59,6 +75,21 @@ func (a *accelRouter) postAccelCreate(ctx context.Context, w http.ResponseWriter
 		return err
 	}
 
+	if len(req.Name) > MaxNameLength ||
+		len(req.Driver) > MaxNameLength ||
+		len(req.Runtime) > MaxNameLength {
+		return fmt.Errorf("Input accel create parameter length exceed limit")
+	}
+
+	if len(req.Options) > MaxOptionsCount {
+		return fmt.Errorf("Input accel create options count exceed limit")
+	}
+	for _, opt := range req.Options {
+		if len(opt) > MaxOptionsLength {
+			return fmt.Errorf("Input accel create option length exceed limit")
+		}
+	}
+
 	accel, err := a.backend.AccelCreate(req.Name, req.Driver, req.Runtime, req.Options)
 	if err != nil {
 		return err
@@ -71,6 +102,11 @@ func (a *accelRouter) deleteAccels(ctx context.Context, w http.ResponseWriter, r
 		return err
 	}
 	force := httputils.BoolValue(r, "force")
+
+	if len(vars["name"]) > MaxNameLength {
+		return fmt.Errorf("Input name length exceed limit")
+	}
+
 	if err := a.backend.AccelRm(vars["name"], force); err != nil {
 		return err
 	}
@@ -101,6 +137,11 @@ func (a *accelRouter) getAccelDevicesByDriver(ctx context.Context, w http.Respon
 	if err := httputils.ParseForm(r); err != nil {
 		return err
 	}
+
+	if len(vars["driver"]) > MaxNameLength {
+		return fmt.Errorf("Input driver length exceed limit")
+	}
+
 	devices, warnings, err := a.backend.AccelDevices(vars["driver"])
 	if err != nil {
 		return err
