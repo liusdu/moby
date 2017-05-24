@@ -6,6 +6,9 @@ package devicemapper
 #cgo LDFLAGS: -L. -ldevmapper
 #include <libdevmapper.h>
 #include <linux/fs.h>   // FIXME: present only for BLKGETSIZE64, maybe we can remove it?
+#include <string.h>
+#include <stdlib.h>
+
 
 // FIXME: Can't we find a way to do the logging in pure Go?
 extern void DevmapperLogCallback(int level, char *file, int line, int dm_errno_or_class, char *str);
@@ -25,6 +28,51 @@ static void	log_cb(int level, const char *file, int line, int dm_errno_or_class,
 static void	log_with_errno_init()
 {
   dm_log_with_errno_init(log_cb);
+}
+
+// FIXME: how to use dm_task_get_names directly
+static char **local_dm_task_get_names(struct dm_task *dmt, unsigned int *size) {
+	struct dm_names *ns, *ns1;
+	unsigned next = 0;
+	char **result;
+	int i = 0;
+
+	if (!(ns = dm_task_get_names(dmt)))
+		return NULL;
+
+	// No devices found
+	if (!ns->dev)
+		return NULL;
+
+	// calucate the total devices
+	ns1 = ns;
+	*size = 0;
+	do {
+		ns1 = (struct dm_names *)((char *) ns1 + next);
+		(*size)++;
+		next = ns1->next;
+	} while (next);
+
+	result = malloc(sizeof(char *)* (*size));
+	if (!result)
+		return NULL;
+
+	next = 0;
+	do {
+		ns = (struct dm_names *)((char *) ns + next);
+		result[i++] = strdup(ns->name);
+		next = ns->next;
+	} while (next);
+
+	return result;
+}
+
+void free_devices_names(char **names, unsigned int size) {
+	int i;
+
+	for (i = 0; i < size; i++)
+		free(names[i]);
+	free(names);
 }
 */
 import "C"
@@ -64,6 +112,7 @@ var (
 	DmTaskGetDeps             = dmTaskGetDepsFct
 	DmTaskGetInfo             = dmTaskGetInfoFct
 	DmTaskGetDriverVersion    = dmTaskGetDriverVersionFct
+	DmTaskGetNames            = dmTaskGetNamesFct
 	DmTaskRun                 = dmTaskRunFct
 	DmTaskSetAddNode          = dmTaskSetAddNodeFct
 	DmTaskSetCookie           = dmTaskSetCookieFct
@@ -183,6 +232,24 @@ func dmTaskGetInfoFct(task *cdmTask, info *Info) int {
 		info.TargetCount = int32(Cinfo.target_count)
 	}()
 	return int(C.dm_task_get_info((*C.struct_dm_task)(task), &Cinfo))
+}
+
+func dmTaskGetNamesFct(task *cdmTask) []string {
+	var res []string
+	var names []*C.char
+	len := C.uint(0)
+	Cnames := C.local_dm_task_get_names((*C.struct_dm_task)(task), &len)
+	defer C.free_devices_names(Cnames, len)
+
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&names))
+	hdr.Cap = int(len)
+	hdr.Len = int(len)
+	hdr.Data = uintptr(unsafe.Pointer(Cnames))
+
+	for _, name := range names {
+		res = append(res, C.GoString(name))
+	}
+	return res
 }
 
 func dmTaskGetDriverVersionFct(task *cdmTask) string {
