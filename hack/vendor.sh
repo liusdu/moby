@@ -59,7 +59,7 @@ clone git github.com/vdemeester/shakers 24d7f1d6a71aa5d9cbe7390e4afb66b7eef9e1b3
 # forked golang.org/x/net package includes a patch for lazy loading trace templates
 clone git golang.org/x/net 991d3e32f76f19ee6d9caadb3a22eae8d23315f7 https://github.com/golang/net.git
 clone git golang.org/x/sys d4feaf1a7e61e1d9e79e6c4e76c6349e9cab0a03 https://github.com/golang/sys.git
-clone git github.com/docker/go-units 651fc226e7441360384da338d0fd37f2440ffbe3
+clone git github.com/docker/go-units eb879ae3e2b84e2a142af415b679ddeda47ec71c
 clone git github.com/docker/go-connections v0.2.0
 clone git github.com/docker/engine-api v0.3.3
 clone git github.com/RackSec/srslog 456df3a81436d29ba874f3590eeeee25d666f8a5
