@@ -1737,6 +1737,29 @@ func (devices *DeviceSet) initDevmapper(doInit bool) (retErr error) {
 	devices.devicePrefix = fmt.Sprintf("docker-%d:%d-%d", major(sysSt.Dev), minor(sysSt.Dev), sysSt.Ino)
 	logrus.Debugf("devmapper: Generated prefix: %s", devices.devicePrefix)
 
+	deviceNames, err := devicemapper.GetDeviceList()
+	if err != nil {
+		logrus.Debugf("devmapper: Failed to get device list: %s", err)
+	}
+
+	for _, name := range deviceNames {
+		if !strings.HasPrefix(name, devices.devicePrefix) {
+			continue
+		}
+		_, length, _, _, err := devicemapper.GetStatus(name)
+		if err != nil {
+			logrus.Warnf("devmapper: get device status(%s): %s", name, err)
+			continue
+		}
+		// remove broken device
+		if length == 0 {
+			if err := devicemapper.RemoveDevice(name); err != nil {
+				logrus.Warnf("devmapper: remove broken device(%s): %s", name, err)
+			}
+			logrus.Debugf("devmapper: remove broken device: %s", name)
+		}
+	}
+
 	// Check for the existence of the thin-pool device
 	poolExists, err := devices.thinPoolExists(devices.getPoolName())
 	if err != nil {
