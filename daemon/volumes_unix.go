@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"fmt"
 	"os"
 	"sort"
 	"strconv"
@@ -20,7 +21,21 @@ func (daemon *Daemon) setupMounts(c *container.Container) ([]container.Mount, er
 		if err := daemon.lazyInitializeVolume(c.ID, m); err != nil {
 			return nil, err
 		}
-		path, err := m.Setup()
+
+		// if the daemon is being shutdown, we could not let the container
+		// start if the container trying to mount the sock the daemon is listen on
+		// to the container, because if the daemon is being shutdown
+		// the socket (`/var/run/docker.sock` by default) does not exist and
+		// the m.Setup will assume it's a directory and create it, this will
+		// cause the daemon can't start next time.
+		checkfunc := func() error {
+			if _, exist := daemon.hosts[m.Source]; exist && daemon.IsShuttingDown() {
+				return fmt.Errorf("Could not mount %q to container while the daemon is shutting down", m.Source)
+			}
+			return nil
+		}
+
+		path, err := m.Setup(checkfunc)
 		if err != nil {
 			return nil, err
 		}

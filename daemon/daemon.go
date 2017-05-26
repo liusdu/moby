@@ -129,6 +129,17 @@ type Daemon struct {
 	containerdRemote          libcontainerd.Remote
 	defaultIsolation          containertypes.Isolation // Default isolation mode on Windows
 	Hooks                     specs.Hooks
+	hosts                     map[string]bool // hosts stores the addresses the daemon is listening on
+}
+
+// StoreHosts stores the addresses the daemon is listening on
+func (daemon *Daemon) StoreHosts(hosts []string) {
+	if daemon.hosts == nil {
+		daemon.hosts = make(map[string]bool)
+	}
+	for _, h := range hosts {
+		daemon.hosts[h] = true
+	}
 }
 
 func (daemon *Daemon) restore() error {

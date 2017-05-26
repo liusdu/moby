@@ -66,7 +66,9 @@ type MountPoint struct {
 
 // Setup sets up a mount point by either mounting the volume if it is
 // configured, or creating the source directory if supplied.
-func (m *MountPoint) Setup() (string, error) {
+// The checkFun is to do some checking before creating the
+// source directory on the host.
+func (m *MountPoint) Setup(checkFun func() error) (string, error) {
 	if m.Volume != nil {
 		return m.Volume.Mount()
 	}
@@ -76,6 +78,14 @@ func (m *MountPoint) Setup() (string, error) {
 				return "", err
 			}
 			if runtime.GOOS != "windows" { // Windows does not have deprecation issues here
+				// Before creating source directory on the host do the checking if it's not nil
+				// A use case is to forbid mount the socket that the daemon is listen on to the container
+				// while the daemon is being shutdown.
+				if checkFun != nil {
+					if err := checkFun(); err != nil {
+						return "", err
+					}
+				}
 				if err := os.MkdirAll(m.Source, 0755); err != nil {
 					return "", err
 				}
