@@ -107,6 +107,13 @@ type Info interface {
 	// created on creation of a sandbox).
 	Interfaces() []Interface
 
+	// AllInterfaces lists all the interfaces in the namespace includes interfaces
+	// added previously with AddInterface and with other way such as inserted by
+	// CNI plugins, except "lo" device.
+	// Note: this is not a standand libnetwork method and I don't recommand anyone
+	// else to use this function, KEEP IT IN RESTRICT USAGE! --@zhangwei_280905
+	AllInterfaces() []Interface
+
 	// IPv4 gateway for the sandbox.
 	Gateway() net.IP
 

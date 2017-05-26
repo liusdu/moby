@@ -112,6 +112,28 @@ func (n *networkNamespace) Interfaces() []Interface {
 	return ifaces
 }
 
+func (n *networkNamespace) AllInterfaces() []Interface {
+	n.Lock()
+	defer n.Unlock()
+
+	ifaces := []Interface{}
+	nsInvoke(n.path, func(nsFD int) error { return nil }, func(callerFD int) error {
+		netifs, err := net.Interfaces()
+		if err != nil {
+			return err
+		}
+
+		for _, i := range netifs {
+			// ignore "lo" device
+			if i.Name != "lo" {
+				ifaces = append(ifaces, &nwIface{dstName: i.Name, ns: n})
+			}
+		}
+		return nil
+	})
+	return ifaces
+}
+
 func (i *nwIface) Remove() error {
 	i.Lock()
 	n := i.ns
