@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.2.30 (2017-05-26)
+
+- Bugfix: Ensure log driver is not nil (mr 478 fix DTS2017051900715)
+- Bugfix: vendor: update go-units (mr 495 fix DTS2017052402130)
+- Bugfix: Don't create source directory while the daemon is being shutdown (mr 487 fix DTS2017050504965 ) 
+
 ## v1.11.2.29 (2017-05-23)
 
 - bump containerd
