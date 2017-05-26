@@ -169,11 +169,20 @@ func (daemon *Daemon) verifyAccelConfig(hostConfig *containertypes.HostConfig) e
 	for idx := range hostConfig.Accelerators {
 		accel := &hostConfig.Accelerators[idx]
 
-		// if accelerator name is empty, build a contianer-scoped unique name for it
+		// check accelerator name
 		if accel.Name == "" {
+			// if name is empty, build a contianer-scoped unique name for it
 			accel.Name = fmt.Sprintf("%s%d", anonCliAccelNamePrefix, anonAccelNo)
 			anonAccelNo = anonAccelNo + 1
+		} else {
+			// else, make sure it not use the reserved name prefix
+			if strings.HasPrefix(accel.Name, anonCliAccelNamePrefix) ||
+				strings.HasPrefix(accel.Name, anonImgAccelNamePrefix) {
+				return fmt.Errorf("invalid accelerator config: reserved name prefix \"%s\" or \"%s\"",
+					anonCliAccelNamePrefix, anonImgAccelNamePrefix)
+			}
 		}
+
 		// check name conflict
 		if _, ok := accelNameMap[accel.Name]; ok {
 			return fmt.Errorf("invalid accelerator config: name \"%s\" conflict", accel.Name)
