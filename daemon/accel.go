@@ -15,6 +15,12 @@ import (
 	containertypes "github.com/docker/engine-api/types/container"
 )
 
+const (
+	MaxNameLength    = 256
+	MaxOptionsCount  = 128
+	MaxOptionsLength = 1024
+)
+
 // Name prefix for anonymous cli&image accelerator
 var anonCliAccelNamePrefix = "anon_cli_accel_"
 var anonImgAccelNamePrefix = "anon_img_accel_"
@@ -168,6 +174,19 @@ func (daemon *Daemon) verifyAccelConfig(hostConfig *containertypes.HostConfig) e
 	// Firstly, we check hostConfig.Accelerators filled by cli "--accel-runtime" options
 	for idx := range hostConfig.Accelerators {
 		accel := &hostConfig.Accelerators[idx]
+		if len(accel.Name) > MaxNameLength ||
+			len(accel.Runtime) > MaxNameLength ||
+			len(accel.Driver) > MaxNameLength {
+			return fmt.Errorf("Input accel paremeter length exceed limit")
+		}
+		if len(accel.Options) > MaxOptionsCount {
+			return fmt.Errorf("Input accel options count exceed limit")
+		}
+		for _, opt := range accel.Options {
+			if len(opt) > MaxOptionsLength {
+				return fmt.Errorf("Input accel option length exceed limit")
+			}
+		}
 
 		// check accelerator name
 		if accel.Name == "" {
