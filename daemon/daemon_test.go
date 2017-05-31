@@ -550,7 +550,7 @@ func TestRegisterDaemonHooks(t *testing.T) {
 
 	file, err := os.OpenFile(hookSpecFile, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
-		t.Fatal("create spec file error: %v", err)
+		t.Fatalf("create spec file error: %v", err)
 	}
 
 	// make an invalid format
