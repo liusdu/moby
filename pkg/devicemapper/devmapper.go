@@ -62,6 +62,7 @@ var (
 	ErrTaskGetDeps          = errors.New("dm_task_get_deps failed")
 	ErrTaskGetInfo          = errors.New("dm_task_get_info failed")
 	ErrTaskGetDriverVersion = errors.New("dm_task_get_driver_version failed")
+	ErrTaskGetNames         = errors.New("dm_task_get_names failed")
 	ErrTaskDeferredRemove   = errors.New("dm_task_deferred_remove failed")
 	ErrTaskSetCookie        = errors.New("dm_task_set_cookie failed")
 	ErrNilCookie            = errors.New("cookie ptr can't be nil")
@@ -243,6 +244,14 @@ func (t *Task) getInfoWithDeferred() (*Info, error) {
 		return nil, ErrTaskGetInfo
 	}
 	return info, nil
+}
+
+func (t *Task) getDeviceList() ([]string, error) {
+	res := DmTaskGetNames(t.unmanaged)
+	if res == nil {
+		return nil, ErrTaskGetNames
+	}
+	return res, nil
 }
 
 func (t *Task) getDriverVersion() (string, error) {
@@ -582,6 +591,18 @@ func GetInfoWithDeferred(name string) (*Info, error) {
 		return nil, err
 	}
 	return task.getInfoWithDeferred()
+}
+
+// GetDevices get all device name
+func GetDeviceList() ([]string, error) {
+	task := TaskCreate(deviceList)
+	if task == nil {
+		return nil, fmt.Errorf("devicemapper: Can't create deviceList task")
+	}
+	if err := task.run(); err != nil {
+		return nil, err
+	}
+	return task.getDeviceList()
 }
 
 // GetDriverVersion is the programmatic example of "dmsetup version".
