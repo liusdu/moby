@@ -37,6 +37,7 @@ static char **local_dm_task_get_names(struct dm_task *dmt, unsigned int *size) {
 	char **result;
 	int i = 0;
 
+	*size = 0;
 	if (!(ns = dm_task_get_names(dmt)))
 		return NULL;
 
@@ -46,7 +47,6 @@ static char **local_dm_task_get_names(struct dm_task *dmt, unsigned int *size) {
 
 	// calucate the total devices
 	ns1 = ns;
-	*size = 0;
 	do {
 		ns1 = (struct dm_names *)((char *) ns1 + next);
 		(*size)++;
@@ -54,8 +54,10 @@ static char **local_dm_task_get_names(struct dm_task *dmt, unsigned int *size) {
 	} while (next);
 
 	result = malloc(sizeof(char *)* (*size));
-	if (!result)
+	if (!result) {
+		*size = 0;
 		return NULL;
+	}
 
 	next = 0;
 	do {
@@ -69,6 +71,9 @@ static char **local_dm_task_get_names(struct dm_task *dmt, unsigned int *size) {
 
 void free_devices_names(char **names, unsigned int size) {
 	int i;
+
+	if (!names)
+		return;
 
 	for (i = 0; i < size; i++)
 		free(names[i]);
@@ -240,6 +245,10 @@ func dmTaskGetNamesFct(task *cdmTask) []string {
 	len := C.uint(0)
 	Cnames := C.local_dm_task_get_names((*C.struct_dm_task)(task), &len)
 	defer C.free_devices_names(Cnames, len)
+
+	if int(len) == 0 {
+		return nil
+	}
 
 	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&names))
 	hdr.Cap = int(len)
