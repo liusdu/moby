@@ -2,8 +2,8 @@
 
 source "${MAKEDIR}/.validate"
 
-adds=$(validate_diff --numstat | awk '{ s += $1 } END { print s }')
-dels=$(validate_diff --numstat | awk '{ s += $2 } END { print s }')
+adds=$(validate_diff_upstream --numstat | awk '{ s += $1 } END { print s }')
+dels=$(validate_diff_upstream --numstat | awk '{ s += $2 } END { print s }')
 #notDocs="$(validate_diff --numstat | awk '$3 !~ /^docs\// { print $3 }')"
 
 : ${adds:=0}
@@ -23,7 +23,7 @@ check_dco() {
 if [ $adds -eq 0 -a $dels -eq 0 ]; then
 	echo '0 adds, 0 deletions; nothing to validate! :)'
 else
-	commits=( $(validate_log --format='format:%H%n') )
+	commits=( $(validate_log_upstream --format='format:%H%n') )
 	badCommits=()
 	for commit in "${commits[@]}"; do
 		if [ -z "$(git log -1 --format='format:' --name-status "$commit")" ]; then
