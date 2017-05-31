@@ -99,7 +99,7 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 	}
 
 	// merge accelerator runtimes required by image with cli specified runtime
-	// into contianer HostConfig, and verify these runtime requirements can
+	// into container HostConfig, and verify these runtime requirements can
 	// be satisfied
 	if err := daemon.mergeAndVerifyAccelRuntime(params.HostConfig, img); err != nil {
 		return nil, err
