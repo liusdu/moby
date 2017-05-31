@@ -190,7 +190,7 @@ func (daemon *Daemon) verifyAccelConfig(hostConfig *containertypes.HostConfig) e
 
 		// check accelerator name
 		if accel.Name == "" {
-			// if name is empty, build a contianer-scoped unique name for it
+			// if name is empty, build a container-scoped unique name for it
 			accel.Name = fmt.Sprintf("%s%d", anonCliAccelNamePrefix, anonAccelNo)
 			anonAccelNo = anonAccelNo + 1
 		} else {
