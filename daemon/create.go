@@ -72,7 +72,7 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig) (retC *containe
 			imgID = img.ID()
 		} else {
 			var id string
-			params.Config.Image, id, err = daemon.CreateCompleteImage(params.Config.Image)
+			params.Config.Image, id, err = daemon.CreateCompleteImage(params.Config.Image, nil)
 			if err != nil {
 				return nil, err
 			}

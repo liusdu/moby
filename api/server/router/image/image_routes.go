@@ -381,3 +381,28 @@ func (s *imageRouter) getImagesSearch(ctx context.Context, w http.ResponseWriter
 	}
 	return httputils.WriteJSON(w, http.StatusOK, query.Results)
 }
+
+func (s *imageRouter) postImagesCombine(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+	if err := httputils.ParseForm(r); err != nil {
+		return err
+	}
+
+	if err := httputils.CheckForJSON(r); err != nil {
+		return err
+	}
+
+	options := &types.ImageCombineOptions{}
+	if err := json.NewDecoder(r.Body).Decode(options); err != nil {
+		return err
+	}
+
+	defaultName, imgID, err := s.backend.CreateCompleteImage(options.Image, options.Tags)
+	if err != nil {
+		return err
+	}
+
+	return httputils.WriteJSON(w, http.StatusCreated, &types.ImageCombineResponse{
+		ImageID:    string(imgID),
+		DefaultTag: defaultName,
+	})
+}

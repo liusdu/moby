@@ -235,3 +235,14 @@ type VersionResponse struct {
 func (v VersionResponse) ServerOK() bool {
 	return v.Server != nil
 }
+
+// ImageRemoveOptions holds parameters to combine images.
+type ImageCombineOptions struct {
+	Tags  []string
+	Image string // Image is the name of the image
+}
+
+type ImageCombineResponse struct {
+	ImageID    string // ImageID is the id of the image
+	DefaultTag string
+}

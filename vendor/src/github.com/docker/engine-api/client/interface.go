@@ -47,6 +47,7 @@ type APIClient interface {
 	CopyToContainer(ctx context.Context, options types.CopyToContainerOptions) error
 	Events(ctx context.Context, options types.EventsOptions) (io.ReadCloser, error)
 	ImageBuild(ctx context.Context, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
+	ImageCombine(ctx context.Context, options types.ImageCombineOptions) (types.ImageCombineResponse, error)
 	ImageCreate(ctx context.Context, options types.ImageCreateOptions) (io.ReadCloser, error)
 	ImageHistory(ctx context.Context, imageID string) ([]types.ImageHistory, error)
 	ImageImport(ctx context.Context, options types.ImageImportOptions) (io.ReadCloser, error)
