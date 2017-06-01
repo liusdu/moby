@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.11.2.31 (2017-06-01)
+
+- bump containerd:
+   - containerd: ignore SIGPIPE to fix https://github.com/containerd/containerd/issues/580
+- Feature: Support combining partial images into completed one (mr 504)
+- Bugfix: Make accel name prefix "anon_[cli|img]_accel_" reserved (mr 499 fix DTS2017052504931)
+- Bugfix: check accel input arguments (mr 493 fix DTS2017050408086)
+- Bugfix: devmapper: remove broken device when start daemon (mr 494 fix DTS2017051611286)
+- Bugfix: Adding support for docker max restart time (mr 507 fix DTS2017052704554)
+- Bugfix: Fix race between sandbox.delete() and SetKey() (mr 497 fix DTS2017051700511)
+- Bugfix: Typo:change contianer -> container (mr 510 fix DTS2017052704554)
+- Backport: Moving the UDS file out of /var/lib/docker and into /run/ (mr 498)
+
 ## v1.11.2.30 (2017-05-26)
 
 - Bugfix: Ensure log driver is not nil (mr 478 fix DTS2017051900715)
