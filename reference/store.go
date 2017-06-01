@@ -206,7 +206,7 @@ func (store *store) List() []image.ID {
 	defer store.mu.RUnlock()
 
 	var ids []image.ID
-	for id, _ := range store.referencesByIDCache {
+	for id := range store.referencesByIDCache {
 		ids = append(ids, id)
 	}
 
