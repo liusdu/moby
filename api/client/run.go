@@ -236,20 +236,10 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 				<-errCh
 				return err
 			}
-			if !c.State.Running {
+			if err := validateAttachOutput(c, createResponse.ID); err != nil {
 				cancelFun()
 				<-errCh
-				return fmt.Errorf("You cannot attach output to a stopped container, start it first")
-			}
-			if c.State.Paused {
-				cancelFun()
-				<-errCh
-				return fmt.Errorf("You cannot attach output to a paused container, unpause it first")
-			}
-			if c.State.Restarting {
-				cancelFun()
-				<-errCh
-				return fmt.Errorf("You cannot attach output to a restarting container, wait until it is running")
+				return err
 			}
 
 			options2 := types.ContainerAttachOptions{
@@ -359,6 +349,22 @@ func (cli *DockerCli) CmdRun(args ...string) error {
 	}
 	if status != 0 {
 		return Cli.StatusError{StatusCode: status}
+	}
+	return nil
+}
+
+func validateAttachOutput(attachContainer types.ContainerJSON, containerID string) error {
+	if attachContainer.ID == containerID {
+		return fmt.Errorf("You cannot attach to own output")
+	}
+	if !attachContainer.State.Running {
+		return fmt.Errorf("You cannot attach output to a stopped container, start it first")
+	}
+	if attachContainer.State.Paused {
+		return fmt.Errorf("You cannot attach output to a paused container, unpause it first")
+	}
+	if attachContainer.State.Restarting {
+		return fmt.Errorf("You cannot attach output to a restarting container, wait until it is running")
 	}
 	return nil
 }
