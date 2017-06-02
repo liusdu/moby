@@ -2512,6 +2512,15 @@ func (s *DockerSuite) TestRunModeIpcContainerNotExists(c *check.C) {
 	}
 }
 
+func (s *DockerSuite) TestJoinOwnIpcNamespace(c *check.C) {
+	// Not applicable on Windows as uses Unix-specific capabilities
+	testRequires(c, DaemonIsLinux, NotUserNamespace)
+	_, _, err := dockerCmdWithError("run", "-d", "--name", "testipc", "--ipc", "container:testipc", "busybox", "top")
+	if err == nil {
+		c.Fatalf("Join own ipc namespace is not permitted")
+	}
+}
+
 func (s *DockerSuite) TestRunModeIpcContainerNotRunning(c *check.C) {
 	// Not applicable on Windows as uses Unix-specific capabilities
 	testRequires(c, SameHostDaemon, DaemonIsLinux, NotUserNamespace)
@@ -2569,6 +2578,15 @@ func (s *DockerSuite) TestRunModePidContainerNotRunning(c *check.C) {
 	out, _, err := dockerCmdWithError("run", fmt.Sprintf("--pid=container:%s", id), "busybox")
 	if err == nil {
 		c.Fatalf("Run container with pid mode container should fail with non running container: %s\n%s", out, err)
+	}
+}
+
+func (s *DockerSuite) TestJoinOwnPidNamespace(c *check.C) {
+	// Not applicable on Windows as uses Unix-specific capabilities
+	testRequires(c, DaemonIsLinux)
+	_, _, err := dockerCmdWithError("run", "-d", "--name", "testpid", "--pid", "container:testpid", "busybox", "top")
+	if err == nil {
+		c.Fatalf("Join own pid namespace is not permitted")
 	}
 }
 
@@ -2809,6 +2827,15 @@ func (s *DockerSuite) TestRunNetContainerWhichHost(c *check.C) {
 	out = strings.Trim(out, "\n")
 	if hostNet != out {
 		c.Fatalf("Container should have host network namespace")
+	}
+}
+
+func (s *DockerSuite) TestJoinOwnNetNamespace(c *check.C) {
+	// Not applicable on Windows as uses Unix-specific capabilities
+	testRequires(c, DaemonIsLinux, NotUserNamespace)
+	_, _, err := dockerCmdWithError("run", "-d", "--name", "testnet", "--net", "container:testnet", "busybox", "top")
+	if err == nil {
+		c.Fatalf("Join own net namespace is not permitted")
 	}
 }
 

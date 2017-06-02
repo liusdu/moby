@@ -173,6 +173,9 @@ func (daemon *Daemon) getIpcContainer(container *container.Container) (*containe
 	if err != nil {
 		return nil, err
 	}
+	if container.ID == c.ID {
+		return nil, fmt.Errorf("cannot join own ipc namespace")
+	}
 	if !c.IsRunning() {
 		return nil, fmt.Errorf("cannot join IPC of a non running container: %s", containerID)
 	}
@@ -187,6 +190,9 @@ func (daemon *Daemon) getPidContainer(container *container.Container) (*containe
 	c, err := daemon.GetContainer(containerID)
 	if err != nil {
 		return nil, err
+	}
+	if container.ID == c.ID {
+		return nil, fmt.Errorf("cannot join own pid namespace")
 	}
 	if !c.IsRunning() {
 		return nil, fmt.Errorf("cannot join PID of a non running container: %s", containerID)
