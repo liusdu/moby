@@ -169,7 +169,7 @@ func (daemon *Daemon) IsCompleteImage(refOrID string) (bool, error) {
 }
 
 func (daemon *Daemon) tagImageStr(tag, imgID string) error {
-	ref, err := reference.WithName(tag)
+	ref, err := reference.ParseNamed(tag)
 	if err != nil {
 		return err
 	}
