@@ -24,7 +24,7 @@ func (s *DockerSuite) TestCombine(c *check.C) {
 	dockerCmd(c, "rmi", combinedApp)
 	imagesExist(c, false, combinedApp)
 
-	taggedApp := "taggedapp"
+	taggedApp := "taggedapp:1"
 	dockerCmd(c, "combine", "-t", taggedApp, fullNameApp3)
 	imagesExist(c, true, taggedApp)
 	dockerCmd(c, "rmi", taggedApp, fullNameApp1, fullNameApp2, fullNameApp3)
