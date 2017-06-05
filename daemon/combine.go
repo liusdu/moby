@@ -248,7 +248,7 @@ func (daemon *Daemon) getImageRecursive(img image.ID) (*image.Image, error) {
 // CreateNoParentImg use `img` to create a new image without layers in `from` image.
 // The result image is only partial, it must run with it's parent image which is specified
 // by `From` field.
-func (daemon *Daemon) CreateNoParentImg(img string, from string, removeComplete bool) (string, error) {
+func (daemon *Daemon) CreateNoParentImg(img string, from string) (string, error) {
 	imgDesc, err := daemon.imageStore.Get(image.ID(img))
 	if err != nil {
 		return "", err
@@ -323,14 +323,6 @@ func (daemon *Daemon) CreateNoParentImg(img string, from string, removeComplete 
 	// of parent part, if we set parent field, operations like 'docker load' will fail because
 	// it'll try to check image history with it's parent.
 	// So we don't set parent for partial images.
-
-	// `img` is deleted if it does not exists before build. It is't needed if
-	// `--no-parent` is specified, only new created partial image is expected.
-	if removeComplete {
-		if _, err := daemon.ImageDelete(img, false, true); err != nil {
-			return "", err
-		}
-	}
 
 	return newImageID.String(), nil
 }

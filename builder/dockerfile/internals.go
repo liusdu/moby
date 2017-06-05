@@ -55,12 +55,11 @@ func (b *Builder) commit(id string, autoCmd strslice.StrSlice, comment string) e
 		}
 		defer func(cmd strslice.StrSlice) { b.runConfig.Cmd = cmd }(cmd)
 
-		hit, err := b.probeCache()
-		if err != nil {
-			return err
-		} else if hit {
+		hit, _ := b.probeCache()
+		if hit {
 			return nil
 		}
+		var err error
 		id, err = b.create()
 		if err != nil {
 			return err
@@ -178,9 +177,8 @@ func (b *Builder) runContextCommand(args []string, allowRemote bool, allowLocalD
 	}
 	defer func(cmd strslice.StrSlice) { b.runConfig.Cmd = cmd }(cmd)
 
-	if hit, err := b.probeCache(); err != nil {
-		return err
-	} else if hit {
+	hit, _ := b.probeCache()
+	if hit {
 		return nil
 	}
 
@@ -188,6 +186,12 @@ func (b *Builder) runContextCommand(args []string, allowRemote bool, allowLocalD
 	if err != nil {
 		return err
 	}
+	imgID, err := b.docker.GetImageIDByContainer(container.ID)
+	if err != nil {
+		return err
+	}
+	b.holdOnImage(imgID)
+
 	b.tmpContainers[container.ID] = struct{}{}
 	comment := fmt.Sprintf("%s %s in %s", cmdName, origPaths, dest)
 
@@ -489,6 +493,8 @@ func (b *Builder) probeCache() (bool, error) {
 	}
 	cache, err := c.GetCachedImageOnBuild(b.image, b.runConfig)
 	if err != nil {
+		logrus.Debugf("[BUILDER] Cache miss: [%s] caused by err: %v", b.runConfig.Cmd, err)
+		b.cacheBusted = true
 		return false, err
 	}
 	if len(cache) == 0 {
@@ -545,6 +551,12 @@ func (b *Builder) create() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	imgID, err := b.docker.GetImageIDByContainer(c.ID)
+	if err != nil {
+		return "", err
+	}
+	b.holdOnImage(imgID)
+
 	for _, warning := range c.Warnings {
 		fmt.Fprintf(b.Stdout, " ---> [Warning] %s\n", warning)
 	}

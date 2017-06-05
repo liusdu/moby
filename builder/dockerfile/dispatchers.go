@@ -368,10 +368,7 @@ func run(b *Builder, args []string, attributes map[string]bool, original string)
 	}
 
 	b.runConfig.Cmd = saveCmd
-	hit, err := b.probeCache()
-	if err != nil {
-		return err
-	}
+	hit, _ := b.probeCache()
 	if hit {
 		return nil
 	}

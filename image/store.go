@@ -150,14 +150,14 @@ func (is *store) Create(config []byte) (ID, error) {
 		return "", errors.New("too many non-empty layers in History section")
 	}
 
+	is.Lock()
+	defer is.Unlock()
+
 	dgst, err := is.fs.Set(config)
 	if err != nil {
 		return "", err
 	}
 	imageID := ID(dgst)
-
-	is.Lock()
-	defer is.Unlock()
 
 	if _, exists := is.images[imageID]; exists {
 		return imageID, nil
