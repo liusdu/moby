@@ -413,7 +413,7 @@ func (r *remote) runContainerdDaemon() error {
 		"--metrics-interval=0",
 	}
 	if r.debugLog {
-		args = append(args, "--debug", "--metrics-interval=0")
+		args = append(args, "--debug")
 	}
 	if len(r.runtimeArgs) > 0 {
 		for _, v := range r.runtimeArgs {
