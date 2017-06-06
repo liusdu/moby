@@ -136,7 +136,7 @@ func (container *Container) ToDisk() error {
 		return err
 	}
 
-	jsonSource, err := ioutils.NewAtomicFileWriter(pth, 0666)
+	jsonSource, err := ioutils.NewAtomicFileWriter(pth, 0644)
 	if err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func (container *Container) WriteHostConfig() error {
 		return err
 	}
 
-	f, err := ioutils.NewAtomicFileWriter(pth, 0666)
+	f, err := ioutils.NewAtomicFileWriter(pth, 0644)
 	if err != nil {
 		return err
 	}
