@@ -25,6 +25,9 @@ Restores both images and tags.
 **-q**, **--quiet**
    Suppress the load output. Without this option, a progress bar is displayed.
 
+**-p**, **--to-be-pulled**
+   Print the next image which need to be pulled for combining partial images
+
 # EXAMPLES
 
     $ docker images

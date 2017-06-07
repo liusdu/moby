@@ -261,18 +261,19 @@ func (s *imageRouter) postImagesLoad(ctx context.Context, w http.ResponseWriter,
 		return err
 	}
 	quiet := httputils.BoolValueOrDefault(r, "quiet", true)
+	toBePulled := httputils.BoolValueOrDefault(r, "toBePulled", true)
 
-	if !quiet {
+	if !quiet || toBePulled {
 		w.Header().Set("Content-Type", "application/json")
 
 		output := ioutils.NewWriteFlusher(w)
 		defer output.Close()
-		if err := s.backend.LoadImage(r.Body, output, quiet); err != nil {
+		if err := s.backend.LoadImage(r.Body, output, quiet, toBePulled); err != nil {
 			output.Write(streamformatter.NewJSONStreamFormatter().FormatError(err))
 		}
 		return nil
 	}
-	return s.backend.LoadImage(r.Body, w, quiet)
+	return s.backend.LoadImage(r.Body, w, quiet, toBePulled)
 }
 
 func (s *imageRouter) deleteImages(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {

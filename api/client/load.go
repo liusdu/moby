@@ -20,6 +20,7 @@ func (cli *DockerCli) CmdLoad(args ...string) error {
 	cmd := Cli.Subcmd("load", nil, Cli.DockerCommands["load"].Description, true)
 	infile := cmd.String([]string{"i", "-input"}, "", "Read from a tar archive file, instead of STDIN")
 	quiet := cmd.Bool([]string{"q", "-quiet"}, false, "Suppress the load output")
+	toBePulled := cmd.Bool([]string{"p", "-to-be-pulled"}, false, "Print the next image which need to be pulled for combining partial images")
 	cmd.Require(flag.Exact, 0)
 	cmd.ParseFlags(args, true)
 
@@ -35,7 +36,7 @@ func (cli *DockerCli) CmdLoad(args ...string) error {
 	if !cli.isTerminalOut {
 		*quiet = true
 	}
-	response, err := cli.client.ImageLoad(context.Background(), input, *quiet)
+	response, err := cli.client.ImageLoad(context.Background(), input, *quiet, *toBePulled)
 	if err != nil {
 		return err
 	}

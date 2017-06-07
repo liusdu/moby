@@ -22,13 +22,16 @@ import (
 	"github.com/docker/docker/reference"
 )
 
-func (l *tarexporter) Load(inTar io.ReadCloser, outStream io.Writer, quiet bool) error {
+func (l *tarexporter) Load(inTar io.ReadCloser, outStream io.Writer, quiet bool, toBePulled bool) error {
 	var (
 		sf             = streamformatter.NewJSONStreamFormatter()
 		progressOutput progress.Output
 	)
+
 	if !quiet {
 		progressOutput = sf.NewProgressOutput(outStream, false)
+		outStream = &streamformatter.StdoutFormatter{Writer: outStream, StreamFormatter: streamformatter.NewJSONStreamFormatter()}
+	} else if toBePulled {
 		outStream = &streamformatter.StdoutFormatter{Writer: outStream, StreamFormatter: streamformatter.NewJSONStreamFormatter()}
 	}
 
@@ -46,6 +49,7 @@ func (l *tarexporter) Load(inTar io.ReadCloser, outStream io.Writer, quiet bool)
 	if err != nil {
 		return err
 	}
+
 	manifestFile, err := os.Open(manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -121,6 +125,10 @@ func (l *tarexporter) Load(inTar io.ReadCloser, outStream io.Writer, quiet bool)
 			l.setLoadedTag(ref, imgID, outStream)
 		}
 
+		if toBePulled {
+			l.printImageToBePulled(imgID, outStream)
+		}
+
 		parentLinks = append(parentLinks, parentLink{imgID, m.Parent})
 	}
 
@@ -133,6 +141,37 @@ func (l *tarexporter) Load(inTar io.ReadCloser, outStream io.Writer, quiet bool)
 	}
 
 	return nil
+}
+
+// Print the image to be pulled for combining partial images to be
+// completed one. We check 'From' field of image config loop until
+// found dependent image does not exists in local or no more
+// dependent image.
+func (l *tarexporter) printImageToBePulled(imgID image.ID, outStream io.Writer) {
+	img, err := l.is.Get(imgID)
+	if err != nil {
+		return
+	}
+
+	for img.From != "" {
+		_, fromID, err := reference.ParseFrom(img.From)
+		if err != nil {
+			outStream.Write([]byte(fmt.Sprintf("Error parse image's field From: %s\n", img.From)))
+			return
+		}
+
+		from := img.From
+		img, err = l.is.Get(image.ID(fromID))
+		if err != nil {
+			if os.IsNotExist(err) {
+				outStream.Write([]byte(fmt.Sprintf("ToBePulled: %s\n", from)))
+				break
+			}
+
+			outStream.Write([]byte(fmt.Sprintf("Error getting image: %v\n", err)))
+			return
+		}
+	}
 }
 
 func (l *tarexporter) setParentID(id, parentID image.ID) error {
