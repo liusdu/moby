@@ -48,6 +48,15 @@ func (daemon *Daemon) GetContainer(prefixOrName string) (*container.Container, e
 	return daemon.containers.Get(containerID), nil
 }
 
+func (daemon *Daemon) GetImageIDByContainer(cid string) (imgID string, err error) {
+	c, err := daemon.GetContainer(cid)
+	if err != nil {
+		return "", err
+	}
+
+	return c.ImageID.String(), nil
+}
+
 // Exists returns a true if a container of the specified ID or name exists,
 // false otherwise.
 func (daemon *Daemon) Exists(id string) bool {

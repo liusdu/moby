@@ -273,32 +273,19 @@ func (b *Builder) build(config *types.ImageBuildOptions, context builder.Context
 		return "", fmt.Errorf("No image was generated. Is your Dockerfile empty?")
 	}
 
+	img := b.image
 	if b.parentImage != "" {
-		b.cleanupHoldOnImage()
 		if b.options.NoParent {
 			fmt.Fprintf(b.Stdout, "Stripping parent image\n")
 
-			removeComplete := true
-			if _, ok := images[b.image]; ok {
-				removeComplete = false
-			}
-
-			b.image, err = b.docker.CreateNoParentImg(b.image, b.parentImage, removeComplete)
+			b.image, err = b.docker.CreateNoParentImg(b.image, b.parentImage)
 			if err != nil {
 				return "", err
 			}
-		}
-
-		defaultName, runtimeID, err := b.docker.GetCompleteImageFromPartial(b.parentImage)
-		if err == nil {
-			if runtimeID != "" && defaultName != "" {
-				if _, ok := images[runtimeID]; !ok {
-					b.docker.ImageDelete(defaultName, false, true)
-				}
+			err = b.holdOnImage(b.image)
+			if err != nil {
+				return "", fmt.Errorf("Image %v is deleted before hold on image: %v", b.image, err)
 			}
-		} else {
-			fmt.Fprintf(b.Stdout, "Warning: Intermediate image will remain as getting runtime image by %v failed: %v\n", b.parentImage, err)
-			// Go through to avoid failing to build image.
 		}
 	} else if b.options.NoParent {
 		fmt.Fprintf(b.Stdout, "Warning: '--no-parent' option specified, but no parent image found.\n")
@@ -307,6 +294,35 @@ func (b *Builder) build(config *types.ImageBuildOptions, context builder.Context
 	for _, rt := range repoAndTags {
 		if err := b.docker.TagImage(rt, b.image); err != nil {
 			return "", err
+		}
+	}
+
+	b.cleanupHoldOnImage()
+
+	if b.parentImage != "" {
+		if b.options.NoParent {
+			// `img` is deleted if it does not exists before build. It is't needed if
+			// `--no-parent` is specified, only new created partial image is expected.
+			if _, ok := images[img]; !ok {
+				if _, err := b.docker.ImageDelete(img, false, true); err != nil {
+					logrus.Debugf("Intermediate image %v which is created by building, delete failed: %v", err)
+				}
+			}
+		}
+
+		defaultName, runtimeID, err := b.docker.GetCompleteImageFromPartial(b.parentImage)
+		if err == nil {
+			if runtimeID != "" && defaultName != "" {
+				if _, ok := images[runtimeID]; !ok {
+					if _, err := b.docker.ImageDelete(defaultName, false, true); err != nil {
+						logrus.Debugf("Intermediate image %v which is created by FROM, delete failed : %v", err)
+					}
+				}
+			}
+		} else {
+			// Most common reason of error is that it's deleted by other builder.
+			// So we do not know whether image is remain or not. Log it is enough.
+			logrus.Debugf("Get tempporary completed image by partial %v failed: %v\n", b.parentImage, err)
 		}
 	}
 
