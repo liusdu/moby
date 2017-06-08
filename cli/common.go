@@ -29,6 +29,7 @@ var dockerCommands = []Command{
 	{"accel", "Manage docker accelerators"},
 	{"attach", "Attach to a running container"},
 	{"build", "Build an image from a Dockerfile"},
+	{"combine", "Combine some partial images into one complete image"},
 	{"commit", "Create a new image from a container's changes"},
 	{"cp", "Copy files/folders between a container and the local filesystem"},
 	{"create", "Create a new container"},
