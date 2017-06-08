@@ -63,6 +63,18 @@ func (daemon *Daemon) ContainerLogs(containerName string, config *backend.Contai
 		Follow: follow,
 	}
 	logs := logReader.ReadLogs(readConfig)
+	// Close logWatcher on exit
+	defer func() {
+		logs.Close()
+		if cLog != container.LogDriver {
+			// Since the logger isn't cached in the container, which
+			// occurs if it is running, it must get explicitly closed
+			// here to avoid leaking it and any file handles it has.
+			if err := cLog.Close(); err != nil {
+				logrus.Errorf("Error closing logger: %v", err)
+			}
+		}
+	}()
 
 	wf := ioutils.NewWriteFlusher(config.OutStream)
 	defer wf.Close()
@@ -82,12 +94,11 @@ func (daemon *Daemon) ContainerLogs(containerName string, config *backend.Contai
 			logrus.Errorf("Error streaming logs: %v", err)
 			return nil
 		case <-config.Stop:
-			logs.Close()
+			logrus.Debugf("logs: end stream, ctx is done")
 			return nil
 		case msg, ok := <-logs.Msg:
 			if !ok {
 				logrus.Debugf("logs: end stream")
-				logs.Close()
 				return nil
 			}
 			logLine := msg.Line
