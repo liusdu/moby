@@ -51,6 +51,7 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 		if err == nil && restart {
 			go func() {
 				err := <-wait
+				daemon.waitForStartupDone()
 				if err == nil {
 					if err = daemon.containerStart(c, false); err != nil {
 						logrus.Debugf("failed to restart container: %+v", err)
