@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/errors"
 	"github.com/docker/docker/layer"
+	"github.com/docker/docker/pkg/system"
 	volumestore "github.com/docker/docker/volume/store"
 	"github.com/docker/engine-api/types"
 )
@@ -99,29 +100,9 @@ func (daemon *Daemon) cleanupContainer(container *container.Container, forceRemo
 		logrus.Errorf("Error saving dying container to disk: %v", err)
 	}
 
-	// If force removal is required, delete container from various
-	// indexes even if removal failed.
-	defer func() {
-		if err == nil || forceRemove {
-			daemon.nameIndex.Delete(container.ID)
-			daemon.linkIndex.delete(container)
-			selinuxFreeLxcContexts(container.ProcessLabel)
-			daemon.idIndex.Delete(container.ID)
-			daemon.containers.Delete(container.ID)
-			if e := daemon.removeMountPoints(container, removeVolume); e != nil {
-				logrus.Error(e)
-			}
-			daemon.LogContainerEvent(container, "destroy")
-		}
-	}()
-
 	// Release accelerator resources
 	if err = daemon.releaseAccelResources(container, true); err != nil {
 		return fmt.Errorf("Unable to release accelerator resources: %v", err)
-	}
-
-	if err = os.RemoveAll(container.Root); err != nil {
-		return fmt.Errorf("Unable to remove filesystem for %v: %v", container.ID, err)
 	}
 
 	// When container creation fails and `RWLayer` has not been created yet, we
@@ -134,6 +115,19 @@ func (daemon *Daemon) cleanupContainer(container *container.Container, forceRemo
 		}
 	}
 
+	if err := system.EnsureRemoveAll(container.Root); err != nil {
+		return fmt.Errorf("unable to remove filesystem for %s: %v", container.ID, err)
+	}
+
+	daemon.nameIndex.Delete(container.ID)
+	daemon.linkIndex.delete(container)
+	selinuxFreeLxcContexts(container.ProcessLabel)
+	daemon.idIndex.Delete(container.ID)
+	daemon.containers.Delete(container.ID)
+	if e := daemon.removeMountPoints(container, removeVolume); e != nil {
+		logrus.Error(e)
+	}
+	daemon.LogContainerEvent(container, "destroy")
 	return nil
 }
 
