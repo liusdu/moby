@@ -76,12 +76,27 @@ func (b *Builder) commit(id string, autoCmd strslice.StrSlice, comment string) e
 		Config: &autoConfig,
 	}
 
-	// Commit the container
-	imageID, err := b.docker.Commit(id, commitCfg)
-	if err != nil {
-		return err
+	var count int
+	var err error
+	var imageID string
+	for {
+		count++
+		if count > holdOnImageRetryTime {
+			return fmt.Errorf("Commit and hold on image failed after retry %v times: %v", holdOnImageRetryTime, err)
+		}
+
+		// Commit the container
+		imageID, err = b.docker.Commit(id, commitCfg)
+		if err != nil {
+			logrus.Debugf("Commit failed when build(retry time %v): %v", count, err)
+			continue
+		}
+		err = b.holdOnImage(imageID)
+		if err == nil {
+			break
+		}
+		logrus.Debugf("Image %v is deleted before hold on image when commit(retry time %v): %v", imageID, count, err)
 	}
-	b.holdOnImage(string(imageID))
 
 	b.image = imageID
 	return nil

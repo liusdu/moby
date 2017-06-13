@@ -1218,7 +1218,20 @@ func (daemon *Daemon) GetImage(refOrID string) (*image.Image, error) {
 
 // GetImageOnBuild looks up a Docker image referenced by `name`.
 func (daemon *Daemon) GetImageOnBuild(name string) (builder.Image, error) {
-	img, err := daemon.GetImage(name)
+	isComplete, err := daemon.IsCompleteImage(name)
+	if err != nil {
+		return nil, err
+	}
+
+	refOrID := name
+	if !isComplete {
+		_, refOrID, err = daemon.CreateCompleteImage(name, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	img, err := daemon.GetImage(refOrID)
 	if err != nil {
 		return nil, err
 	}

@@ -343,7 +343,7 @@ func (daemon *Daemon) GetImages() map[string]struct{} {
 }
 
 // GetCompleteImageFromPartial gets the combined image's default name and ID. Default name's first part
-// is id of child image, like 4d86441a0224-busybox_latest:latest. If imageRef is not a partial image, empty
+// is id of child image, like app_latest-busybox_latest:latest. If imageRef is not a partial image, empty
 // string will return.
 func (daemon *Daemon) GetCompleteImageFromPartial(imageRef string) (string, string, error) {
 	complete, err := daemon.IsCompleteImage(imageRef)
@@ -355,17 +355,12 @@ func (daemon *Daemon) GetCompleteImageFromPartial(imageRef string) (string, stri
 		return "", "", nil
 	}
 
-	img, err := daemon.GetImage(imageRef)
+	defaultName, _, err := daemon.combineName(imageRef)
 	if err != nil {
 		return "", "", err
 	}
 
-	defaultName, _, err := daemon.combineName(img.ID().String())
-	if err != nil {
-		return "", "", err
-	}
-
-	img, err = daemon.GetImage(defaultName)
+	img, err := daemon.GetImage(defaultName)
 	if err != nil {
 		return "", "", err
 	}
