@@ -3,6 +3,7 @@ package libcontainerd
 import (
 	"io"
 
+	containerd "github.com/docker/containerd/api/grpc/types"
 	"golang.org/x/net/context"
 )
 
@@ -45,6 +46,7 @@ type Client interface {
 	GetPidsForContainer(containerID string) ([]int, error)
 	Summary(containerID string) ([]Summary, error)
 	UpdateResources(containerID string, resources Resources) error
+	GetRunningContainerdContainers() (map[string]*containerd.Container, error)
 }
 
 // CreateOption allows to configure parameters of container creation.
