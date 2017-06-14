@@ -201,16 +201,41 @@ func from(b *Builder, args []string, attributes map[string]bool, original string
 		b.noBaseImage = true
 		b.parentImage = ""
 	} else {
-		// TODO: don't use `name`, instead resolve it to a digest
-		if !b.options.PullParent {
-			image, _ = b.docker.GetImageOnBuild(name)
-			// TODO: shouldn't we error out if error is different from "not found" ?
-		}
-		if image == nil {
-			image, err = b.docker.PullOnBuild(b.clientCtx, name, b.options.AuthConfigs, b.Output)
-			if err != nil {
-				return err
+		var count int
+		for {
+			count++
+			if count > holdOnImageRetryTime {
+				return fmt.Errorf("Get image and hold on failed after retry %v times: %v", holdOnImageRetryTime, err)
 			}
+
+			if !b.options.PullParent {
+				image, err = b.docker.GetImageOnBuild(name)
+			}
+			if image == nil {
+				if count == 1 { // Retry is for local image, only try one time for PullOnBuild.
+					image, err = b.docker.PullOnBuild(b.clientCtx, name, b.options.AuthConfigs, b.Output)
+					if err != nil {
+						return err
+					}
+
+					// If image is partial, image id can be different with pulled image,
+					// so try to get real image id there.
+					image, err = b.docker.GetImageOnBuild(name)
+					if err != nil {
+						logrus.Debugf("Get image on build failed(retry time %v): %v", count, err)
+						continue
+					}
+				} else {
+					logrus.Debugf("Get image on build failed(retry time %v): %v", count, err)
+					continue
+				}
+			}
+
+			err = b.holdOnImage(image.ImageID())
+			if err == nil {
+				break
+			}
+			logrus.Debugf("Image %v is deleted before hold on image when get image on build(retry time %v): %v", image.ImageID(), count, err)
 		}
 
 		b.parentImage = name

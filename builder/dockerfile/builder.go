@@ -44,6 +44,8 @@ var BuiltinAllowedBuildArgs = map[string]bool{
 	"no_proxy":    true,
 }
 
+const holdOnImageRetryTime = 10
+
 // Builder is a Dockerfile builder
 // It implements the builder.Backend interface.
 type Builder struct {
@@ -278,13 +280,23 @@ func (b *Builder) build(config *types.ImageBuildOptions, context builder.Context
 		if b.options.NoParent {
 			fmt.Fprintf(b.Stdout, "Stripping parent image\n")
 
-			b.image, err = b.docker.CreateNoParentImg(b.image, b.parentImage)
-			if err != nil {
-				return "", err
-			}
-			err = b.holdOnImage(b.image)
-			if err != nil {
-				return "", fmt.Errorf("Image %v is deleted before hold on image: %v", b.image, err)
+			var count int
+			for {
+				count++
+				if count > holdOnImageRetryTime {
+					return "", fmt.Errorf("Create no parent image and hold on failed after retry %v times: %v", holdOnImageRetryTime, err)
+				}
+
+				b.image, err = b.docker.CreateNoParentImg(img, b.parentImage)
+				if err != nil {
+					logrus.Debugf("Create no parent image failed(retry time %v): %v", count, err)
+					continue
+				}
+				err = b.holdOnImage(b.image)
+				if err == nil {
+					break
+				}
+				logrus.Debugf("Image %v is deleted before hold on image when create no parent image(retry time %v): %v", b.image, count, err)
 			}
 		}
 	} else if b.options.NoParent {
