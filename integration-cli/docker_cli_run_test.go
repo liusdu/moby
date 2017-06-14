@@ -4701,7 +4701,7 @@ func (s *DockerSuite) TestRunUnblockSyscallUmount2WithSystemContainer(c *check.C
 		c.Skip(fmt.Sprintf("Test cannot be run without ociSystemdHook, setup ociSystemdHook failed with error: %v", err))
 	}
 	defer removeFakeOciSystemdHook()
-	runCmd := exec.Command(dockerBinary, "run", "--cap-add=SYS_ADMIN", "--system-container", "syscall-test", "umount2-test", "/etc/resolv.conf")
+	runCmd := exec.Command(dockerBinary, "run", "--cap-add=SYS_ADMIN", "--system-container", "syscall-test", "umount2-test", "/dev/shm")
 	if out, _, err := runCommandWithOutput(runCmd); err != nil {
 		c.Fatalf("expected call umount2 syscall with --system-container to succeed, got %s: %v", out, err)
 	}

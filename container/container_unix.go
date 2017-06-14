@@ -112,6 +112,12 @@ func appendNetworkMounts(container *Container, volumeMounts []volume.MountPoint)
 // NetworkMounts returns the list of network mounts.
 func (container *Container) NetworkMounts() []Mount {
 	var mounts []Mount
+	// If use system container, don't setup these mounts
+	// because user want to set these config in the container and
+	// make it persist to disk.
+	if container.HostConfig.SystemContainer {
+		return mounts
+	}
 	shared := container.HostConfig.NetworkMode.IsContainer()
 	if container.ResolvConfPath != "" {
 		if _, err := os.Stat(container.ResolvConfPath); err != nil {
