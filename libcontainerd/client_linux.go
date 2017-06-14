@@ -325,6 +325,21 @@ func (clnt *client) Summary(containerID string) ([]Summary, error) {
 	return nil, nil
 }
 
+func (clnt *client) GetRunningContainerdContainers() (map[string]*containerd.Container, error) {
+	res := make(map[string]*containerd.Container)
+	resp, err := clnt.remote.apiClient.State(context.Background(), &containerd.StateRequest{Id: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, cont := range resp.Containers {
+		if cont.Status != "stopped" {
+			res[cont.Id] = cont
+		}
+	}
+	return res, nil
+}
+
 func (clnt *client) getContainerdContainer(containerID string) (*containerd.Container, error) {
 	resp, err := clnt.remote.apiClient.State(context.Background(), &containerd.StateRequest{Id: containerID})
 	if err != nil {

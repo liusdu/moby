@@ -142,6 +142,26 @@ func (daemon *Daemon) StoreHosts(hosts []string) {
 	}
 }
 
+func (daemon *Daemon) cleanupRedundantContainers(containers map[string]*container.Container, containerdCons map[string]*containerd.Container) map[string]*container.Container {
+	res := make(map[string]*container.Container)
+	for dcid, dcont := range containerdCons {
+		cont, ok := containers[dcid]
+		if ok {
+			//container that in containerd and not stopped need restore
+			res[dcid] = cont
+		} else { // kill containers running in containerd but not exist in docker
+			logrus.Debugf("remove redundant containerd container: %s", dcid)
+			if err := daemon.containerd.Signal(dcid, int(syscall.SIGKILL)); err != nil {
+				logrus.Warnf("kill container %s error: %v", dcid, err)
+			}
+			if err := system.EnsureRemoveAll(dcont.BundlePath); err != nil {
+				logrus.Warnf("remove %s error: %v", dcont.BundlePath, err)
+			}
+		}
+	}
+	return res
+}
+
 func (daemon *Daemon) restore() error {
 	var (
 		debug         = utils.IsDebugEnabled()
@@ -197,14 +217,24 @@ func (daemon *Daemon) restore() error {
 			continue
 		}
 	}
+
+	//check starting status and clean
+	var containerNeedRestore map[string]*container.Container
+	if containerdContainers, err := daemon.containerd.GetRunningContainerdContainers(); err == nil {
+		containerNeedRestore = daemon.cleanupRedundantContainers(containers, containerdContainers)
+	} else {
+		logrus.Debugf("get containerd containers error:%v", err)
+		containerNeedRestore = make(map[string]*container.Container)
+	}
+
 	var wg sync.WaitGroup
 	var mapLock sync.Mutex
 	for _, c := range containers {
 		wg.Add(1)
 		go func(c *container.Container) {
 			defer wg.Done()
-
-			if c.IsRunning() || c.IsPaused() {
+			_, ok := containerNeedRestore[c.ID]
+			if c.IsRunning() || c.IsPaused() || ok {
 				c.RestartManager().Cancel() // manually start containers because some need to wait for swarm networking
 				if err := daemon.containerd.Restore(c.ID, c.InitializeStdio); err != nil {
 					logrus.Errorf("Failed to restore %s with containerd: %s", c.ID, err)

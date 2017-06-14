@@ -184,7 +184,7 @@ func (s *State) SetRunning(pid int, initial bool) {
 	s.Restarting = false
 	s.ExitCode = 0
 	s.Pid = pid
-	if initial {
+	if initial || s.StartedAt.IsZero() {
 		s.StartedAt = time.Now().UTC()
 	}
 	close(s.waitChan) // fire waiters for start
