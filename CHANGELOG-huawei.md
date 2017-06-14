@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.11.2.32 (2017-06-14)
+
+- Bugfix: Add retry if build failure is caused by image be deleted (mr 559 fix DTS2017061407105)
+- Bugfix: fix inconsistent status of docker and daemon containers (mr 560 fix DTS2017061211282)
+- Bugfix: Use lazy umount on Put for overlay2 and overlay (mr 554 fix DTS2017061204326)
+- Bugfix: Do not remove containers from memory on error (mr 519 fix DTS2017060510192)
+- Bugfix: Add help infomation of command 'combine' (mr 538 fix DTS2017060705330)
+- Bugfix: Close logwatcher on context cancellation (mr 535 fix DTS2017060702821)
+- Bugfix: fix concurrent building error (mr 530 fix DTS2017060603784)
+- Bugfix: Cannot join own pid/ipc namespace (mr 527 fix DTS2017052606237)
+- Bugfix: Change FileMode of config.v2.json/hostconfig.json to 0644 (mr 531)
+- Bugfix: fix "invalid reference format" when combining images (mr 525 fix DTS2017060504112)
+- Bugfix: remove "--metrics-interval" containerd option when debug is on (mr 522 fix DTS2017060509258)
+- Bugfix: Cannot attach to own output (mr 520)
+- Bugfix: When daemon is in startup process, could not start container (mr 539 fix DTS2017060801128) 
+- Feature: Print infomation of base image when loading partial image (mr 488)
+- Feature: Don't mount /etc/hostname /etc/resolv.conf /etc/hosts to container for system container (mr 338)
+
 ## v1.11.2.31 (2017-06-01)
 
 - bump containerd:
