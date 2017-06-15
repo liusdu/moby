@@ -8,7 +8,10 @@ import (
 
 // Generate takes care of IP generation
 func Generate(pattern string) []string {
-	re, _ := regexp.Compile(`\[(.+):(.+)\]`)
+	re, err := regexp.Compile(`\[(.+):(.+)\]`)
+	if err != nil {
+		return []string{pattern}
+	}
 	submatch := re.FindStringSubmatch(pattern)
 	if submatch == nil {
 		return []string{pattern}
