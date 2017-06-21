@@ -107,6 +107,8 @@ func TestDecompressStreamGzip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer archive.Close()
+
 	_, err = DecompressStream(archive)
 	if err != nil {
 		t.Fatalf("Failed to decompress a gzip file.")
@@ -126,6 +128,8 @@ func TestDecompressStreamBzip2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer archive.Close()
+
 	_, err = DecompressStream(archive)
 	if err != nil {
 		t.Fatalf("Failed to decompress a bzip2 file.")
@@ -145,6 +149,8 @@ func TestDecompressStreamXz(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer archive.Close()
+
 	_, err = DecompressStream(archive)
 	if err != nil {
 		t.Fatalf("Failed to decompress an xz file.")
@@ -156,6 +162,8 @@ func TestCompressStreamXzUnsuported(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Fail to create the destination file")
 	}
+	defer dest.Close()
+
 	_, err = CompressStream(dest, Xz)
 	if err == nil {
 		t.Fatalf("Should fail as xz is unsupported for compression format.")
@@ -167,6 +175,8 @@ func TestCompressStreamBzip2Unsupported(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Fail to create the destination file")
 	}
+	defer dest.Close()
+
 	_, err = CompressStream(dest, Xz)
 	if err == nil {
 		t.Fatalf("Should fail as xz is unsupported for compression format.")
@@ -178,6 +188,8 @@ func TestCompressStreamInvalid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Fail to create the destination file")
 	}
+	defer dest.Close()
+
 	_, err = CompressStream(dest, -1)
 	if err == nil {
 		t.Fatalf("Should fail as xz is unsupported for compression format.")
@@ -810,6 +822,8 @@ func TestUntarUstarGnuConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer f.Close()
+
 	found := false
 	tr := tar.NewReader(f)
 	// Iterate through the files in the archive.
