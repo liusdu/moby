@@ -1275,6 +1275,13 @@ func isContainerMount(path string) (bool, string) {
 }
 
 func (daemon *Daemon) removeRedundantMounts(containers map[string]*container.Container) error {
+	var (
+		isShmMount, isInitdev bool
+		id                    string
+		redundantMounts       = map[string]bool{}
+	)
+
+	// Get redundant Mounts
 	f, err := os.Open("/proc/self/mountinfo")
 	if err != nil {
 		return err
@@ -1283,10 +1290,11 @@ func (daemon *Daemon) removeRedundantMounts(containers map[string]*container.Con
 
 	activeContainers := map[string]string{}
 	for _, c := range containers {
-		if c.IsRunning() {
+		if c.IsRunning() && !c.IsRestarting() {
 			activeContainers[c.ID] = c.ID
 			if mountid, err := daemon.layerStore.GetMountID(c.ID); err == nil {
 				activeContainers[mountid] = c.ID
+				logrus.Debugf("removeRedundantMounts, mountid %s, containerID %s\n", mountid, c.ID)
 			}
 		}
 	}
@@ -1303,10 +1311,6 @@ func (daemon *Daemon) removeRedundantMounts(containers map[string]*container.Con
 			continue
 		}
 
-		var (
-			isShmMount, isInitdev bool
-			id                    string
-		)
 		isShmMount, id = isContainerMount(path)
 		if !isShmMount {
 			isInitdev, id = getContainerMountId(path)
@@ -1316,24 +1320,36 @@ func (daemon *Daemon) removeRedundantMounts(containers map[string]*container.Con
 		}
 
 		if _, ok := activeContainers[id]; !ok {
-			logrus.Debugf("Umount legacy mountpoint [%s] [%s]", path, id)
 			if isShmMount {
-				if err := mount.Unmount(path); err != nil {
-					logrus.Errorf("Umount legacy mountpoint: %s failed with %s", path, err)
-				}
-
+				redundantMounts[path] = true
 			} else {
 				if isInitdev {
 					id = fmt.Sprintf("%s-init", id)
 				}
-				if err := daemon.layerStore.DriverPut(id); err != nil {
-					logrus.Errorf("Umount legacy mountpoint [%v]", err)
-				}
+				redundantMounts[id] = false
 			}
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		return err
 	}
-	return nil
+
+	// Remove redundant Mounts
+	for path, shm := range redundantMounts {
+		var (
+			err error
+		)
+
+		logrus.Debugf("Umount legacy mountpoint [%s]", path)
+		if shm {
+			err = mount.Unmount(path)
+		} else {
+			err = daemon.layerStore.DriverPut(path)
+
+		}
+		if err != nil {
+			logrus.Debugf("Umount legacy mountpoint: %s failed with %s", path, err)
+		}
+	}
+	return err
 }
