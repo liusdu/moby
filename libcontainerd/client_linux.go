@@ -518,7 +518,7 @@ func (clnt *client) getContainerLastEventSinceTime(containerID string, tsp *time
 			return nil, err
 		}
 		ev = e
-		logrus.Debugf("libcontainerd: received past event %#v", ev)
+		logrus.Infof("libcontainerd: received past event %#v", ev)
 	}
 
 	return ev, nil
