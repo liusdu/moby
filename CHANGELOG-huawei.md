@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.11.2.33 (2017-06-22)
+
+- Bump containerd
+  - Ensure state dir is created before starting server
+- Bugfix: Ignore ToDisk error in StateChanged (mr 569 fix DTS2017062011340)
+- Bugfix: Wait 2 minutes for daemon to handle exit event when stop container (mr 570 fix DTS2017062103823)
+- Bugfix: remove tmp dir when docker startup (mr 568 fix DTS2017062105415)
+- Bugfix: Divide removeRedundantMounts into two part (mr 567 fix DTS2017061309205)
+- Bugfix: Fix start time error on restored container (mr 564)
+- Bugfix: fix gas error check (mr 563 fix DTS2017061316364 DTS2017061406429)
+- Backport: add file close in error path to avoid fd leak (mr 543)
+
 ## v1.11.2.32 (2017-06-14)
 
 - Bugfix: Add retry if build failure is caused by image be deleted (mr 559 fix DTS2017061407105)
