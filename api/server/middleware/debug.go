@@ -54,3 +54,17 @@ func DebugRequestMiddleware(handler httputils.APIFunc) httputils.APIFunc {
 		return handler(ctx, w, r, vars)
 	}
 }
+
+// InfoRequestMiddleware print the API call if the method is not GET
+func InfoRequestMiddleware(handler httputils.APIFunc) httputils.APIFunc {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+		if r.Method == "GET" {
+			return handler(ctx, w, r, vars)
+		}
+
+		logrus.Infof("Calling %s %s", r.Method, r.RequestURI)
+
+		return handler(ctx, w, r, vars)
+	}
+
+}
