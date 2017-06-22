@@ -93,8 +93,11 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 		c.SetRunning(int(e.Pid), e.State == libcontainerd.StateStart)
 		c.HasBeenManuallyStopped = false
 		if err := c.ToDisk(); err != nil {
-			c.Reset(false)
-			return err
+			// If return err, container can not be stopped, see issue #322 for detail.
+			// Ignore error is safe, because if daemon not restart, status in memory is
+			// correct, and if daemon restart, it will restore status using status in
+			// containerd, so status in memory is also correct.
+			logrus.Debugf("Set status %v to disk failed: %v", e.State, err)
 		}
 		daemon.LogContainerEvent(c, "start")
 	case libcontainerd.StatePause:
