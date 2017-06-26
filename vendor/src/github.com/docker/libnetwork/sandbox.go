@@ -162,7 +162,7 @@ func (sb *sandbox) Statistics() (map[string]*types.InterfaceStatistics, error) {
 	}
 
 	var err error
-	for _, i := range osb.Info().Interfaces() {
+	for _, i := range osb.Info().AllInterfaces() {
 		if m[i.DstName()], err = i.Statistics(); err != nil {
 			return m, err
 		}
