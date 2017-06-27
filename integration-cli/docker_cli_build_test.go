@@ -7135,3 +7135,77 @@ func (s *DockerSuite) TestBuildOpaqueDirectory(c *check.C) {
 	_, err := buildImage("testopaquedirectory", dockerFile, false)
 	c.Assert(err, checker.IsNil)
 }
+
+// Test case for UTF-8 BOM in .dockerignore, related to #23221
+func (s *DockerSuite) TestBuildWithUTF8BOMDockerignore(c *check.C) {
+	name := "test-with-utf8-bom-dockerignore"
+	dockerfile := `
+        FROM busybox
+		ADD . /tmp/
+		RUN ls -la /tmp
+		RUN sh -c "! ls /tmp/Dockerfile"
+		RUN ls /tmp/.dockerignore`
+	dockerignore := []byte("./Dockerfile\n")
+	bomDockerignore := append([]byte{0xEF, 0xBB, 0xBF}, dockerignore...)
+	ctx, err := fakeContext(dockerfile, map[string]string{
+		"Dockerfile": dockerfile,
+	})
+	c.Assert(err, check.IsNil)
+	defer ctx.Close()
+	err = ctx.addFile(".dockerignore", bomDockerignore)
+	c.Assert(err, check.IsNil)
+	_, err = buildImageFromContext(name, ctx, true)
+	if err != nil {
+		c.Fatal(err)
+	}
+}
+
+// Test case for #23221
+func (s *DockerSuite) TestBuildWithUTF8BOM(c *check.C) {
+	name := "test-with-utf8-bom"
+	dockerfile := []byte(`FROM busybox`)
+	bomDockerfile := append([]byte{0xEF, 0xBB, 0xBF}, dockerfile...)
+	ctx, err := fakeContextFromNewTempDir()
+	c.Assert(err, check.IsNil)
+	defer ctx.Close()
+	err = ctx.addFile("Dockerfile", bomDockerfile)
+	c.Assert(err, check.IsNil)
+	_, err = buildImageFromContext(name, ctx, true)
+	c.Assert(err, check.IsNil)
+}
+
+// #20083
+func (s *DockerSuite) TestBuildDockerignoreComment(c *check.C) {
+	name := "testbuilddockerignorecleanpaths"
+	dockerfile := `
+        FROM busybox
+        ADD . /tmp/
+        RUN sh -c "(ls -la /tmp/#1)"
+        RUN sh -c "(! ls -la /tmp/#2)"
+        RUN sh -c "(! ls /tmp/foo) && (! ls /tmp/foo2) && (ls /tmp/dir1/foo)"`
+	ctx, err := fakeContext(dockerfile, map[string]string{
+		"foo":      "foo",
+		"foo2":     "foo2",
+		"dir1/foo": "foo in dir1",
+		"#1":       "# file 1",
+		"#2":       "# file 2",
+		".dockerignore": `# Visual C++ cache files
+# because we have git ;-)
+# The above comment is from #20083
+foo
+#dir1/foo
+foo2
+# The following is considered as comment as # is at the beginning
+#1
+# The following is not considered as comment as # is not at the beginning
+  #2
+`,
+	})
+	if err != nil {
+		c.Fatal(err)
+	}
+	defer ctx.Close()
+	if _, err := buildImageFromContext(name, ctx, true); err != nil {
+		c.Fatal(err)
+	}
+}
