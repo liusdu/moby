@@ -143,7 +143,7 @@ func (sb *sandbox) Key() string {
 
 func (sb *sandbox) Labels() map[string]interface{} {
 	sb.Lock()
-	sb.Unlock()
+	defer sb.Unlock()
 	opts := make(map[string]interface{}, len(sb.config.generic))
 	for k, v := range sb.config.generic {
 		opts[k] = v
@@ -573,13 +573,6 @@ func (sb *sandbox) SetKey(basePath string) error {
 	sb.Lock()
 	sb.osSbox = osSbox
 	sb.Unlock()
-	defer func() {
-		if err != nil {
-			sb.Lock()
-			sb.osSbox = nil
-			sb.Unlock()
-		}
-	}()
 
 	// If the resolver was setup before stop it and set it up in the
 	// new osl sandbox.

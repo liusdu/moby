@@ -416,7 +416,9 @@ func (n *network) initSandbox(restore bool) error {
 		}
 	})
 
-	go n.watchMiss(nlSock)
+	if nlSock != nil {
+		go n.watchMiss(nlSock)
+	}
 	return nil
 }
 
