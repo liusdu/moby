@@ -51,7 +51,8 @@ func (container *Container) UnmountVolumes(forceSyscall bool, volumeEventLog fun
 
 // TmpfsMounts returns the list of tmpfs mounts
 func (container *Container) TmpfsMounts() []Mount {
-	return nil
+	var mounts []Mount
+	return mounts
 }
 
 // UpdateContainer updates configuration of a container
