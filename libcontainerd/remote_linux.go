@@ -333,7 +333,7 @@ func (r *remote) handleEventStream(events containerd.API_EventsClient) {
 			go r.startEventsMonitor()
 			return
 		}
-		logrus.Debugf("received containerd event: %#v", e)
+		logrus.Infof("received containerd event: %#v", e)
 
 		var container *container
 		var c *client

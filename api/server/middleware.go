@@ -29,6 +29,8 @@ func (s *Server) handleWithGlobalMiddlewares(handler httputils.APIFunc) httputil
 	// Only want this on debug level
 	if s.cfg.Logging && logrus.GetLevel() == logrus.DebugLevel {
 		next = middleware.DebugRequestMiddleware(next)
+	} else if s.cfg.Logging && logrus.GetLevel() == logrus.InfoLevel {
+		next = middleware.InfoRequestMiddleware(next)
 	}
 
 	if len(s.cfg.AuthorizationPluginNames) > 0 {
