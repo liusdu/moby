@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.11.2.34 (2017-06-27)
+
+- Bugfix: Improve logging of long log lines (mr 577 fix DTS2017062307255)
+- Bugfix: Fix link doesn't work sometimes when container start with multiple networks (mr 578 fix DTS2017062710780)
+- Bugfix:  `docker run -i --restart always` hangs (mr 579 fix DTS2017062709998)
+- Bugfix: daemon: allow tmpfs to trump over VOLUME(s) (mr 581 fix DTS2017062709779)
+- Bugfix: fix mem leak in libcontainerd/queue/append (mr 576 fix DTS2017062301532)
+- Backport: daemon/logger: fix races in channel close (mr 583)
+- Backport: fix infinite recursion (mr 585)
+- Backport: Support unicode characters in parseWords (mr 586)
+- Backport: Skip UTF-8 BOM bytes from Dockerignore if exist (mr 584)
+- Backport: Skip UTF-8 BOM bytes from Dockerfile if exists (mr 584)
+- Backport: Don't allow empty env names (mr 587)
+- Backport: Add support for comment in .dockerignore (mr 584)
+- Backport: libnetwork:　Cherry pick some patches from master (mr 582)
+- Backport: Fix build cache false positives when build context tar contains unnormalized paths (mr 588)
+- Feature: still can debug even without -D (mr 574 fix DTS2017062001418)
+- Feature: Enable stats all network interfaces in container (mr 502)
+
 ## v1.11.2.33 (2017-06-22)
 
 - Bump containerd
