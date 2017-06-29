@@ -102,12 +102,14 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 	switch {
 	case specifiedContext == "-":
 		ctx, relDockerfile, err = builder.GetContextFromReader(cli.in, *dockerfileName)
+	case isLocalDir(specifiedContext):
+		contextDir, relDockerfile, err = builder.GetContextFromLocalDir(specifiedContext, *dockerfileName)
 	case urlutil.IsGitURL(specifiedContext):
 		tempDir, relDockerfile, err = builder.GetContextFromGitURL(specifiedContext, *dockerfileName)
 	case urlutil.IsURL(specifiedContext):
 		ctx, relDockerfile, err = builder.GetContextFromURL(progBuff, specifiedContext, *dockerfileName)
 	default:
-		contextDir, relDockerfile, err = builder.GetContextFromLocalDir(specifiedContext, *dockerfileName)
+		return fmt.Errorf("unable to prepare context: path %q not found", specifiedContext)
 	}
 
 	if err != nil {
@@ -283,6 +285,11 @@ func (cli *DockerCli) CmdBuild(args ...string) error {
 	}
 
 	return nil
+}
+
+func isLocalDir(c string) bool {
+	_, err := os.Stat(c)
+	return err == nil
 }
 
 // validateTag checks if the given image name can be resolved.
