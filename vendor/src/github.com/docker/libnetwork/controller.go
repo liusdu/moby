@@ -195,6 +195,15 @@ func New(cfgOptions ...config.Option) (NetworkController, error) {
 		return nil, err
 	}
 
+	var err error
+	c.sboxOnce.Do(func() {
+		c.defOsSbox, err = osl.NewSandbox(osl.GenerateKey("default"), false, false)
+	})
+	if err != nil {
+		c.sboxOnce = sync.Once{}
+		log.Warnf("failed to create default sandbox in controller initializing: %v", err)
+	}
+
 	return c, nil
 }
 
@@ -696,6 +705,8 @@ func (c *controller) NewSandbox(containerID string, options ...SandboxOption) (S
 	}
 
 	if sb.config.useDefaultSandBox {
+		// these code should never be called because we will
+		// create defOsSbox in libnetwork.New() once for all
 		c.sboxOnce.Do(func() {
 			c.defOsSbox, err = osl.NewSandbox(sb.Key(), false, false)
 		})
