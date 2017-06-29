@@ -69,15 +69,23 @@ func (daemon *Daemon) ContainerAttachRaw(prefixOrName string, stdin io.ReadClose
 
 func (daemon *Daemon) containerAttach(container *container.Container, stdin io.ReadCloser, stdout, stderr io.Writer, logs, stream bool, keys []byte) error {
 	if logs {
-		logDriver, err := daemon.getLogger(container)
+		logDriver, logCreated, err := daemon.getLogger(container)
 		if err != nil {
 			return err
+		}
+		if logCreated {
+			defer func() {
+				if err = logDriver.Close(); err != nil {
+					logrus.Errorf("Error closing logger: %v", err)
+				}
+			}()
 		}
 		cLog, ok := logDriver.(logger.LogReader)
 		if !ok {
 			return logger.ErrReadLogsNotSupported
 		}
 		logs := cLog.ReadLogs(logger.ReadConfig{Tail: -1})
+		defer logs.Close()
 
 	LogLoop:
 		for {
