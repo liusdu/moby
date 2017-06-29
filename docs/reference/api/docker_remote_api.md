@@ -133,6 +133,8 @@ This section lists each version from latest to oldest.  Each listing includes a 
 * `POST /containers/create` now allows specifying `nocopy` for named volumes, which disables automatic copying from the container path to the volume.
 * `POST /auth` now returns an `IdentityToken` when supported by a registry.
 * `POST /containers/create` with both `Hostname` and `Domainname` fields specified will result in the container's hostname being set to `Hostname`, rather than `Hostname.Domainname`.
+* `POST /containers/create` now returns a HTTP 400 "bad parameter" message
+if no command is specified (instead of a HTTP 500 "server error")
 
 ### v1.22 API changes
 
