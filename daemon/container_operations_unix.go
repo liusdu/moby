@@ -101,6 +101,9 @@ func (daemon *Daemon) getSize(container *container.Container) (int64, int64) {
 
 // ConnectToNetwork connects a container to a network
 func (daemon *Daemon) ConnectToNetwork(container *container.Container, idOrName string, endpointConfig *networktypes.EndpointSettings) error {
+	container.Lock()
+	defer container.Unlock()
+
 	if !container.Running {
 		if container.RemovalInProgress || container.Dead {
 			return errRemovalContainer(container.ID)
@@ -116,7 +119,7 @@ func (daemon *Daemon) ConnectToNetwork(container *container.Container, idOrName 
 			return err
 		}
 	}
-	if err := container.ToDiskLocking(); err != nil {
+	if err := container.ToDisk(); err != nil {
 		return fmt.Errorf("Error saving container to disk: %v", err)
 	}
 	return nil
@@ -127,6 +130,10 @@ func (daemon *Daemon) DisconnectFromNetwork(container *container.Container, n li
 	if container.HostConfig.NetworkMode.IsHost() && containertypes.NetworkMode(n.Type()).IsHost() {
 		return runconfig.ErrConflictHostNetwork
 	}
+
+	container.Lock()
+	defer container.Unlock()
+
 	if !container.Running {
 		if container.RemovalInProgress || container.Dead {
 			return errRemovalContainer(container.ID)
@@ -142,7 +149,7 @@ func (daemon *Daemon) DisconnectFromNetwork(container *container.Container, n li
 		}
 	}
 
-	if err := container.ToDiskLocking(); err != nil {
+	if err := container.ToDisk(); err != nil {
 		return fmt.Errorf("Error saving container to disk: %v", err)
 	}
 
