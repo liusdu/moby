@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.11.2.35 (2017-06-30)
+
+- Bugfix: initialize defOsSbox in controller New() (mr 617 fix DTS2017062711736)
+- Bugfix: Taking stop-signal into account when docker kill (mr 604 fix DTS2017062802264)
+- Bugfix: do not ignore local build-contexts starting with "github.com" (mr 614 fix DTS2017062908554)
+- Bugfix: Fix issues with tailing rotated jsonlog file (mr 592 fix DTS2017062812022)
+- Bugfix: Respect --bridge=none (mr 600 fix DTS2017062712202)
+- Backport: Align default seccomp profile with selected capabilities (mr 591)
+- Backport: Fix overlay2 ignoring whiteout files (mr 602)
+- Backport: Fix bug which mistakes 400 error for 500 (mr 611)
+- Backport: prevent data race in pkg/plugins (mr 594)
+- Backport: Fix race accessing plugin storage map (mr 595)
+- Feature: Disable debug by default (mr 613) 
+
 ## v1.11.2.34 (2017-06-27)
 
 - Bugfix: Improve logging of long log lines (mr 577 fix DTS2017062307255)
