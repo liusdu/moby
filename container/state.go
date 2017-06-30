@@ -141,7 +141,7 @@ func (s *State) WaitRunning(timeout time.Duration) (int, error) {
 // Returns exit code, that was passed to SetStoppedLocking
 func (s *State) WaitStop(timeout time.Duration) (int, error) {
 	s.Lock()
-	if !s.Running {
+	if !s.Running || s.Restarting {
 		exitCode := s.ExitCode
 		s.Unlock()
 		return exitCode, nil
