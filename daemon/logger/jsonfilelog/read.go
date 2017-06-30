@@ -87,7 +87,7 @@ func (l *JSONFileLogger) readLogs(logWatcher *logger.LogWatcher, config logger.R
 		}
 	}
 
-	if !config.Follow {
+	if !config.Follow || l.closed {
 		l.mu.Unlock()
 		return
 	}
@@ -96,17 +96,18 @@ func (l *JSONFileLogger) readLogs(logWatcher *logger.LogWatcher, config logger.R
 		latestFile.Seek(0, os.SEEK_END)
 	}
 
+	notifyRotate := l.writer.NotifyRotate()
+	defer l.writer.NotifyRotateEvict(notifyRotate)
+
 	l.readers[logWatcher] = struct{}{}
+
 	l.mu.Unlock()
 
-	notifyRotate := l.writer.NotifyRotate()
 	followLogs(latestFile, logWatcher, notifyRotate, config.Since)
 
 	l.mu.Lock()
 	delete(l.readers, logWatcher)
 	l.mu.Unlock()
-
-	l.writer.NotifyRotateEvict(notifyRotate)
 }
 
 func tailFile(f io.ReadSeeker, logWatcher *logger.LogWatcher, tail int, since time.Time) {

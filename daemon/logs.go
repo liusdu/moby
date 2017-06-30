@@ -49,7 +49,7 @@ func (daemon *Daemon) ContainerLogs(containerName string, config *backend.Contai
 		return logger.ErrReadLogsNotSupported
 	}
 
-	follow := config.Follow && container.IsRunning()
+	follow := config.Follow && !cLogCreated
 	tailLines, err := strconv.Atoi(config.Tail)
 	if err != nil {
 		tailLines = -1
