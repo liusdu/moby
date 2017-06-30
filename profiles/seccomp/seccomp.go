@@ -13,13 +13,13 @@ import (
 //go:generate go run -tags 'seccomp' generate.go
 
 // GetDefaultProfile returns the default seccomp profile.
-func GetDefaultProfile() (*specs.Seccomp, error) {
-	return setupSeccomp(DefaultProfile)
+func GetDefaultProfile(rs *specs.Spec) (*specs.Seccomp, error) {
+	return setupSeccomp(DefaultProfile(rs))
 }
 
 // GetDefaultProfileForSystemContainer returns the default seccomp profile for system container
-func GetDefaultProfileForSystemContainer() (*specs.Seccomp, error) {
-	newConfig, err := GetDefaultProfile()
+func GetDefaultProfileForSystemContainer(rs *specs.Spec) (*specs.Seccomp, error) {
+	newConfig, err := GetDefaultProfile(rs)
 	if err != nil {
 		return nil, err
 	}
