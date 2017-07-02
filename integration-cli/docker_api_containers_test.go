@@ -1625,3 +1625,17 @@ func (s *DockerSuite) TestContainerApiDeleteWithEmptyName(c *check.C) {
 	c.Assert(status, checker.Equals, http.StatusBadRequest)
 	c.Assert(string(out), checker.Contains, "No container name or ID supplied")
 }
+
+// Regression test for #33334
+// Makes sure that when a container which has a custom stop signal + restart=always
+// gets killed (with SIGKILL) by the kill API, that the restart policy is cancelled.
+func (s *DockerSuite) TestContainerKillCustomStopSignal(c *check.C) {
+	out, _ := runSleepingContainer(c, "--stop-signal=SIGTERM", "--restart=always")
+	id := strings.TrimSpace(out)
+	status, body, err := sockRequest("POST", "/containers/"+id+"/kill", nil)
+	c.Assert(err, checker.IsNil)
+
+	c.Assert(status, checker.Equals, http.StatusNoContent, check.Commentf(string(body)))
+	err = waitInspect(id, "{{.State.Running}} {{.State.Restarting}}", "false false", 30*time.Second)
+	c.Assert(err, checker.IsNil)
+}
