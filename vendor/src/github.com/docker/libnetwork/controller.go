@@ -255,7 +255,7 @@ func (c *controller) reservePools() {
 		}
 		for _, ep := range epl {
 			if err := ep.assignAddress(ipam, true, ep.Iface().AddressIPv6() != nil); err != nil {
-				log.Warnf("Failed to reserve current adress for endpoint %q (%s) on network %q (%s)",
+				log.Warnf("Failed to reserve current address for endpoint %q (%s) on network %q (%s)",
 					ep.Name(), ep.ID(), n.Name(), n.ID())
 			}
 		}
