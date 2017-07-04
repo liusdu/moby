@@ -32,16 +32,24 @@ func (daemon *Daemon) ContainerLogs(containerName string, config *backend.Contai
 		return fmt.Errorf("You must choose at least one stream")
 	}
 
-	cLog, err := daemon.getLogger(container)
+	cLog, cLogCreated, err := daemon.getLogger(container)
 	if err != nil {
 		return err
 	}
+	if cLogCreated {
+		defer func() {
+			if err = cLog.Close(); err != nil {
+				logrus.Errorf("Error closing logger: %v", err)
+			}
+		}()
+	}
+
 	logReader, ok := cLog.(logger.LogReader)
 	if !ok {
 		return logger.ErrReadLogsNotSupported
 	}
 
-	follow := config.Follow && container.IsRunning()
+	follow := config.Follow && !cLogCreated
 	tailLines, err := strconv.Atoi(config.Tail)
 	if err != nil {
 		tailLines = -1
@@ -63,18 +71,7 @@ func (daemon *Daemon) ContainerLogs(containerName string, config *backend.Contai
 		Follow: follow,
 	}
 	logs := logReader.ReadLogs(readConfig)
-	// Close logWatcher on exit
-	defer func() {
-		logs.Close()
-		if cLog != container.LogDriver {
-			// Since the logger isn't cached in the container, which
-			// occurs if it is running, it must get explicitly closed
-			// here to avoid leaking it and any file handles it has.
-			if err := cLog.Close(); err != nil {
-				logrus.Errorf("Error closing logger: %v", err)
-			}
-		}
-	}()
+	defer logs.Close()
 
 	wf := ioutils.NewWriteFlusher(config.OutStream)
 	defer wf.Close()
@@ -115,13 +112,14 @@ func (daemon *Daemon) ContainerLogs(containerName string, config *backend.Contai
 	}
 }
 
-func (daemon *Daemon) getLogger(container *container.Container) (l logger.Logger, err error) {
+func (daemon *Daemon) getLogger(container *container.Container) (l logger.Logger, created bool, err error) {
 	container.Lock()
 	if container.State.Running {
 		l = container.LogDriver
 	}
 	container.Unlock()
 	if l == nil {
+		created = true
 		l, err = container.StartLogger(container.HostConfig.LogConfig)
 	}
 	return
