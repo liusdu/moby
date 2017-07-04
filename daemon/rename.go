@@ -30,11 +30,11 @@ func (daemon *Daemon) ContainerRename(oldName, newName string) error {
 		return err
 	}
 
-	oldName = container.Name
-	oldIsAnonymousEndpoint := container.NetworkSettings.IsAnonymousEndpoint
-
 	container.Lock()
 	defer container.Unlock()
+
+	oldName = container.Name
+	oldIsAnonymousEndpoint := container.NetworkSettings.IsAnonymousEndpoint
 
 	if oldName == newName {
 		return fmt.Errorf("Renaming a container with the same name as its current name")
