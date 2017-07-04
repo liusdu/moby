@@ -145,6 +145,31 @@ func (s *DockerSuite) TestCpFromSymlinkDestination(c *check.C) {
 	// The file should have the contents of "file2" now.
 	c.Assert(fileContentEquals(c, cpPath(tmpDir, "file2"), "file2\n"), checker.IsNil)
 
+	// Now, we need to test copying a file (file2) to a symlink directory with a new
+	// target file name.
+	dstPath = cpPath(tmpDir, "symlinkToDir4", "newname")
+	c.Assert(runDockerCp(c, srcPath, dstPath), checker.IsNil)
+
+	// Verify that newfile has the contents of file2 in the symlink directory
+	c.Assert(fileContentEquals(c, cpPath(tmpDir, "symlinkToDir4", "newname"), "file2\n"), checker.IsNil)
+
+	// Verify that newfile has the contents of file2 in the real directory
+	c.Assert(fileContentEquals(c, cpPath(tmpDir, "dir4", "newname"), "file2\n"), checker.IsNil)
+
+	//Verify that copying to a symlinked symlink directory works.
+	srcPathFile3 := containerCpPath(containerID, "/file3")
+	dstPath = cpPath(tmpDir, "symlinkToDir4symlink", "newname2")
+	c.Assert(runDockerCp(c, srcPathFile3, dstPath), checker.IsNil)
+
+	// Verify that newfile2 has the contents of file3 in symlinked symlink directory
+	c.Assert(fileContentEquals(c, cpPath(tmpDir, "symlinkToDir4symlink", "newname2"), "file3\n"), checker.IsNil)
+
+	// Verify that newfile2 has the contents of file3 in the symlinked directory
+	c.Assert(fileContentEquals(c, cpPath(tmpDir, "symlinkToDir4", "newname2"), "file3\n"), checker.IsNil)
+
+	// Verify that newfile2 has the contents of file3 in the real directory (dir4)
+	c.Assert(fileContentEquals(c, cpPath(tmpDir, "symlinkToDir4", "newname2"), "file3\n"), checker.IsNil)
+
 	// Next, copy a file from the container to a symlink to a file that does
 	// not exist (a broken symlink). This should create the target file with
 	// the contents of the source file.

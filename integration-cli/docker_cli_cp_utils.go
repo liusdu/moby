@@ -77,6 +77,8 @@ var defaultFileData = []fileData{
 	{ftDir, "dir5", ""},
 	{ftSymlink, "symlinkToFile1", "file1"},
 	{ftSymlink, "symlinkToDir1", "dir1"},
+	{ftSymlink, "symlinkToDir4", "dir4"},
+	{ftSymlink, "symlinkToDir4symlink", "symlinkToDir4"},
 	{ftSymlink, "brokenSymlinkToFileX", "fileX"},
 	{ftSymlink, "brokenSymlinkToDirX", "dirX"},
 	{ftSymlink, "symlinkToAbsDir", "/root"},
