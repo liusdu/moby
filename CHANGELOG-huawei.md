@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.11.2.36 (2017-07-04)
+
+- Bump containerd
+  - Handle kill shim whilte container is paused (fix DTS2017062804540)
+- Bugfix: Return exit status immediately if container is restarting (mr 630 fix DTS2017062910718)
+- Bugfix: Send "Name" and "ID" when stating stopped containers (mr 631 fix DTS2017062907473)
+- Bugfix: Fixing ‘docker cp’ to allow new target file name in a host symlinked directory (mr 632 fix DTS2017063008457)
+- Bugfix: Fix stop/start/restart of detached container (mr 636 fix DTS2017063008068)
+- Bugfix: Fix issue for `--hostname` when running in "--net=host" (mr 640 fix DTS2017070401630)
+- Bugfix: Fix breaking `docker top xxx m` (mr 635 fix DTS2017070300837)
+- Bugfix: return more accurate error message when docker kill (mr 641 fix DTS2017070309375)
+- Bugfix: Fix run `docker rename <container-id>` concurrently, the container will have multi names (mr 633 fix DTS2017062907508)
+- Bugfix: Fix rename error when sid is empty (mr 639 fix DTS2017070307844)
+- Bugfix: Fix wrong filemode for rotate log files (mr 638 fix DTS2017063008750)
+- Bugfix: Set unpasued state when receiving 'stateExit' event (mr 599 fix DTS2017062712236)
+- Bugfix: Fix docker logs hang (mr 625 fix DTS2017062809604)
+- Bugfix: Return an empty stats if the container is restarting (mr 612 fix DTS2017062812251)
+- Bugfix: don't delete the bridge interface if it was not created by libnetwork (mr 619 fix DTS2017062908750)
+- Backport: Lock container while connecting to a new network (mr 624)
+- Backport: Atomically save libtrust key file (mr 623)
+- Backport: Fix use of **/ in .dockerignore (mr 610)
+- Backport: Fix escape-keys by preserving input if invalid (mr 629)
+- Backport: Fix overlay2 sub directory whiteouts (mr 618)
+- Backport: Use lazy unmount for local volume driver unmount (mr 609)
+- Backport: We should always return the MountLabel (mr 628)
+- Backport: Ensure that a device mapper task is referenced until task is complete (mr 601)
+- Backport: several function names fixed in devmapper.go (mr 596)
+- Backport: Do not reuse a http.Request after a failure in callWithRetry (mr 615)
+- Backport: Ensure opaque directory permissions respected (mr 616)
+- Backport: Devmapper fixes for cookie generation and error reporting (mr 603)
+
 ## v1.11.2.35 (2017-06-30)
 
 - Bugfix: initialize defOsSbox in controller New() (mr 617 fix DTS2017062711736)
