@@ -69,7 +69,7 @@ func (daemon *Daemon) killWithSignal(container *container.Container, sig int) er
 		return errNotRunning{container.ID}
 	}
 
-	if container.Config.StopSignal != "" {
+	if container.Config.StopSignal != "" && syscall.Signal(sig) != syscall.SIGKILL {
 		containerStopSignal, err := signal.ParseSignal(container.Config.StopSignal)
 		if err != nil {
 			return err
