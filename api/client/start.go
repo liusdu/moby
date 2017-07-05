@@ -56,6 +56,12 @@ func (cli *DockerCli) CmdStart(args ...string) error {
 
 	cmd.ParseFlags(args, true)
 
+	for _, name := range cmd.Args() {
+		if name == "" {
+			return fmt.Errorf("Container name cannot be empty")
+		}
+	}
+
 	if *attach || *openStdin {
 		// We're going to attach to a container.
 		// 1. Ensure we only have one container.
