@@ -192,15 +192,15 @@ func (s *DockerSuite) TestVolumeCliRm(c *check.C) {
 }
 
 func (s *DockerSuite) TestVolumeCliNoArgs(c *check.C) {
-	out, _ := dockerCmd(c, "volume")
-	// no args should produce the cmd usage output
-	usage := "Usage:	docker volume [OPTIONS] [COMMAND]"
-	c.Assert(out, checker.Contains, usage)
-
-	// invalid arg should error and show the command usage on stderr
-	_, stderr, _, err := runCommandWithStdoutStderr(exec.Command(dockerBinary, "volume", "somearg"))
+	// no args should error and show the command usage on stderr
+	_, stderr, _, err := runCommandWithStdoutStderr(exec.Command(dockerBinary, "volume"))
+	usage := "Usage:	docker volume [OPTIONS] COMMAND [OPTIONS]"
 	c.Assert(err, check.NotNil, check.Commentf(stderr))
 	c.Assert(stderr, checker.Contains, usage)
+
+	// invalid arg should produce the cmd usage output
+	out, _ := dockerCmd(c, "volume", "somearg")
+	c.Assert(out, checker.Contains, usage)
 
 	// invalid flag should error and show the flag error and cmd usage
 	_, stderr, _, err = runCommandWithStdoutStderr(exec.Command(dockerBinary, "volume", "--no-such-flag"))
