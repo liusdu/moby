@@ -21,6 +21,9 @@ func (cli *DockerCli) CmdUnpause(args ...string) error {
 
 	var errs []string
 	for _, name := range cmd.Args() {
+		if name == "" {
+			return fmt.Errorf("Container name cannot be empty")
+		}
 		if err := cli.client.ContainerUnpause(context.Background(), name); err != nil {
 			errs = append(errs, err.Error())
 		} else {

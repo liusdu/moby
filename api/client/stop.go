@@ -24,6 +24,9 @@ func (cli *DockerCli) CmdStop(args ...string) error {
 
 	var errs []string
 	for _, name := range cmd.Args() {
+		if name == "" {
+			return fmt.Errorf("Container name cannot be empty")
+		}
 		if err := cli.client.ContainerStop(context.Background(), name, *nSeconds); err != nil {
 			errs = append(errs, err.Error())
 		} else {

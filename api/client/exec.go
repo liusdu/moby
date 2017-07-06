@@ -22,8 +22,11 @@ func (cli *DockerCli) CmdExec(args ...string) error {
 
 	execConfig, err := ParseExec(cmd, args)
 	// just in case the ParseExec does not exit
-	if execConfig.Container == "" || err != nil {
+	if err != nil {
 		return Cli.StatusError{StatusCode: 1}
+	}
+	if execConfig.Container == "" {
+		return fmt.Errorf("Container name cannot be empty")
 	}
 
 	if *detachKeys != "" {
