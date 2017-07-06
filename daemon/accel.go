@@ -209,8 +209,7 @@ func (daemon *Daemon) verifyAccelConfig(hostConfig *containertypes.HostConfig) e
 		accelNameMap[accel.Name] = true
 
 		// validate parameters
-		if !accel.IsPersistent || // accelerators from cli must "persistent"
-			accel.Runtime == "" || // runtime must not empty, it can fill with either slot-name or *real* runtime
+		if accel.Runtime == "" || // runtime must not empty, it can fill with either slot-name or *real* runtime
 			// Runtime&Name must validate
 			!runconfigopts.ValidateAccelRuntime(accel.Runtime) ||
 			!runconfigopts.ValidateAccelName(accel.Name) {
@@ -367,7 +366,7 @@ func (daemon *Daemon) initializeAccelResources(container *container.Container) (
 		// XXX Oops, if we kill all things(dockerd/containerd/shim), accel.Sid/Driver will still have values, how to deal with this?
 		// If driver-plugin is also killed, we can just ignore this and re-allocate accel for it.
 		// But if driver-plugin is still alive, we should just use this / or release it before re-allocate
-		if accel.Driver != "" || accel.Sid != "" {
+		if accel.Sid != "" {
 			log.Warnf("Unhandled non-empty accel.Driver/Sid when initialize accelerator resoruces for %s:", container.Name)
 			log.Warnf("    name=%s", accel.Name)
 			log.Warnf("    runtime=%s", accel.Runtime)
