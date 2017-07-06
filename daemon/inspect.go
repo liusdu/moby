@@ -118,6 +118,9 @@ func (daemon *Daemon) getInspectData(container *container.Container, size bool) 
 		hostConfig.LogConfig.Config = daemon.defaultLogConfig.Config
 	}
 
+	// We merge the Ulimits from hostConfig with daemon default
+	daemon.mergeUlimits(&hostConfig)
+
 	containerState := &types.ContainerState{
 		Status:     container.State.StateString(),
 		Running:    container.State.Running,
