@@ -32,9 +32,9 @@ func (cli *DockerCli) CmdVolume(args ...string) error {
 	}
 
 	description += "\nRun 'docker volume COMMAND --help' for more information on a command"
-	cmd := Cli.Subcmd("volume", []string{"[COMMAND]"}, description, false)
+	cmd := Cli.Subcmd("volume", []string{"COMMAND [OPTIONS]"}, description, false)
 
-	cmd.Require(flag.Exact, 0)
+	cmd.Require(flag.Min, 1)
 	err := cmd.ParseFlags(args, true)
 	cmd.Usage()
 	return err
