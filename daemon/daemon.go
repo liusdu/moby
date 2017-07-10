@@ -577,7 +577,7 @@ func NewDaemon(config *Config, registryService *registry.Service, containerdRemo
 	}
 
 	// set up the tmpDir to use a canonical path
-	tmp, err := tempDir(config.Root, rootUID, rootGID)
+	tmp, err := prepareTempDir(config.Root, rootUID, rootGID)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get the TempDir under %s: %s", config.Root, err)
 	}
@@ -1373,17 +1373,29 @@ func (daemon *Daemon) GetCachedImageOnBuild(imgID string, cfg *containertypes.Co
 	return cache.ID().String(), nil
 }
 
-// tempDir returns the default directory to use for temporary files.
-func tempDir(rootDir string, rootUID, rootGID int) (string, error) {
+// prepareTempDir prepares and returns the default directory to use
+// for temporary files.
+// If it doesn't exist, it is created. If it exists, its content is removed.
+func prepareTempDir(rootDir string, rootUID, rootGID int) (string, error) {
 	var tmpDir string
-	defaultTmpDir := filepath.Join(rootDir, "tmp")
-	// If docker is building/pulling/pushing images and docker OOM or get killed, TmpDir will leak files in disk.
-	// But if user choose to use "$DOCKER_TMPDIR" from env, we can not remove the folder. It may be used by other service too.
-	// So here just remove the default tmp foler only.
-	os.RemoveAll(defaultTmpDir)
 	if tmpDir = os.Getenv("DOCKER_TMPDIR"); tmpDir == "" {
-		tmpDir = defaultTmpDir
+		tmpDir = filepath.Join(rootDir, "tmp")
+		newName := tmpDir + "-old"
+		if err := os.Rename(tmpDir, newName); err == nil {
+			go func() {
+				if err := os.RemoveAll(newName); err != nil {
+					logrus.Warnf("failed to delete old tmp directory: %s", newName)
+				}
+			}()
+		} else {
+			logrus.Warnf("failed to rename %s for background deletion: %s. Deleting synchronously", tmpDir, err)
+			if err := os.RemoveAll(tmpDir); err != nil {
+				logrus.Warnf("failed to delete old tmp directory: %s", tmpDir)
+			}
+		}
 	}
+	// We don't remove the content of tmpdir if it's not the default,
+	// it may hold things that do not belong to us.
 	return tmpDir, idtools.MkdirAllAs(tmpDir, 0700, rootUID, rootGID)
 }
 
