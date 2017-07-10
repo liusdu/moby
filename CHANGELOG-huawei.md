@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.11.2.37 (2017-07-10)
+
+- Bump containerd
+  - fix failed to downgrade containerd version when transaction data exists (mr 669)
+- Bugfix: Fix docker cp dir with hard link (mr 664 fix DTS2017070301829)
+- Bugfix: Fix issue related to duplicate identical bind mounts for `docker run` (mr 647 fix DTS2017070407021 DTS2017070406202)
+- Bugfix: Return an empty stats if "container not found" (mr 666 fix DTS2017062812251)
+- Bugfix: Inconsistent --tmpfs behavior (mr 643 fix DTS2017070405091)
+- Bugfix: fix LogConfig for containers created before docker 1.12 on daemon startup (mr 662 fix DTS2017070802348)
+- Bugfix: Fix duplicate mount point for `--volumes-from` in `docker run` (mr 661 fix DTS2017070606746)
+- Bugfix: Fix regression on --link on bridge network (mr 660 fix DTS2017070704002)
+- Bugfix: Fix issue reloading mount options on restart (mr 655 fix DTS2017070604070)
+- Bugfix: Fix docker rename with linked containers (mr 658 fix DTS2017070607365)
+- Bugfix: modify help information of volume (mr 646 fix DTS2017070408150)
+- Bugfix: Fix ulimits in `docker inspect` when daemon default exists (mr 650 fix DTS2017070504860)
+- Bugfix: Disable HTML escaping for JSON strings in `docker inspect` (mr 649 fix DTS2017070504798)
+- Bugfix: fix docker stop/start/restart/pause/unpause/kill/exec with empty container (mr 648 fix DTS2017070311248)
+- Bugfix: Fix docker create with duplicate volume failed to remove (mr 645 fix DTS2017070404731)
+- Feature: Allow create non-persistent accelerator by REST-API (mr 653)
+- Backport: Fix TestGetContainerStatsRmRunning test (mr 654)
+- Backport: Check signal is unset before using user stopsignal (mr 634)
+- Backport: Fix `docker start` error with renamed container (mr 658)
+- Backport: Cleanup docker tmp dir on start (mr 663) 
+
 ## v1.11.2.36 (2017-07-04)
 
 - Bump containerd
