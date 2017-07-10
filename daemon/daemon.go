@@ -1366,13 +1366,8 @@ func (daemon *Daemon) GetCachedImageOnBuild(imgID string, cfg *containertypes.Co
 // tempDir returns the default directory to use for temporary files.
 func tempDir(rootDir string, rootUID, rootGID int) (string, error) {
 	var tmpDir string
-	defaultTmpDir := filepath.Join(rootDir, "tmp")
-	// If docker is building/pulling/pushing images and docker OOM or get killed, TmpDir will leak files in disk.
-	// But if user choose to use "$DOCKER_TMPDIR" from env, we can not remove the folder. It may be used by other service too.
-	// So here just remove the default tmp foler only.
-	os.RemoveAll(defaultTmpDir)
 	if tmpDir = os.Getenv("DOCKER_TMPDIR"); tmpDir == "" {
-		tmpDir = defaultTmpDir
+		tmpDir = filepath.Join(rootDir, "tmp")
 	}
 	return tmpDir, idtools.MkdirAllAs(tmpDir, 0700, rootUID, rootGID)
 }
