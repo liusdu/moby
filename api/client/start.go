@@ -77,7 +77,7 @@ func (cli *DockerCli) CmdStart(args ...string) error {
 		}
 
 		if !c.Config.Tty {
-			sigc := cli.forwardAllSignals(containerID)
+			sigc := cli.forwardAllSignals(c.ID)
 			defer signal.StopCatch(sigc)
 		}
 
@@ -86,7 +86,7 @@ func (cli *DockerCli) CmdStart(args ...string) error {
 		}
 
 		options := types.ContainerAttachOptions{
-			ContainerID: containerID,
+			ContainerID: c.ID,
 			Stream:      true,
 			Stdin:       *openStdin && c.Config.OpenStdin,
 			Stdout:      true,
@@ -111,7 +111,7 @@ func (cli *DockerCli) CmdStart(args ...string) error {
 		})
 
 		// 3. Start the container.
-		if err := cli.client.ContainerStart(context.Background(), containerID); err != nil {
+		if err := cli.client.ContainerStart(context.Background(), c.ID); err != nil {
 			cancelFun()
 			<-cErr
 			return err
@@ -119,14 +119,14 @@ func (cli *DockerCli) CmdStart(args ...string) error {
 
 		// 4. Wait for attachment to break.
 		if c.Config.Tty && cli.isTerminalOut {
-			if err := cli.monitorTtySize(containerID, false); err != nil {
+			if err := cli.monitorTtySize(c.ID, false); err != nil {
 				fmt.Fprintf(cli.err, "Error monitoring TTY size: %s\n", err)
 			}
 		}
 		if attchErr := <-cErr; attchErr != nil {
 			return attchErr
 		}
-		_, status, err := getExitCode(cli, containerID)
+		_, status, err := getExitCode(cli, c.ID)
 		if err != nil {
 			return err
 		}
