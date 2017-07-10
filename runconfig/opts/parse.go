@@ -217,13 +217,16 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 	}
 
 	var binds []string
+	volumes := flVolumes.GetMap()
 	// add any bind targets to the list of container volumes
 	for bind := range flVolumes.GetMap() {
 		if arr := volumeSplitN(bind, 2); len(arr) > 1 {
 			// after creating the bind mount we want to delete it from the flVolumes values because
 			// we do not want bind mounts being committed to image configs
 			binds = append(binds, bind)
-			flVolumes.Delete(bind)
+			// We should delete from the map (`volumes`) here, as deleting from will not work if
+			// there are duplicates entries.
+			delete(volumes, bind)
 		}
 	}
 
@@ -394,7 +397,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		Env:             envVariables,
 		Cmd:             runCmd,
 		Image:           image,
-		Volumes:         flVolumes.GetMap(),
+		Volumes:         volumes,
 		MacAddress:      *flMacAddress,
 		Entrypoint:      entrypoint,
 		WorkingDir:      *flWorkingDir,

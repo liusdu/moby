@@ -4890,6 +4890,27 @@ func (s *DockerSuite) TestRunHostnameInHostMode(c *check.C) {
 	c.Assert(strings.TrimSpace(out), checker.Equals, expectedOutput)
 }
 
+func (s *DockerSuite) TestRunDuplicateMount(c *check.C) {
+	testRequires(c, DaemonIsLinux)
+
+	tmpFile, err := ioutil.TempFile("", "touch-me")
+	c.Assert(err, checker.IsNil)
+	defer tmpFile.Close()
+
+	data := "touch-me-foo-bar\n"
+	if _, err := tmpFile.Write([]byte(data)); err != nil {
+		c.Fatal(err)
+	}
+
+	name := "test"
+	out, _ := dockerCmd(c, "run", "--name", name, "-v", "/tmp:/tmp", "-v", "/tmp:/tmp", "busybox", "sh", "-c", "cat "+tmpFile.Name()+" && ls /")
+	c.Assert(out, checker.Not(checker.Contains), "tmp:")
+	c.Assert(out, checker.Contains, data)
+
+	out = inspectFieldJSON(c, name, "Config.Volumes")
+	c.Assert(out, checker.Contains, "null")
+}
+
 func (s *DockerDaemonSuite) TestRunWithUlimitAndDaemonDefault(c *check.C) {
 	c.Assert(s.d.StartWithBusybox("--debug", "--default-ulimit=nofile=65535"), checker.IsNil)
 
