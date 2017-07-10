@@ -122,7 +122,7 @@ func wait(waitChan <-chan struct{}, timeout time.Duration) error {
 // Returns exit code, that was passed to SetStoppedLocking
 func (s *State) WaitStop(timeout time.Duration) (int, error) {
 	s.Lock()
-	if !s.Running || s.Restarting {
+	if !s.Running {
 		exitCode := s.ExitCode
 		s.Unlock()
 		return exitCode, nil
