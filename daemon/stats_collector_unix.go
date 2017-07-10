@@ -126,20 +126,21 @@ func (s *statsCollector) run() {
 
 		for _, pair := range pairs {
 			stats, err := s.supervisor.GetContainerStats(pair.container)
-			if err != nil {
-				if _, ok := err.(errNotRunning); !ok {
-					logrus.Errorf("collecting stats for %s: %v", pair.container.ID, err)
-					continue
-				}
 
-				// publish empty stats ID if not running
+			switch err.(type) {
+			case nil:
+				// FIXME: move to containerd
+				stats.CPUStats.SystemUsage = systemUsage
+
+				pair.publisher.Publish(*stats)
+
+			case errNotRunning, errNotFound:
+				// publish empty stats ID if not running or not found
 				pair.publisher.Publish(types.StatsJSON{})
-				continue
-			}
-			// FIXME: move to containerd
-			stats.CPUStats.SystemUsage = systemUsage
 
-			pair.publisher.Publish(*stats)
+			default:
+				logrus.Errorf("collecting stats for %s: %v", pair.container.ID, err)
+			}
 		}
 	}
 }
