@@ -126,7 +126,7 @@ clone git google.golang.org/api dc6d2353af16e2a2b0ff6986af051d473a4ed468 https:/
 clone git google.golang.org/cloud dae7e3d993bc3812a2185af60552bb6b847e52a0 https://code.googlesource.com/gocloud
 
 # containerd
-clone git github.com/docker/containerd 3a23e40bcb7fe5669ce11bdd0f239550be142520 git@code.huawei.com:docker/containerd.git
+clone git github.com/docker/containerd 9c243484606eaac8e12d8d7362b72a332825fd93 git@code.huawei.com:docker/containerd.git
 clone git github.com/tonistiigi/fifo 1405643975692217d6720f8b54aeee1bf2cd5cf4
 
 clean
