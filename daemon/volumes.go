@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/volume"
 	"github.com/docker/engine-api/types"
@@ -81,6 +82,15 @@ func (daemon *Daemon) registerMountPoints(container *container.Container, hostCo
 		}
 	}()
 
+	dereferenceIfExists := func(destination string) {
+		if v, ok := mountPoints[destination]; ok {
+			logrus.Debugf("Duplicate mount point '%s'", destination)
+			if v.Volume != nil {
+				daemon.volumes.Dereference(v.Volume, container.ID)
+			}
+		}
+	}
+
 	// 1. Read already configured mount points.
 	for name, point := range container.MountPoints {
 		mountPoints[name] = point
@@ -116,7 +126,7 @@ func (daemon *Daemon) registerMountPoints(container *container.Container, hostCo
 				}
 				cp.Volume = v
 			}
-
+			dereferenceIfExists(cp.Destination)
 			mountPoints[cp.Destination] = cp
 		}
 	}
@@ -156,6 +166,7 @@ func (daemon *Daemon) registerMountPoints(container *container.Container, hostCo
 			}
 		}
 		binds[bind.Destination] = true
+		dereferenceIfExists(bind.Destination)
 		mountPoints[bind.Destination] = bind
 	}
 

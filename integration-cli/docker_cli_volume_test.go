@@ -281,3 +281,92 @@ func (s *DockerSuite) TestVolumeCliCreateLabelMultiple(c *check.C) {
 		c.Assert(strings.TrimSpace(out), check.Equals, v)
 	}
 }
+
+// Test case (1) for 21845: duplicate targets for --volumes-from
+func (s *DockerSuite) TestDuplicateMountpointsForVolumesFrom(c *check.C) {
+	testRequires(c, DaemonIsLinux)
+
+	image := "vimage"
+	_, err := buildImage(image, `
+	      FROM busybox
+	      VOLUME ["/tmp/data"]
+	      `, true)
+	c.Assert(err, checker.IsNil, check.Commentf("error: %v", err))
+
+	dockerCmd(c, "run", "--name=data1", image, "true")
+	dockerCmd(c, "run", "--name=data2", image, "true")
+
+	out, _ := dockerCmd(c, "inspect", "--format", "{{(index .Mounts 0).Name}}", "data1")
+	data1 := strings.TrimSpace(out)
+	c.Assert(data1, checker.Not(checker.Equals), "")
+
+	out, _ = dockerCmd(c, "inspect", "--format", "{{(index .Mounts 0).Name}}", "data2")
+	data2 := strings.TrimSpace(out)
+	c.Assert(data2, checker.Not(checker.Equals), "")
+
+	// Both volume should exist
+	out, _ = dockerCmd(c, "volume", "ls", "-q")
+	c.Assert(strings.TrimSpace(out), checker.Contains, data1)
+	c.Assert(strings.TrimSpace(out), checker.Contains, data2)
+
+	out, _, err = dockerCmdWithError("run", "--name=app", "--volumes-from=data1", "--volumes-from=data2", "-d", "busybox", "top")
+	c.Assert(err, checker.IsNil, check.Commentf("Out: %s", out))
+
+	// Only the second volume will be referenced, this is backward compatible
+	out, _ = dockerCmd(c, "inspect", "--format", "{{(index .Mounts 0).Name}}", "app")
+	c.Assert(strings.TrimSpace(out), checker.Equals, data2)
+
+	dockerCmd(c, "rm", "-f", "-v", "app")
+	dockerCmd(c, "rm", "-f", "-v", "data1")
+	dockerCmd(c, "rm", "-f", "-v", "data2")
+
+	// Both volume should not exist
+	out, _ = dockerCmd(c, "volume", "ls", "-q")
+	c.Assert(strings.TrimSpace(out), checker.Not(checker.Contains), data1)
+	c.Assert(strings.TrimSpace(out), checker.Not(checker.Contains), data2)
+}
+
+// Test case (2) for 21845: duplicate targets for --volumes-from and -v (bind)
+func (s *DockerSuite) TestDuplicateMountpointsForVolumesFromAndBind(c *check.C) {
+	testRequires(c, DaemonIsLinux)
+
+	image := "vimage"
+	_, err := buildImage(image, `
+	      FROM busybox
+	      VOLUME ["/tmp/data"]
+	      `, true)
+	c.Assert(err, checker.IsNil, check.Commentf("error: %v", err))
+
+	dockerCmd(c, "run", "--name=data1", image, "true")
+	dockerCmd(c, "run", "--name=data2", image, "true")
+
+	out, _ := dockerCmd(c, "inspect", "--format", "{{(index .Mounts 0).Name}}", "data1")
+	data1 := strings.TrimSpace(out)
+	c.Assert(data1, checker.Not(checker.Equals), "")
+
+	out, _ = dockerCmd(c, "inspect", "--format", "{{(index .Mounts 0).Name}}", "data2")
+	data2 := strings.TrimSpace(out)
+	c.Assert(data2, checker.Not(checker.Equals), "")
+
+	// Both volume should exist
+	out, _ = dockerCmd(c, "volume", "ls", "-q")
+	c.Assert(strings.TrimSpace(out), checker.Contains, data1)
+	c.Assert(strings.TrimSpace(out), checker.Contains, data2)
+
+	out, _, err = dockerCmdWithError("run", "--name=app", "--volumes-from=data1", "--volumes-from=data2", "-v", "/tmp/data:/tmp/data", "-d", "busybox", "top")
+	c.Assert(err, checker.IsNil, check.Commentf("Out: %s", out))
+
+	// No volume will be referenced (mount is /tmp/data), this is backward compatible
+	out, _ = dockerCmd(c, "inspect", "--format", "{{(index .Mounts 0).Name}}", "app")
+	c.Assert(strings.TrimSpace(out), checker.Not(checker.Contains), data1)
+	c.Assert(strings.TrimSpace(out), checker.Not(checker.Contains), data2)
+
+	dockerCmd(c, "rm", "-f", "-v", "app")
+	dockerCmd(c, "rm", "-f", "-v", "data1")
+	dockerCmd(c, "rm", "-f", "-v", "data2")
+
+	// Both volume should not exist
+	out, _ = dockerCmd(c, "volume", "ls", "-q")
+	c.Assert(strings.TrimSpace(out), checker.Not(checker.Contains), data1)
+	c.Assert(strings.TrimSpace(out), checker.Not(checker.Contains), data2)
+}
