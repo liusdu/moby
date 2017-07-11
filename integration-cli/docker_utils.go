@@ -1357,6 +1357,11 @@ func waitForContainer(contID string, args ...string) error {
 	return nil
 }
 
+// waitRestart will wait for the specified container to restart once
+func waitRestart(contID string, duration time.Duration) error {
+	return waitInspect(contID, "{{.RestartCount}}", "1", duration)
+}
+
 // waitRun will wait for the specified container to be running, maximum 5 seconds.
 func waitRun(contID string) error {
 	return waitInspect(contID, "{{.State.Running}}", "true", 5*time.Second)
