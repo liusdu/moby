@@ -26,7 +26,9 @@ func (cli *DockerCli) CmdNetwork(args ...string) error {
 	cmd := Cli.Subcmd("network", []string{"COMMAND [OPTIONS]"}, networkUsage(), false)
 	cmd.Require(flag.Min, 1)
 	err := cmd.ParseFlags(args, true)
-	cmd.Usage()
+	if !strings.HasPrefix(args[0], "-h") {
+		cmd.Usage()
+	}
 	return err
 }
 

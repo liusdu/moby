@@ -24,7 +24,9 @@ func (cli *DockerCli) CmdAccel(args ...string) error {
 	cmd := Cli.Subcmd("accel", []string{"COMMAND [OPTIONS]"}, accelUsage(), false)
 	cmd.Require(flag.Min, 1)
 	err := cmd.ParseFlags(args, true)
-	cmd.Usage()
+	if !strings.HasPrefix(args[0], "-h") {
+		cmd.Usage()
+	}
 	return err
 }
 
