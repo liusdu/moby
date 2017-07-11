@@ -58,6 +58,7 @@ func (s *DockerAccelSuite) TestDockerAccelApiContainerWithoutPersistent(c *check
 	name := "accel_without_persistent"
 	config := map[string]interface{}{
 		"Image": "busybox",
+		"Cmd":   []string{"top"},
 		"HostConfig": map[string]interface{}{
 			"Accelerators": []containertypes.AcceleratorConfig{
 				{
