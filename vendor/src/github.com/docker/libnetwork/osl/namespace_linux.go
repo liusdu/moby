@@ -50,6 +50,7 @@ type networkNamespace struct {
 
 func init() {
 	reexec.Register("netns-create", reexecCreateNamespace)
+	reexec.Register("lo-create", reexecCreateLo)
 }
 
 func createBasePath() {
@@ -202,7 +203,7 @@ func mountNetworkNamespace(basePath string, lnPath string) error {
 		return err
 	}
 
-	if err := loopbackUp(); err != nil {
+	if err := loopbackUpSafely(basePath); err != nil {
 		return err
 	}
 	return nil
@@ -214,14 +215,49 @@ func GetSandboxForExternalKey(basePath string, key string) (Sandbox, error) {
 	if err = createNamespaceFile(key); err != nil {
 		return nil, err
 	}
-	n := &networkNamespace{path: basePath}
-	n.InvokeFunc(func() {
-		err = mountNetworkNamespace(basePath, key)
-	})
+	err = mountNetworkNamespace(basePath, key)
 	if err != nil {
 		return nil, err
 	}
+
 	return &networkNamespace{path: key}, nil
+}
+
+func loopbackUpSafely(nsPath string) error {
+	// reexec to create lo in child process
+	cmd := &exec.Cmd{
+		Path:   reexec.Self(),
+		Args:   append([]string{"lo-create"}, nsPath),
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("loopback creation reexec command failed: %v", err)
+	}
+
+	return nil
+}
+
+func reexecCreateLo() {
+	if len(os.Args) < 2 {
+		log.Fatal("no namespace path provided")
+	}
+	nsPath := os.Args[1]
+
+	defer InitOSContext()()
+	f, err := os.OpenFile(nsPath, os.O_RDONLY, 0)
+	if err != nil {
+		log.Fatalf("get network namespace %s failed: %v", nsPath, err)
+	}
+	defer f.Close()
+	nsFD := f.Fd()
+	if err = netns.Set(netns.NsHandle(nsFD)); err != nil {
+		log.Fatalf("set network namespace failed: %s", err)
+	}
+
+	if err := loopbackUp(); err != nil {
+		log.Fatalf("create loopback device failed: %s", err)
+	}
 }
 
 func reexecCreateNamespace() {
