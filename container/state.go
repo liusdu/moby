@@ -182,7 +182,9 @@ func (s *State) SetRunning(pid int, initial bool) {
 	s.Error = ""
 	s.Running = true
 	s.Restarting = false
-	s.Paused = false
+	if initial {
+		s.Paused = false
+	}
 	s.ExitCode = 0
 	s.Pid = pid
 	if initial || s.StartedAt.IsZero() || s.StartedAt.Before(s.FinishedAt) {
