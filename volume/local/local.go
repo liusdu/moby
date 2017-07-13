@@ -95,6 +95,13 @@ func New(scope string, rootUID, rootGID int) (*Root, error) {
 				return nil, err
 			}
 
+			// For the local volumes created without options,
+			// the opts.json is null, so all the value in v.opts is null
+			// We should make v.opts to nil to avoid v.mount
+			if v.opts.MountType == "" && v.opts.MountOpts == "" && v.opts.MountDevice == "" {
+				v.opts = nil
+			}
+
 			// unmount anything that may still be mounted (for example, from an unclean shutdown)
 			for _, info := range mountInfos {
 				if info.Mountpoint == v.path {
