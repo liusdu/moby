@@ -1,15 +1,29 @@
 package client
 
 import (
+	"io/ioutil"
+
 	"golang.org/x/net/context"
 
 	"github.com/docker/docker/api/client/formatter"
 	Cli "github.com/docker/docker/cli"
 	"github.com/docker/docker/opts"
 	flag "github.com/docker/docker/pkg/mflag"
+	"github.com/docker/docker/utils/templates"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/filters"
 )
+
+type preProcessor struct {
+	types.Container
+	opts *types.ContainerListOptions
+}
+
+// Size sets the size option when called by a template execution.
+func (p *preProcessor) Size() bool {
+	p.opts.Size = true
+	return true
+}
 
 // CmdPs outputs a list of Docker containers.
 //
@@ -56,6 +70,21 @@ func (cli *DockerCli) CmdPs(args ...string) error {
 		Before: *before,
 		Size:   *size,
 		Filter: psFilterArgs,
+	}
+
+	// Currently only used with Size, so we can determine if the user
+	// put {{.Size}} in their format.
+	pre := &preProcessor{opts: &options}
+	tmpl, err := templates.Parse(*format)
+
+	if err != nil {
+		return err
+	}
+
+	// This shouldn't error out but swallowing the error makes it harder
+	// to track down if preProcessor issues come up. Ref #24696
+	if err := tmpl.Execute(ioutil.Discard, pre); err != nil {
+		return err
 	}
 
 	containers, err := cli.client.ContainerList(context.Background(), options)

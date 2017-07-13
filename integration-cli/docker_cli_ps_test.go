@@ -850,3 +850,28 @@ func (s *DockerSuite) TestPsShowMounts(c *check.C) {
 	out, _ = dockerCmd(c, "ps", "--format", "{{.Names}} {{.Mounts}}", "--filter", "volume="+prefix+slash+"this-path-was-never-mounted")
 	c.Assert(strings.TrimSpace(string(out)), checker.HasLen, 0)
 }
+
+func (s *DockerSuite) TestPsSize(c *check.C) {
+	dockerCmd(c, "run", "--name=testsize", "-d", "busybox", "top")
+	dockerCmd(c, "exec", "testsize", "sh", "-c", "dd if=/dev/zero of=out bs=1024 count=1; sync")
+
+	var tested = false
+	out, _ := dockerCmd(c, "ps", "--format", "{{.Names}}\t{{.Size}}")
+	psLines := strings.Split(out, "\n")
+	for _, line := range psLines {
+		segs := strings.Split(line, "\t")
+		if len(segs) < 2 {
+			continue
+		}
+		// segs should be "testsize \t 1.024 kB (virtual 1.114 MB)"
+		if segs[0] == "testsize" {
+			tested = true
+			// sizeArray should be "1.024 kB (virtual 1.114 MB)"
+			sizeArray := strings.Split(segs[1], " ")
+			c.Assert(sizeArray[0], checker.Equals, "1.024")
+		}
+	}
+	if !tested {
+		c.Fatal("no testsize found: ", out)
+	}
+}
