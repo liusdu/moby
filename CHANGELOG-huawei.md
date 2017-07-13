@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.11.2.38 (2017-07-13)
+
+- Bump containerd
+  - Fix grpc map panic (mr 679 fix DTS2017071209365)
+- Bugfix: Keep pause state when restoring container's status (mr 677 fix DTS2017071201145)
+- Bugfix: Fixes Size showing 0 in formatted ps output (mr 656 fix DTS2017070606634)
+- Bugfix: create lo in child process to avoid namespace pollution (mr 675 fix DTS2017070405413)
+- Bugfix: Make v.opts to nil if opts.json is null (mr 676 fix DTS2017071201058)
+
 ## v1.11.2.37 (2017-07-10)
 
 - Bump containerd
