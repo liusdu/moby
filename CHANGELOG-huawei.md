@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.11.2.39 (2017-07-14)
+
+- Bump runc
+  - Always save own namespace paths (mr 684 fix DTS2017071303825)
+
 ## v1.11.2.38 (2017-07-13)
 
 - Bump containerd
