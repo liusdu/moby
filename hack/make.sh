@@ -103,12 +103,20 @@ if command -v git &> /dev/null && git rev-parse &> /dev/null; then
 	fi
 elif [ "$DOCKER_GITCOMMIT" ]; then
 	GITCOMMIT="$DOCKER_GITCOMMIT"
+elif [ $(cat COMMIT)x != x ]; then
+	GITCOMMIT="$(cat COMMIT)"
 else
 	echo >&2 'error: .git directory missing and DOCKER_GITCOMMIT not specified'
 	echo >&2 '  Please either build with the .git directory accessible, or specify the'
 	echo >&2 '  exact (--short) commit hash you are building using DOCKER_GITCOMMIT for'
 	echo >&2 '  future accountability in diagnosing build issues.  Thanks!'
 	exit 1
+fi
+
+! BUILDTIME=$(date --rfc-3339 ns | sed -e 's/ /T/') &> /dev/null
+if [ -z $BUILDTIME ]; then
+	# If using bash 3.1 which doesn't support --rfc-3389, eg Windows CI
+	BUILDTIME=$(date -u)
 fi
 
 if [ "$AUTO_GOPATH" ]; then
