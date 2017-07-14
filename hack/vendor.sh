@@ -96,7 +96,7 @@ clone git github.com/miekg/pkcs11 df8ae6ca730422dba20c768ff38ef7d79077a59f
 clone git github.com/docker/go v1.5.1-1-1-gbaf439e
 clone git github.com/agl/ed25519 d2b94fd789ea21d12fac1a4443dd3a3f79cda72c
 
-clone git github.com/opencontainers/runc ef0aa363341b9cd181c767b8a560b2915485f599 git@code.huawei.com:docker/runc.git # libcontainer
+clone git github.com/opencontainers/runc 4d973445939175eba9312e26f060a1b1c8f860c9 git@code.huawei.com:docker/runc.git # libcontainer
 clone git github.com/opencontainers/runtime-spec 1c7c27d043c2a5e513a44084d2b10d77d1402b8c # runtime-specs
 clone git github.com/seccomp/libseccomp-golang 1b506fc7c24eec5a3693cdcbed40d9c226cfc6a1
 # libcontainer deps (see src/github.com/opencontainers/runc/Godeps/Godeps.json)
@@ -126,7 +126,7 @@ clone git google.golang.org/api dc6d2353af16e2a2b0ff6986af051d473a4ed468 https:/
 clone git google.golang.org/cloud dae7e3d993bc3812a2185af60552bb6b847e52a0 https://code.googlesource.com/gocloud
 
 # containerd
-clone git github.com/docker/containerd cd60a4daf0da2ae6ca4ea84b9cbb2665fb4bdd4f git@code.huawei.com:docker/containerd.git
+clone git github.com/docker/containerd bfb8b879e4bdf939f9a489878de4e6e2be05c8eb git@code.huawei.com:docker/containerd.git
 clone git github.com/tonistiigi/fifo 1405643975692217d6720f8b54aeee1bf2cd5cf4
 
 clean

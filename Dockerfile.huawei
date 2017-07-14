@@ -30,7 +30,7 @@ MAINTAINER Qiang Huang <h.huangqiang@huawei.com> (@hqhq)
 RUN  rm -rf /go/src/github.com/docker/docker/
 
 # Install runc
-ENV RUNC_COMMIT ef0aa363341b9cd181c767b8a560b2915485f599
+ENV RUNC_COMMIT 4d973445939175eba9312e26f060a1b1c8f860c9
 RUN set -x \
         && export GOPATH="$(mktemp -d)" \
         && git clone http://code.huawei.com/docker/runc.git "$GOPATH/src/github.com/opencontainers/runc" \
@@ -41,7 +41,7 @@ RUN set -x \
         && rm -rf "$GOPATH"
 
 # Install containerd
-ENV CONTAINERD_COMMIT cd60a4daf0da2ae6ca4ea84b9cbb2665fb4bdd4f
+ENV CONTAINERD_COMMIT bfb8b879e4bdf939f9a489878de4e6e2be05c8eb
 RUN set -x \
         && export GOPATH="$(mktemp -d)" \
         && git clone http://code.huawei.com/docker/containerd.git "$GOPATH/src/github.com/docker/containerd" \
