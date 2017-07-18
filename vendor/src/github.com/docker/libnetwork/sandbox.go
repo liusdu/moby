@@ -82,6 +82,7 @@ type sandbox struct {
 	dbExists      bool
 	isStub        bool
 	inDelete      bool
+	ndotsSet      bool
 	sync.Mutex
 }
 
