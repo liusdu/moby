@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"golang.org/x/net/context"
@@ -36,7 +37,9 @@ func (cli *DockerCli) CmdVolume(args ...string) error {
 
 	cmd.Require(flag.Min, 1)
 	err := cmd.ParseFlags(args, true)
-	cmd.Usage()
+	if !strings.HasPrefix(args[0], "-h") {
+		cmd.Usage()
+	}
 	return err
 }
 
