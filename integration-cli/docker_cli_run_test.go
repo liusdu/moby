@@ -4732,7 +4732,7 @@ func (s *DockerSuite) TestRunUnblockSyscallUnshareWithSystemContainer(c *check.C
 // TestRunUnblockSyscallNameToHandleAtWithSystemContainer checks that 'docker run --system-container syscall-test'
 // allows calling name_to_handle_at syscall.
 func (s *DockerSuite) TestRunUnblockSyscallNameToHandleAtWithSystemContainer(c *check.C) {
-	testRequires(c, DaemonIsLinux, seccompEnabled)
+	testRequires(c, DaemonIsLinux, seccompEnabled, NotOverlay)
 
 	if err := setupFakeOciSystemdHook(); err != nil {
 		c.Skip(fmt.Sprintf("Test cannot be run without ociSystemdHook, setup ociSystemdHook failed with error: %v", err))
