@@ -4,6 +4,7 @@ package resolvconf
 import (
 	"bytes"
 	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -52,7 +53,11 @@ type File struct {
 func Get() (*File, error) {
 	resolv, err := ioutil.ReadFile("/etc/resolv.conf")
 	if err != nil {
-		return nil, err
+		if os.IsNotExist(err) {
+			logrus.Infof("/etc/resolv.conf does not exist. Using default external servers : %v", defaultIPv4Dns)
+		} else {
+			return nil, err
+		}
 	}
 	hash, err := ioutils.HashData(bytes.NewReader(resolv))
 	if err != nil {
