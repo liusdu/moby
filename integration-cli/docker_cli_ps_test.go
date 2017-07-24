@@ -875,3 +875,22 @@ func (s *DockerSuite) TestPsSize(c *check.C) {
 		c.Fatal("no testsize found: ", out)
 	}
 }
+
+func (s *DockerSuite) TestPsNotShowLinknamesOfDeletedContainer(c *check.C) {
+	testRequires(c, DaemonIsLinux)
+
+	dockerCmd(c, "create", "--name=aaa", "busybox", "top")
+	dockerCmd(c, "create", "--name=bbb", "--link=aaa", "busybox", "top")
+
+	out, _ := dockerCmd(c, "ps", "--no-trunc", "-a", "--format", "{{.Names}}")
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	expected := []string{"bbb", "aaa,bbb/aaa"}
+	var names []string
+	names = append(names, lines...)
+	c.Assert(expected, checker.DeepEquals, names, check.Commentf("Expected array with non-truncated names: %v, got: %v", expected, names))
+
+	dockerCmd(c, "rm", "bbb")
+
+	out, _ = dockerCmd(c, "ps", "--no-trunc", "-a", "--format", "{{.Names}}")
+	c.Assert(strings.TrimSpace(out), checker.Equals, "aaa")
+}
