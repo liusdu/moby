@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.11.2.40 (2017-07-24)
+- Bump containerd
+  - Move `/tmp/ptyxxx` to `/run/containerd-console/ptyxxx` (mr 66 fix DTS2017072001163)
+  - Remove kill(0) in `handleSigkilledShim()` (mr 67 fix DTS2017071903664)
+- Bump runc
+  - Reset Swap when memory is set to unlimited (-1) (mr 49 fix DTS2017071307245)
+- Bugfix: Make sure the pid exist in pidfile is docker (mr 693 fix DTS2017072004160)
+- Bugfix: Enable unlimited swap (mr 686 fix DTS2017071307245)
+- Bugfix: Fix 'docker volume & network -h` emits help message twice (mr 668 fix DTS2017071000689)
+- Bugfix: Ignore "no such file" error when docker cannot find `resolv.conf` (mr 691 fix DTS2017072106352)
+- Bugfix: Remove links when remove container (mr 690 fix DTS2017071907628)
+- Bugfix: Drop queries in root domain when ndots is set (mr 687 fix DTS2017071410759)
+
 ## v1.11.2.39 (2017-07-14)
 
 - Bump runc
