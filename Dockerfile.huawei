@@ -41,7 +41,7 @@ RUN set -x \
         && rm -rf "$GOPATH"
 
 # Install containerd
-ENV CONTAINERD_COMMIT bfb8b879e4bdf939f9a489878de4e6e2be05c8eb
+ENV CONTAINERD_COMMIT e774d7d9086557749a5f0230e1c1446822c62c98
 RUN set -x \
         && export GOPATH="$(mktemp -d)" \
         && git clone http://code.huawei.com/docker/containerd.git "$GOPATH/src/github.com/docker/containerd" \
