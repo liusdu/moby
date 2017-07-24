@@ -120,12 +120,15 @@ func (daemon *Daemon) cleanupContainer(container *container.Container, forceRemo
 	}
 
 	daemon.nameIndex.Delete(container.ID)
-	daemon.linkIndex.delete(container)
+	linkNames := daemon.linkIndex.delete(container)
 	selinuxFreeLxcContexts(container.ProcessLabel)
 	daemon.idIndex.Delete(container.ID)
 	daemon.containers.Delete(container.ID)
 	if e := daemon.removeMountPoints(container, removeVolume); e != nil {
 		logrus.Error(e)
+	}
+	for _, name := range linkNames {
+		daemon.releaseName(name)
 	}
 	daemon.LogContainerEvent(container, "destroy")
 	return nil
