@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/kr/pty"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -156,6 +157,16 @@ func (s *DockerSuite) TestUpdateSwapMemoryOnly(c *check.C) {
 	file := "/sys/fs/cgroup/memory/memory.memsw.limit_in_bytes"
 	out, _ := dockerCmd(c, "exec", name, "cat", file)
 	c.Assert(strings.TrimSpace(out), checker.Equals, "629145600")
+
+	// Set swap memory to unlimited
+	dockerCmd(c, "update", "--memory-swap", "-1", name)
+
+	c.Assert(inspectField(c, name, "HostConfig.MemorySwap"), checker.Equals, "-1")
+
+	file = "/sys/fs/cgroup/memory/memory.memsw.limit_in_bytes"
+	out, _ = dockerCmd(c, "exec", name, "cat", file)
+	expect := -1
+	c.Assert(strings.TrimSpace(out), checker.Equals, strconv.FormatUint(uint64(expect), 10))
 }
 
 func (s *DockerSuite) TestUpdateInvalidSwapMemory(c *check.C) {
