@@ -1,6 +1,11 @@
 # Changelog
 
+## v1.11.2.41 (2017-07-25)
+
+- Bugfix: Get the base of os.Args[0] (mr 698 fix DTS2017072504613)
+
 ## v1.11.2.40 (2017-07-24)
+
 - Bump containerd
   - Move `/tmp/ptyxxx` to `/run/containerd-console/ptyxxx` (mr 66 fix DTS2017072001163)
   - Remove kill(0) in `handleSigkilledShim()` (mr 67 fix DTS2017071903664)
