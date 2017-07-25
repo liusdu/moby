@@ -31,7 +31,7 @@ func isSameApplication(pid int) (bool, error) {
 	for sc.Scan() {
 		lens := strings.Split(sc.Text(), ":")
 		if len(lens) == 2 && strings.TrimSpace(lens[0]) == "Name" {
-			if strings.TrimSpace(lens[1]) == os.Args[0] {
+			if strings.TrimSpace(lens[1]) == filepath.Base(os.Args[0]) {
 				return true, nil
 			}
 			return false, nil
