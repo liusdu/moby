@@ -349,7 +349,7 @@ func verifyContainerResources(resources *containertypes.Resources, sysInfo *sysi
 		resources.Memory = 0
 		resources.MemorySwap = 0
 	}
-	if resources.Memory > 0 && resources.MemorySwap != -1 && !sysInfo.SwapLimit {
+	if resources.Memory > 0 && resources.MemorySwap != 0 && !sysInfo.SwapLimit {
 		warnings = append(warnings, "Your kernel does not support swap limit capabilities, memory limited without swap.")
 		logrus.Warnf("Your kernel does not support swap limit capabilities, memory limited without swap.")
 		resources.MemorySwap = 0
