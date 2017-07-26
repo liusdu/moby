@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.11.2.42 (2017-07-26)
+
+- Bump containerd
+  - Change transaction directory permission to 0700
+  - Change permission of containerd-console and ptyxxx (fix DTS2017072601408)
+- Bugfix: accel: Fix permission issue for accelerator (mr 702)
+- Bugfix: Fix TestBuildResourceConstraintsAreUsed (mr 697)
+- Cleanup: Remove not support ADD_REGISTRY and BLOCK_REGISTRY in config (mr 701)
+
 ## v1.11.2.41 (2017-07-25)
 
 - Bugfix: Get the base of os.Args[0] (mr 698 fix DTS2017072504613)
