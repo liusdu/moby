@@ -336,7 +336,7 @@ func mergeAccelPath(src, p, dest, rootPath string) (string, error) {
 	// newPath should be "/var/lib/docker/container/XXXX/accelerators/usr_lib64"
 	// This directory will be removed in container delete progress
 	newPath := filepath.Join(rootPath, "accelerators", dName)
-	if err := os.MkdirAll(newPath, 0750); err != nil {
+	if err := os.MkdirAll(newPath, 0700); err != nil {
 		return "", fmt.Errorf("Error Creating accelerator mount directory")
 	}
 	logrus.Debugf("Create a new mount source path %s for conflicting Mount", newPath)

@@ -25,7 +25,7 @@ func (c *controller) initStore(rootPath string) error {
 		rootPath = defaultRootPath
 	}
 	accPath := filepath.Join(rootPath, accelDataDir)
-	if err := os.MkdirAll(accPath, 750); err != nil {
+	if err := os.MkdirAll(accPath, 0700); err != nil {
 		return err
 	}
 	dbPath := filepath.Join(accPath, dbName)
