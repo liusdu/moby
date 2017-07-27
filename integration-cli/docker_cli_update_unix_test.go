@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/kr/pty"
 	"os/exec"
-	"strconv"
 	"strings"
 	"time"
 
@@ -165,8 +164,10 @@ func (s *DockerSuite) TestUpdateSwapMemoryOnly(c *check.C) {
 
 	file = "/sys/fs/cgroup/memory/memory.memsw.limit_in_bytes"
 	out, _ = dockerCmd(c, "exec", name, "cat", file)
-	expect := -1
-	c.Assert(strings.TrimSpace(out), checker.Equals, strconv.FormatUint(uint64(expect), 10))
+	// It is difficult to find out the long bit on the machine and check the
+	// unlimited value is 18446744073709551615 or 9223372036854771712 or other
+	// possible values, so just check it to be greater than the original value.
+	c.Assert(len(strings.TrimSpace(out)), checker.GreaterThan, len("629145600"))
 }
 
 func (s *DockerSuite) TestUpdateInvalidSwapMemory(c *check.C) {
