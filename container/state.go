@@ -117,31 +117,12 @@ func wait(waitChan <-chan struct{}, timeout time.Duration) error {
 	}
 }
 
-// WaitRunning waits until state is running. If state is already
-// running it returns immediately. If you want wait forever you must
-// supply negative timeout. Returns pid, that was passed to
-// SetRunning.
-func (s *State) WaitRunning(timeout time.Duration) (int, error) {
-	s.Lock()
-	if s.Running {
-		pid := s.Pid
-		s.Unlock()
-		return pid, nil
-	}
-	waitChan := s.waitChan
-	s.Unlock()
-	if err := wait(waitChan, timeout); err != nil {
-		return -1, err
-	}
-	return s.GetPID(), nil
-}
-
 // WaitStop waits until state is stopped. If state already stopped it returns
 // immediately. If you want wait forever you must supply negative timeout.
 // Returns exit code, that was passed to SetStoppedLocking
 func (s *State) WaitStop(timeout time.Duration) (int, error) {
 	s.Lock()
-	if !s.Running || s.Restarting {
+	if !s.Running {
 		exitCode := s.ExitCode
 		s.Unlock()
 		return exitCode, nil
@@ -190,8 +171,6 @@ func (s *State) SetRunning(pid int, initial bool) {
 	if initial || s.StartedAt.IsZero() || s.StartedAt.Before(s.FinishedAt) {
 		s.StartedAt = time.Now().UTC()
 	}
-	close(s.waitChan) // fire waiters for start
-	s.waitChan = make(chan struct{})
 }
 
 // SetStoppedLocking locks the container state is sets it to "stopped".
