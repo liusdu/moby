@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -131,6 +132,7 @@ type Daemon struct {
 	Hooks                     specs.Hooks
 	hosts                     map[string]bool // hosts stores the addresses the daemon is listening on
 	startupDone               chan struct{}
+	mountingContainers        int32
 }
 
 // StoreHosts stores the addresses the daemon is listening on
@@ -764,6 +766,7 @@ func NewDaemon(config *Config, registryService *registry.Service, containerdRemo
 	d.nameIndex = registrar.NewRegistrar()
 	d.linkIndex = newLinkIndex()
 	d.containerdRemote = containerdRemote
+	d.mountingContainers = 0
 
 	go d.execCommandGC()
 
@@ -863,6 +866,12 @@ func (daemon *Daemon) Shutdown() error {
 	}
 
 	if daemon.layerStore != nil {
+		for {
+			if atomic.CompareAndSwapInt32(&daemon.mountingContainers, 0, 0) {
+				break
+			}
+			<-time.After(10 * time.Millisecond)
+		}
 		if err := daemon.layerStore.Cleanup(); err != nil {
 			logrus.Errorf("Error during layer Store.Cleanup(): %v", err)
 		}
@@ -878,6 +887,14 @@ func (daemon *Daemon) Shutdown() error {
 // Mount sets container.BaseFS
 // (is it not set coming in? why is it unset?)
 func (daemon *Daemon) Mount(container *container.Container) error {
+	atomic.AddInt32(&daemon.mountingContainers, 1)
+	defer func() {
+		atomic.AddInt32(&daemon.mountingContainers, -1)
+	}()
+	if daemon.IsShuttingDown() {
+		return fmt.Errorf("Error: daemon is shutting down")
+	}
+
 	if container.HostConfig.ExternalRootfs != "" {
 		container.BaseFS = container.HostConfig.ExternalRootfs
 		return nil
