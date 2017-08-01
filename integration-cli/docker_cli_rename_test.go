@@ -130,3 +130,12 @@ func (s *DockerSuite) TestRenameContainerWithLinkedContainer(c *check.C) {
 	c.Assert(err, checker.IsNil)
 	c.Assert(strings.TrimSpace(out), checker.Equals, strings.TrimSpace(db1))
 }
+
+// Test rename a container which namespace is shared by another container
+func (s *DockerSuite) TestRenameContainerSharedNamespaceByName(c *check.C) {
+	testRequires(c, DaemonIsLinux, SameHostDaemon, NotUserNamespace)
+	dockerCmd(c, "run", "-tid", "--name=test", "busybox")
+	dockerCmd(c, "run", "--name=testa", "--net=container:test", "--pid=container:test", "--ipc=container:test", "busybox")
+	dockerCmd(c, "rename", "test", "test2")
+	dockerCmd(c, "restart", "testa")
+}

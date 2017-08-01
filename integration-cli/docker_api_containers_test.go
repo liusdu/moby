@@ -1632,3 +1632,34 @@ func (s *DockerSuite) TestContainerKillCustomStopSignal(c *check.C) {
 	err = waitInspect(id, "{{.State.Running}} {{.State.Restarting}}", "false false", 30*time.Second)
 	c.Assert(err, checker.IsNil)
 }
+
+// Test Use ID rather than Name to identify a container when sharing namespace
+func (s *DockerSuite) TestContainerShareNamespaceByName(c *check.C) {
+	// Namespace is not supported on Windows
+	testRequires(c, DaemonIsLinux)
+
+	name := "base"
+	out, _ := runSleepingContainer(c, "--name", name)
+	id := strings.TrimSpace(out)
+	expected := "container:" + id
+
+	dockerCmd(c, "run", "--name=share", "--ipc", "container:"+name, "--pid", "container:"+name, "--net", "container:"+name, "busybox")
+
+	status, body, err := sockRequest("GET", "/containers/share/json", nil)
+	c.Assert(err, checker.IsNil)
+	c.Assert(status, checker.Equals, http.StatusOK)
+
+	var inspectJSON struct {
+		HostConfig struct {
+			IpcMode     string
+			PidMode     string
+			NetworkMode string
+		}
+	}
+	err = json.Unmarshal(body, &inspectJSON)
+	c.Assert(err, checker.IsNil, check.Commentf("unable to unmarshal response body"))
+
+	c.Assert(inspectJSON.HostConfig.IpcMode, checker.Equals, expected)
+	c.Assert(inspectJSON.HostConfig.PidMode, checker.Equals, expected)
+	c.Assert(inspectJSON.HostConfig.NetworkMode, checker.Equals, expected)
+}
