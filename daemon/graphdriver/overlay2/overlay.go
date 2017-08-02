@@ -186,9 +186,9 @@ func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (grap
 
 	d.naiveDiff = graphdriver.NewNaiveDiffDriver(d, uidMaps, gidMaps)
 
-	if backingFs == "xfs" {
-		// Try to enable project quota support over xfs.
-		if d.quotaCtl, err = quota.NewControl(home); err == nil {
+	if backingFs == "xfs" || backingFs == "extfs" {
+		// Try to enable project quota support over xfs and extfs.
+		if d.quotaCtl, err = quota.NewControl(home, backingFs); err == nil {
 			projectQuotaSupported = true
 		}
 	}
@@ -308,7 +308,7 @@ func (d *Driver) CreateReadWrite(id, parent, mountLabel string, storageOpt map[s
 func (d *Driver) Create(id, parent, mountLabel string, storageOpt map[string]string) (retErr error) {
 
 	if len(storageOpt) != 0 && !projectQuotaSupported {
-		return fmt.Errorf("--storage-opt is supported only for overlay over xfs with 'pquota' mount option")
+		return fmt.Errorf("--storage-opt is supported only for overlay over xfs or ext4 with 'prjquota' mount option")
 	}
 
 	dir := d.dir(id)

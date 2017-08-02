@@ -635,6 +635,25 @@ func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *containertypes.
 		}
 	}
 
+	if hostConfig.StorageOpt != nil && daemon.GraphDriverName() == "overlay2" {
+		_, exist := hostConfig.StorageOpt["size"]
+		if exist {
+			status := daemon.layerStore.DriverStatus()
+			if status[0][0] == "Backing Filesystem" && status[0][1] == "extfs" {
+				if hostConfig.Privileged {
+					warnings = append(warnings, "filesystem quota for overlay2 over ext4 can't take affect with privileged container")
+				} else {
+					for _, cap := range hostConfig.CapAdd {
+						if cap == "SYS_RESOURCE" {
+							warnings = append(warnings, "filesystem quota for overlay2 over ext4 can't take affect with CAP_SYS_RESOURCE")
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return warnings, nil
 }
 
