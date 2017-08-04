@@ -243,8 +243,8 @@ func supportsOverlay() error {
 
 func useNaiveDiff(home string) bool {
 	useNaiveDiffLock.Do(func() {
-		if err := hasOpaqueCopyUpBug(home); err != nil {
-			logrus.Warnf("Not using native diff for overlay2: %v", err)
+		if err := doesSupportNativeDiff(home); err != nil {
+			logrus.Warnf("Not using native diff for overlay2, this may brings a performance regression on building images: %v", err)
 			useNaiveDiffOnly = true
 		}
 	})
