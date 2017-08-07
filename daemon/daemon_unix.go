@@ -324,6 +324,9 @@ func (daemon *Daemon) adaptContainerSettings(hostConfig *containertypes.HostConf
 			return err
 		}
 	}
+
+	daemon.adaptSharedNamespaceContainer(hostConfig)
+
 	if hostConfig.MemorySwappiness == nil && sysInfo.MemorySwappiness {
 		defaultSwappiness := int64(-1)
 		hostConfig.MemorySwappiness = &defaultSwappiness
@@ -334,6 +337,32 @@ func (daemon *Daemon) adaptContainerSettings(hostConfig *containertypes.HostConf
 	}
 
 	return nil
+}
+
+// adaptSharedNamespaceContainer replaces a container name with its container ID
+// when a container shares its namespace by container name
+func (daemon *Daemon) adaptSharedNamespaceContainer(hostConfig *containertypes.HostConfig) {
+	containerPrefix := "container:"
+	if hostConfig.PidMode.IsContainer() {
+		pidContainer := hostConfig.PidMode.Container()
+		// if there is any error returned here, we just ignore it and leave it to be
+		// handled in the following logic
+		if c, err := daemon.GetContainer(pidContainer); err == nil {
+			hostConfig.PidMode = containertypes.PidMode(containerPrefix + c.ID)
+		}
+	}
+	if hostConfig.IpcMode.IsContainer() {
+		ipcContainer := hostConfig.IpcMode.Container()
+		if c, err := daemon.GetContainer(ipcContainer); err == nil {
+			hostConfig.IpcMode = containertypes.IpcMode(containerPrefix + c.ID)
+		}
+	}
+	if hostConfig.NetworkMode.IsContainer() {
+		netContainer := hostConfig.NetworkMode.ConnectedContainer()
+		if c, err := daemon.GetContainer(netContainer); err == nil {
+			hostConfig.NetworkMode = containertypes.NetworkMode(containerPrefix + c.ID)
+		}
+	}
 }
 
 func verifyContainerResources(resources *containertypes.Resources, sysInfo *sysinfo.SysInfo, update bool) ([]string, error) {
