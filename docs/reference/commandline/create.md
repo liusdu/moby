@@ -80,6 +80,7 @@ Creates a new container.
       --privileged                  Give extended privileges to this container
       --read-only                   Mount the container's root filesystem as read only
       --restart="no"                Restart policy (no, on-failure[:max-retry], always, unless-stopped)
+      --runtime=""                  Name of the runtime to be used for that container
       --security-opt=[]             Security options
       --stop-signal="SIGTERM"       Signal to stop a container
       --system-container            Extend some features only needed by running system container

@@ -352,6 +352,7 @@ type HostConfig struct {
 	Sysctls         map[string]string `json:",omitempty"` // List of Namespaced sysctls used for the container
 	ExternalRootfs  string            // External rootfs to use for container
 	SystemContainer bool              // Running system container
+	Runtime         string            `json:",omitempty"` // Runtime to use with this container
 
 	// Applicable to Windows
 	ConsoleSize [2]int    // Initial console size

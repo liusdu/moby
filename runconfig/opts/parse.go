@@ -100,9 +100,11 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		flStopSignal        = cmd.String([]string{"-stop-signal"}, signal.DefaultStopSignal, fmt.Sprintf("Signal to stop a container, %v by default", signal.DefaultStopSignal))
 		flIsolation         = cmd.String([]string{"-isolation"}, "", "Container isolation technology")
 		flShmSize           = cmd.String([]string{"-shm-size"}, "", "Size of /dev/shm, default value is 64MB")
-		flExternalRootfs    = cmd.String([]string{"-external-rootfs"}, "", "Set external rootfs for container")
-		flHookSpec          = cmd.String([]string{"-hook-spec"}, "", "file containing hook definition(prestart, poststart, poststop)")
-		flSystemContainer   = cmd.Bool([]string{"-system-container"}, false, "Extend some features only needed by running system container")
+		flRuntime           = cmd.String([]string{"-runtime"}, "", "Runtime to use for this container")
+
+		flExternalRootfs  = cmd.String([]string{"-external-rootfs"}, "", "Set external rootfs for container")
+		flHookSpec        = cmd.String([]string{"-hook-spec"}, "", "file containing hook definition(prestart, poststart, poststop)")
+		flSystemContainer = cmd.Bool([]string{"-system-container"}, false, "Extend some features only needed by running system container")
 	)
 
 	cmd.Var(&flAttach, []string{"a", "-attach"}, "Attach to STDIN, STDOUT or STDERR")
@@ -444,6 +446,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		Resources:       resources,
 		Tmpfs:           tmpfs,
 		Sysctls:         flSysctls.GetAll(),
+		Runtime:         *flRuntime,
 		ExternalRootfs:  *flExternalRootfs,
 		HookSpec:        *flHookSpec,
 		SystemContainer: *flSystemContainer,

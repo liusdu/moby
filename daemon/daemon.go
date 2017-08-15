@@ -83,6 +83,10 @@ const (
 )
 
 var (
+	// DefaultRuntimeBinary is the default runtime to be used by
+	// containerd if none is specified
+	DefaultRuntimeBinary = "docker-runc"
+
 	errSystemNotSupported = fmt.Errorf("The Docker daemon is not supported on this platform.")
 )
 
@@ -1645,6 +1649,10 @@ func (daemon *Daemon) initDiscovery(config *Config) error {
 func (daemon *Daemon) Reload(config *Config) error {
 	daemon.configStore.reloadLock.Lock()
 	defer daemon.configStore.reloadLock.Unlock()
+
+	// used to hold reloaded changes
+	attributes := map[string]string{}
+
 	if config.IsValueSet("labels") {
 		daemon.configStore.Labels = config.Labels
 	}
@@ -1656,8 +1664,9 @@ func (daemon *Daemon) Reload(config *Config) error {
 		if err := daemon.containerdRemote.UpdateOptions(libcontainerd.WithLiveRestore(config.LiveRestore)); err != nil {
 			return err
 		}
-
 	}
+	daemon.platformReload(config, &attributes)
+
 	return daemon.reloadClusterDiscovery(config)
 }
 
