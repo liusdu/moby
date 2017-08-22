@@ -85,6 +85,7 @@ type CommonContainer struct {
 	restartManager restartmanager.RestartManager
 	attachContext  *attachContext
 	Hooks          specs.Hooks
+	CgroupParent   string
 }
 
 // NewBaseContainer creates a new container with its

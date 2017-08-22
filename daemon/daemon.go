@@ -28,6 +28,7 @@ import (
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/daemon/events"
 	"github.com/docker/docker/daemon/exec"
+	"github.com/docker/docker/daemon/freezer"
 	"github.com/docker/docker/errors"
 	"github.com/docker/engine-api/types"
 	containertypes "github.com/docker/engine-api/types/container"
@@ -169,6 +170,53 @@ func (daemon *Daemon) cleanupRedundantContainers(containers map[string]*containe
 	return res
 }
 
+func (daemon *Daemon) IsNativeContainer(c *container.Container) bool {
+	runtime := c.HostConfig.Runtime
+	// For the containers which created by old docker (do not support multi-runtime)
+	// c.HostConfig.Runtime may be empty. just use the default runtime.
+	if runtime == "" {
+		runtime = daemon.configStore.GetDefaultRuntimeName()
+	}
+	rt := daemon.configStore.GetRuntime(runtime)
+	if rt != nil && filepath.Base(rt.Path) == DefaultRuntimeBinary {
+		return true
+	}
+	return false
+}
+func (daemon *Daemon) updatePauseStatus(c *container.Container) error {
+	if !daemon.IsNativeContainer(c) {
+		return nil
+	}
+
+	// update docker pause status.
+	// for old container, CgroupParent may be empty.
+	if c.CgroupParent == "" {
+		spec, err := libcontainerd.LoadContainerSpec(filepath.Join(daemon.configStore.ExecRoot, "libcontainerd"), c.ID)
+		if err != nil {
+			return err
+		}
+		c.CgroupParent = *spec.Linux.CgroupsPath
+	}
+
+	if !c.IsRunning() {
+		c.Paused = false
+		return nil
+	}
+
+	useSystemd := UsingSystemd(daemon.configStore)
+	freeze, err := freezer.New(c.ID, c.CgroupParent, useSystemd)
+	if err != nil {
+		return err
+	}
+
+	paused, err := freeze.IsPaused()
+	if err != nil {
+		return err
+	}
+	c.Paused = paused
+	return nil
+}
+
 func (daemon *Daemon) restore() error {
 	var (
 		debug         = utils.IsDebugEnabled()
@@ -219,6 +267,11 @@ func (daemon *Daemon) restore() error {
 			logrus.Errorf("Failed to register container %s: %s", c.ID, err)
 			continue
 		}
+
+		if err := daemon.updatePauseStatus(c); err != nil {
+			logrus.Errorf("Failed to update pause status for container %s: %s", c.ID, err)
+		}
+
 		if err := daemon.Register(c); err != nil {
 			logrus.Errorf("Failed to register container %s: %s", c.ID, err)
 			continue

@@ -1,6 +1,10 @@
 package libcontainerd
 
 import (
+	"encoding/json"
+	"io/ioutil"
+	"path/filepath"
+
 	containerd "github.com/docker/containerd/api/grpc/types"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
@@ -49,4 +53,20 @@ func convertRlimits(sr []specs.Rlimit) (cr []*containerd.Rlimit) {
 		})
 	}
 	return
+}
+
+func LoadContainerSpec(stateDir, id string) (*specs.Spec, error) {
+	var spec specs.Spec
+	dir, err := filepath.Abs(stateDir)
+	if err != nil {
+		return nil, err
+	}
+	dt, err := ioutil.ReadFile(filepath.Join(dir, id, configFilename))
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(dt, &spec); err != nil {
+		return nil, err
+	}
+	return &spec, nil
 }

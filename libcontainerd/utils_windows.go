@@ -1,6 +1,9 @@
 package libcontainerd
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // setupEnvironmentVariables convert a string array of environment variables
 // into a map as required by the HCS. Source array is in format [v1=k1] [v2=k2] etc.
@@ -13,4 +16,8 @@ func setupEnvironmentVariables(a []string) map[string]string {
 		}
 	}
 	return r
+}
+
+func LoadContainerSpec(stateDir, id string) (*specs.Spec, error) {
+	return nil, fmt.Errorf("not supported")
 }
