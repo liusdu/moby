@@ -2,6 +2,7 @@
 set -e
 
 # this script is used to update vendored dependencies
+# it depends on commands like `go list`, so make sure your code is in $GOPATH before using this script.
 #
 # Usage:
 # vendor.sh revendor all dependencies
