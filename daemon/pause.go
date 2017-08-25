@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/docker/docker/container"
+	"github.com/docker/docker/daemon/freezer"
 )
 
 // ContainerPause pauses a container
@@ -41,9 +42,22 @@ func (daemon *Daemon) containerPause(container *container.Container) error {
 		return errContainerIsRestarting(container.ID)
 	}
 
-	if err := daemon.containerd.Pause(container.ID); err != nil {
-		return fmt.Errorf("Cannot pause container %s: %s", container.ID, err)
-	}
+	if daemon.IsNativeContainer(container) {
+		freezer, err := freezer.New(container.ID, container.CgroupParent, UsingSystemd(daemon.configStore))
+		if err != nil {
+			return fmt.Errorf("Failed to create freezer for container %s: %v", container.ID, err)
+		}
 
+		if err := freezer.Pause(); err != nil {
+			return fmt.Errorf("Cannot pause container %s: %v", container.ID, err)
+		}
+
+		container.Paused = true
+		daemon.LogContainerEvent(container, "pause")
+	} else {
+		if err := daemon.containerd.Pause(container.ID); err != nil {
+			return fmt.Errorf("Cannot pause container %s: %s", container.ID, err)
+		}
+	}
 	return nil
 }

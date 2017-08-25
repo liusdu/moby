@@ -634,6 +634,7 @@ func (daemon *Daemon) createSpec(c *container.Container) (*libcontainerd.Spec, e
 		cgroupsPath = filepath.Join(parent, c.ID)
 	}
 	s.Linux.CgroupsPath = &cgroupsPath
+	c.CgroupParent = cgroupsPath
 
 	if err := setResources(&s, c.HostConfig.Resources); err != nil {
 		return nil, fmt.Errorf("linux runtime spec resources: %v", err)
