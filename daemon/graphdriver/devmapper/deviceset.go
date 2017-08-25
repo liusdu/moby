@@ -1758,6 +1758,12 @@ func (devices *DeviceSet) initDevmapper(doInit bool) (retErr error) {
 			}
 			logrus.Debugf("devmapper: remove broken device: %s", name)
 		}
+		if _, err := os.Stat(filepath.Join("/dev/mapper/", name)); err != nil {
+			if err := devicemapper.RemoveDevice(name); err != nil {
+				logrus.Warnf("devmapper: remove incompelete device(%s): %v", name, err)
+			}
+			logrus.Debugf("devmapper: remove incompelete device: %s", name)
+		}
 	}
 
 	// Check for the existence of the thin-pool device
