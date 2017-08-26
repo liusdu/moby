@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -19,6 +20,7 @@ var (
 type Store interface {
 	Create(config []byte) (ID, error)
 	Get(id ID) (*Image, error)
+	GetAndCheck(id ID) (*Image, error)
 	Delete(id ID) ([]layer.Metadata, error)
 	HoldOn(id ID) error
 	HoldOff(id ID) error
@@ -222,6 +224,14 @@ func (is *store) Get(id ID) (*Image, error) {
 	}
 
 	return img, nil
+}
+
+func (is *store) GetAndCheck(id ID) (*Image, error) {
+	if is.images[id] == nil {
+		return nil, os.ErrNotExist
+	}
+
+	return is.Get(id)
 }
 
 func (is *store) Delete(id ID) ([]layer.Metadata, error) {
