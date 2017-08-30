@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.11.2.44 (2017-08-30)
+
+- Bump containerd
+- Bump runc
+- Bump golang to 1.8.3
+- Feature: Support set filesystem quota if ext4 support project quota (mr 713)
+- Feature: Add support for multiple runtimes (mr 368)
+- Feature: move pause function to docker (mr 712)
+- Bugfix: Grow the container rootfs when it is necessary (mr 720)
+- Bugfix: Ignore "no such file" error when docker cannot find `resolv.conf` (mr 728)
+- Bugfix: devicemapper: cleanup incompleted device while docker startup (mr 727 fix DTS2017081609097)
+- Bugfix: Use ID rather than Name to identify a container when sharing namespace (mr 708 fix DTS2017072706244)
+- Bugfix: Forbidden mount container rootfs while daemon is shutting down (mr 700 fix DTS2017072506006)
+- Bugfix: Keep upstream's behaviour when docker wait (mr 655)
+- Bugfix: deal with firewalld/docker startup issues (mr 733 fix DTS2017082507189)
+
 ## v1.11.2.42 (2017-07-26)
 
 - Bump containerd
