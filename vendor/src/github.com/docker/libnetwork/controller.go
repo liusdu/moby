@@ -185,6 +185,8 @@ func New(cfgOptions ...config.Option) (NetworkController, error) {
 		return nil, err
 	}
 
+	c.WalkNetworks(populateSpecial)
+
 	c.reservePools()
 
 	c.sandboxCleanup(c.cfg.ActiveSandboxes)
