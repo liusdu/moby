@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.2.45 (2017-09-11)
+
+- Bump containerd
+  - Use force to delete runtime (fix DTS2017090701599)
+- Remove pause/resume from StateChanged because we have move pause to docker.(mr 745 fix DTS2017090609283)
+
 ## v1.11.2.44 (2017-08-30)
 
 - Bump containerd
