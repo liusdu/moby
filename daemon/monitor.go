@@ -101,17 +101,25 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 		}
 		daemon.LogContainerEvent(c, "start")
 	case libcontainerd.StatePause:
-		c.Paused = true
-		if err := c.ToDisk(); err != nil {
-			return err
+		if daemon.IsNativeContainer(c) {
+			logrus.Infof("Pause is moved to docker, skip.")
+		} else {
+			c.Paused = true
+			if err := c.ToDisk(); err != nil {
+				return err
+			}
+			daemon.LogContainerEvent(c, "pause")
 		}
-		daemon.LogContainerEvent(c, "pause")
 	case libcontainerd.StateResume:
-		c.Paused = false
-		if err := c.ToDisk(); err != nil {
-			return err
+		if daemon.IsNativeContainer(c) {
+			logrus.Infof("Resume is moved to docker, skip.")
+		} else {
+			c.Paused = false
+			if err := c.ToDisk(); err != nil {
+				return err
+			}
+			daemon.LogContainerEvent(c, "unpause")
 		}
-		daemon.LogContainerEvent(c, "unpause")
 	}
 
 	return nil
