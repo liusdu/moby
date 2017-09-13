@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -193,9 +194,24 @@ func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (grap
 		}
 	}
 
+	d.cleanupLinkDir()
+
 	logrus.Debugf("backingFs=%s,  projectQuotaSupported=%v", backingFs, projectQuotaSupported)
 
 	return d, nil
+}
+
+func (d *Driver) cleanupLinkDir() {
+	filepath.Walk(path.Join(d.home, linkDir), func(path string, f os.FileInfo, err error) error {
+		if _, serr := filepath.EvalSymlinks(path); serr != nil {
+			logrus.Warnf("[overlay2]: remove invalid symlink: %s", path)
+			os.RemoveAll(path)
+		}
+		// always return nil, to walk all the symlink
+		return nil
+	})
+
+	return
 }
 
 func parseOptions(options []string) (*overlayOptions, error) {
@@ -456,16 +472,16 @@ func (d *Driver) Remove(id string) error {
 	d.locker.Lock(id)
 	defer d.locker.Unlock(id)
 	dir := d.dir(id)
-	lid, err := ioutil.ReadFile(path.Join(dir, "link"))
-	if err == nil {
+	lid, lerr := ioutil.ReadFile(path.Join(dir, "link"))
+	if err := system.EnsureRemoveAll(dir); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if lerr == nil {
 		if err := os.RemoveAll(path.Join(d.home, linkDir, string(lid))); err != nil {
 			logrus.Debugf("Failed to remove link: %v", err)
 		}
 	}
 
-	if err := system.EnsureRemoveAll(dir); err != nil && !os.IsNotExist(err) {
-		return err
-	}
 	return nil
 }
 
@@ -583,8 +599,38 @@ func (d *Driver) Put(id string) error {
 
 // Exists checks to see if the id is already mounted.
 func (d *Driver) Exists(id string) bool {
-	_, err := os.Stat(d.dir(id))
-	return err == nil
+	var rerr error
+	defer func() {
+		if rerr != nil {
+			d.Remove(id)
+		}
+	}()
+
+	_, rerr = os.Stat(d.dir(id))
+	if rerr == nil {
+		lstr, err := ioutil.ReadFile(path.Join(d.dir(id), "link"))
+		if err != nil || string(lstr) == "" {
+			rerr = fmt.Errorf("Invalid link")
+			return false
+		}
+
+		_, rerr = os.Stat(path.Join(d.home, linkDir, string(lstr)))
+		if rerr != nil {
+			os.RemoveAll(path.Join(d.home, linkDir, string(lstr)))
+
+			lid := generateID(idLength)
+			if rerr = os.Symlink(path.Join("..", id, "diff"), path.Join(d.home, linkDir, lid)); rerr != nil {
+				return false
+			}
+
+			if rerr = ioutil.WriteFile(path.Join(d.dir(id), "link"), []byte(lid), 0644); rerr != nil {
+				return false
+			}
+			return true
+		}
+		return true
+	}
+	return false
 }
 
 // ApplyDiff applies the new layer into a root
