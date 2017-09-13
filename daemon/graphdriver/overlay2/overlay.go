@@ -602,15 +602,21 @@ func (d *Driver) Exists(id string) bool {
 	var rerr error
 	defer func() {
 		if rerr != nil {
+			logrus.Warnf("layer(%s) not exist: %s", id, rerr)
 			d.Remove(id)
 		}
 	}()
 
+	// check if the id directory exist and is valid
+	// check if link file exist and get link string from it
+	// check if symlink file exist
+	// if symlink not exist, create a new one and update link file
+	// any steps failed ,we will return false and remove this id layer
 	_, rerr = os.Stat(d.dir(id))
 	if rerr == nil {
 		lstr, err := ioutil.ReadFile(path.Join(d.dir(id), "link"))
 		if err != nil || string(lstr) == "" {
-			rerr = fmt.Errorf("Invalid link")
+			rerr = fmt.Errorf("Invalid link file")
 			return false
 		}
 
@@ -619,6 +625,7 @@ func (d *Driver) Exists(id string) bool {
 			os.RemoveAll(path.Join(d.home, linkDir, string(lstr)))
 
 			lid := generateID(idLength)
+			logrus.Infof("[overlay2]: former symlink (%s) is missing, create a new one(%s)", lstr, lid)
 			if rerr = os.Symlink(path.Join("..", id, "diff"), path.Join(d.home, linkDir, lid)); rerr != nil {
 				return false
 			}
