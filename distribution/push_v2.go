@@ -17,6 +17,7 @@ import (
 	"github.com/docker/docker/distribution/xfer"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/layer"
+	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/pkg/progress"
 	"github.com/docker/docker/pkg/stringid"
@@ -360,7 +361,7 @@ func (pd *v2PushDescriptor) Upload(ctx context.Context, progressOutput progress.
 	size, _ := pd.layer.DiffSize()
 
 	reader := progress.NewProgressReader(ioutils.NewCancelReadCloser(ctx, arch), progressOutput, size, pd.ID(), "Pushing")
-	compressedReader, compressionDone := compress(reader)
+	compressedReader, compressionDone := archive.Compress(reader)
 	defer func() {
 		reader.Close()
 		<-compressionDone

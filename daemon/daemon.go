@@ -1102,9 +1102,9 @@ func (daemon *Daemon) PullOnBuild(ctx context.Context, name string, authConfigs 
 // stream. All images with the given tag and all versions containing
 // the same tag are exported. names is the set of tags to export, and
 // outStream is the writer which the images are written to.
-func (daemon *Daemon) ExportImage(names []string, outStream io.Writer) error {
+func (daemon *Daemon) ExportImage(names []string, compress bool, outStream io.Writer) error {
 	imageExporter := tarexport.NewTarExporter(daemon.imageStore, daemon.layerStore, daemon.referenceStore)
-	return imageExporter.Save(names, outStream)
+	return imageExporter.Save(names, compress, outStream)
 }
 
 // PushImage initiates a push operation on the repository named localName.
