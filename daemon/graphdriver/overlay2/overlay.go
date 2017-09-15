@@ -494,7 +494,7 @@ func (d *Driver) Remove(id string) error {
 	if err := system.EnsureRemoveAll(dir); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	if lerr == nil {
+	if lerr == nil && len(string(lid)) == idLength {
 		if err := os.RemoveAll(path.Join(d.home, linkDir, string(lid))); err != nil {
 			logrus.Debugf("Failed to remove link: %v", err)
 		}
@@ -633,27 +633,20 @@ func (d *Driver) Exists(id string) bool {
 	_, rerr = os.Stat(d.dir(id))
 	if rerr == nil {
 		lstr, err := ioutil.ReadFile(path.Join(d.dir(id), "link"))
-		if err != nil || string(lstr) == "" {
-			rerr = fmt.Errorf("Invalid link file")
-			return false
-		}
+		// link is valid
+		if err == nil && len(string(lstr)) == idLength {
+			// check symlink
+			_, rerr = os.Stat(path.Join(d.home, linkDir, string(lstr)))
+			if rerr != nil {
+				os.RemoveAll(path.Join(d.home, linkDir, string(lstr)))
 
-		_, rerr = os.Stat(path.Join(d.home, linkDir, string(lstr)))
-		if rerr != nil {
-			os.RemoveAll(path.Join(d.home, linkDir, string(lstr)))
-
-			lid := generateID(idLength)
-			logrus.Infof("[overlay2]: former symlink (%s) is missing, create a new one(%s)", lstr, lid)
-			if rerr = os.Symlink(path.Join("..", id, "diff"), path.Join(d.home, linkDir, lid)); rerr != nil {
-				return false
-			}
-
-			if rerr = ioutil.WriteFile(path.Join(d.dir(id), "link"), []byte(lid), 0644); rerr != nil {
-				return false
+				logrus.Infof("[overlay2]: symlink (%s) is missing, create a new one", lstr)
+				if rerr = os.Symlink(path.Join("..", id, "diff"), path.Join(d.home, linkDir, string(lstr))); rerr != nil {
+					return false
+				}
 			}
 			return true
 		}
-		return true
 	}
 	return false
 }
