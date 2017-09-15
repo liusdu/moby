@@ -157,6 +157,11 @@ func (ls *layerStore) loadLayer(layer ChainID) (l *roLayer, err error) {
 			return nil, err
 		}
 		cl.parent = p
+	} else {
+		_, err := ls.driver.GetMetadata(cacheID)
+		if err != nil {
+			return nil, fmt.Errorf("cacheID %s for layer %s does not have metadata ", cacheID, layer)
+		}
 	}
 
 	ls.layerMap[cl.chainID] = cl
