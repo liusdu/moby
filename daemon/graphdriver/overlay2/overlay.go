@@ -306,6 +306,24 @@ func (d *Driver) GetMetadata(id string) (map[string]string, error) {
 	return metadata, nil
 }
 
+// CheckParent checks the relationship between id and parent
+func (d *Driver) CheckParent(id, parent string) error {
+	metadata, err := d.GetMetadata(id)
+	if err != nil {
+		return err
+	}
+	lowerDirs, exist := metadata["LowerDir"]
+	if !exist {
+		return fmt.Errorf("%s does not have lower layers", id)
+	}
+
+	if !strings.Contains(lowerDirs, parent) {
+		return fmt.Errorf("Lower layer(%s) of %s does not exist", parent, id)
+	}
+	return nil
+
+}
+
 // Cleanup any state created by overlay which should be cleaned when daemon
 // is being shutdown. For now, we just have to unmount the bind mounted
 // we had created.

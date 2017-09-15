@@ -156,6 +156,11 @@ func (ls *layerStore) loadLayer(layer ChainID) (l *roLayer, err error) {
 		if err != nil {
 			return nil, err
 		}
+
+		err = ls.driver.CheckParent(cacheID, p.cacheID)
+		if err != nil {
+			return nil, err
+		}
 		cl.parent = p
 	} else {
 		_, err := ls.driver.GetMetadata(cacheID)

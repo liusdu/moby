@@ -74,6 +74,9 @@ type ProtoDriver interface {
 	// held by the driver, e.g., unmounting all layered filesystems
 	// known to this driver.
 	Cleanup() error
+
+	// CheckParent checks whether the parent is the right lower layer
+	CheckParent(id, parent string) error
 }
 
 // DiffDriver is the interface to use to implement graph diffs

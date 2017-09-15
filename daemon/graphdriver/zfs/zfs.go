@@ -212,6 +212,11 @@ func (d *Driver) GetMetadata(id string) (map[string]string, error) {
 	return nil, nil
 }
 
+// CheckParent not implemented
+func (d *Driver) CheckParent(id, parent string) error {
+	return nil
+}
+
 func (d *Driver) cloneFilesystem(name, parentName string) error {
 	snapshotName := fmt.Sprintf("%d", time.Now().Nanosecond())
 	parentDataset := zfs.Dataset{Name: parentName}

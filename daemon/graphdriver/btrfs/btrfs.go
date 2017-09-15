@@ -99,6 +99,11 @@ func (d *Driver) GetMetadata(id string) (map[string]string, error) {
 	return nil, nil
 }
 
+// CheckParent not implemented
+func (d *Driver) CheckParent(id, parent string) error {
+	return nil
+}
+
 // Cleanup unmounts the home directory.
 func (d *Driver) Cleanup() error {
 	return mount.Unmount(d.home)

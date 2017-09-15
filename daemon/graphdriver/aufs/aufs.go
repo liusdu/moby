@@ -201,6 +201,11 @@ func (a *Driver) Exists(id string) bool {
 	return true
 }
 
+// CheckParent not implemented
+func (a *Driver) CheckParent(id, parent string) error {
+	return nil
+}
+
 // CreateReadWrite creates a layer that is writable for use as a container
 // file system.
 func (a *Driver) CreateReadWrite(id, parent, mountLabel string, storageOpt map[string]string) error {
