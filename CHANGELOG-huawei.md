@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.11.2.46 (2017-09-18)
+
+- Bump containerd and runc
+  - Signal: kill shim if it didn't reap child
+  - restore: ignore loading error for exec process
+  - events: ignore begin transection errors
+  - try to runc delete container when start timeout
+  - update state earlier to avoid cgroup leak when process failed
+- Add file fds limit
+
 ## v1.11.2.45 (2017-09-11)
 
 - Bump containerd
