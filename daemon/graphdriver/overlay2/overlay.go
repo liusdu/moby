@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -193,9 +194,24 @@ func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (grap
 		}
 	}
 
+	d.cleanupLinkDir()
+
 	logrus.Debugf("backingFs=%s,  projectQuotaSupported=%v", backingFs, projectQuotaSupported)
 
 	return d, nil
+}
+
+func (d *Driver) cleanupLinkDir() {
+	filepath.Walk(path.Join(d.home, linkDir), func(path string, f os.FileInfo, err error) error {
+		if _, serr := filepath.EvalSymlinks(path); serr != nil {
+			logrus.Warnf("[overlay2]: remove invalid symlink: %s", path)
+			os.RemoveAll(path)
+		}
+		// always return nil, to walk all the symlink
+		return nil
+	})
+
+	return
 }
 
 func parseOptions(options []string) (*overlayOptions, error) {
@@ -288,6 +304,24 @@ func (d *Driver) GetMetadata(id string) (map[string]string, error) {
 	}
 
 	return metadata, nil
+}
+
+// CheckParent checks the relationship between id and parent
+func (d *Driver) CheckParent(id, parent string) error {
+	metadata, err := d.GetMetadata(id)
+	if err != nil {
+		return err
+	}
+	lowerDirs, exist := metadata["LowerDir"]
+	if !exist {
+		return fmt.Errorf("%s does not have lower layers", id)
+	}
+
+	if !strings.Contains(lowerDirs, parent) {
+		return fmt.Errorf("Lower layer(%s) of %s does not exist", parent, id)
+	}
+	return nil
+
 }
 
 // Cleanup any state created by overlay which should be cleaned when daemon
@@ -456,16 +490,16 @@ func (d *Driver) Remove(id string) error {
 	d.locker.Lock(id)
 	defer d.locker.Unlock(id)
 	dir := d.dir(id)
-	lid, err := ioutil.ReadFile(path.Join(dir, "link"))
-	if err == nil {
+	lid, lerr := ioutil.ReadFile(path.Join(dir, "link"))
+	if err := system.EnsureRemoveAll(dir); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if lerr == nil && len(string(lid)) == idLength {
 		if err := os.RemoveAll(path.Join(d.home, linkDir, string(lid))); err != nil {
 			logrus.Debugf("Failed to remove link: %v", err)
 		}
 	}
 
-	if err := system.EnsureRemoveAll(dir); err != nil && !os.IsNotExist(err) {
-		return err
-	}
 	return nil
 }
 
@@ -583,8 +617,38 @@ func (d *Driver) Put(id string) error {
 
 // Exists checks to see if the id is already mounted.
 func (d *Driver) Exists(id string) bool {
-	_, err := os.Stat(d.dir(id))
-	return err == nil
+	var rerr error
+	defer func() {
+		if rerr != nil {
+			logrus.Warnf("layer(%s) not exist: %s", id, rerr)
+			d.Remove(id)
+		}
+	}()
+
+	// check if the id directory exist and is valid
+	// check if link file exist and get link string from it
+	// check if symlink file exist
+	// if symlink not exist, create a new one and update link file
+	// any steps failed ,we will return false and remove this id layer
+	_, rerr = os.Stat(d.dir(id))
+	if rerr == nil {
+		lstr, err := ioutil.ReadFile(path.Join(d.dir(id), "link"))
+		// link is valid
+		if err == nil && len(string(lstr)) == idLength {
+			// check symlink
+			_, rerr = os.Stat(path.Join(d.home, linkDir, string(lstr)))
+			if rerr != nil {
+				os.RemoveAll(path.Join(d.home, linkDir, string(lstr)))
+
+				logrus.Infof("[overlay2]: symlink (%s) is missing, create a new one", lstr)
+				if rerr = os.Symlink(path.Join("..", id, "diff"), path.Join(d.home, linkDir, string(lstr))); rerr != nil {
+					return false
+				}
+			}
+			return true
+		}
+	}
+	return false
 }
 
 // ApplyDiff applies the new layer into a root

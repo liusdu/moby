@@ -29,9 +29,10 @@ type saveSession struct {
 	images       map[image.ID]*imageDescriptor
 	savedLayers  map[string]struct{}
 	holdonImages map[image.ID]struct{}
+	compress     bool
 }
 
-func (l *tarexporter) Save(names []string, outStream io.Writer) error {
+func (l *tarexporter) Save(names []string, compress bool, outStream io.Writer) error {
 	images, err := l.parseNames(names)
 	if err != nil {
 		return err
@@ -42,6 +43,7 @@ func (l *tarexporter) Save(names []string, outStream io.Writer) error {
 		images:       images,
 		savedLayers:  make(map[string]struct{}),
 		holdonImages: make(map[image.ID]struct{}),
+		compress:     compress,
 	}
 	defer s.holdOffImages()
 	if err := s.holdOnImages(); err != nil {
@@ -335,7 +337,17 @@ func (s *saveSession) saveLayer(id layer.ChainID, legacyImg image.V1Image, creat
 	}
 	defer arch.Close()
 
-	if _, err := io.Copy(tarFile, arch); err != nil {
+	reader := arch
+	var compressionDone chan struct{}
+	if s.compress {
+		reader, compressionDone = archive.Compress(arch)
+		defer func() {
+			reader.Close()
+			<-compressionDone
+		}()
+	}
+
+	if _, err := io.Copy(tarFile, reader); err != nil {
 		return err
 	}
 

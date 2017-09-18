@@ -235,6 +235,11 @@ func (d *Driver) GetMetadata(id string) (map[string]string, error) {
 	return metadata, nil
 }
 
+// CheckParent not implemented
+func (d *Driver) CheckParent(id, parent string) error {
+	return nil
+}
+
 // Cleanup simply returns nil and do not change the existing filesystem.
 // This is required to satisfy the graphdriver.Driver interface.
 func (d *Driver) Cleanup() error {

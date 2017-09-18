@@ -18,6 +18,7 @@ import (
 func (cli *DockerCli) CmdSave(args ...string) error {
 	cmd := Cli.Subcmd("save", []string{"IMAGE [IMAGE...]"}, Cli.DockerCommands["save"].Description+" (streamed to STDOUT by default)", true)
 	outfile := cmd.String([]string{"o", "-output"}, "", "Write to a file, instead of STDOUT")
+	compress := cmd.Bool([]string{"c", "-compress"}, false, "Compress layers when saving images")
 	cmd.Require(flag.Min, 1)
 
 	cmd.ParseFlags(args, true)
@@ -26,7 +27,7 @@ func (cli *DockerCli) CmdSave(args ...string) error {
 		return errors.New("Cowardly refusing to save to a terminal. Use the -o flag or redirect.")
 	}
 
-	responseBody, err := cli.client.ImageSave(context.Background(), cmd.Args())
+	responseBody, err := cli.client.ImageSave(context.Background(), cmd.Args(), *compress)
 	if err != nil {
 		return err
 	}

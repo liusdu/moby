@@ -113,6 +113,11 @@ func (d *Driver) GetMetadata(id string) (map[string]string, error) {
 	return metadata, nil
 }
 
+// CheckParent not implemented
+func (d *Driver) CheckParent(id, parent string) error {
+	return nil
+}
+
 // Cleanup unmounts a device.
 func (d *Driver) Cleanup() error {
 	err := d.DeviceSet.Shutdown(d.home)

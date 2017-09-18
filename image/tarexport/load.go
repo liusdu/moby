@@ -161,7 +161,7 @@ func (l *tarexporter) printImageToBePulled(imgID image.ID, outStream io.Writer) 
 		}
 
 		from := img.From
-		img, err = l.is.Get(image.ID(fromID))
+		img, err = l.is.GetAndCheck(image.ID(fromID))
 		if err != nil {
 			if os.IsNotExist(err) {
 				outStream.Write([]byte(fmt.Sprintf("ToBePulled: %s\n", from)))

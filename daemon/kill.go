@@ -94,6 +94,7 @@ func (daemon *Daemon) killWithSignal(container *container.Container, sig int) er
 
 	if err := daemon.kill(container, sig); err != nil {
 		err = fmt.Errorf("Cannot kill container %s: %s", container.ID, err)
+		container.SetError(err)
 		// if container or process not exists, ignore the error
 		if strings.Contains(err.Error(), "container not found") ||
 			strings.Contains(err.Error(), "no such process") {
@@ -107,6 +108,31 @@ func (daemon *Daemon) killWithSignal(container *container.Container, sig int) er
 		"signal": fmt.Sprintf("%d", sig),
 	}
 	daemon.LogContainerEventWithAttributes(container, "kill", attributes)
+	return nil
+}
+
+func (daemon *Daemon) waitAndChangeStat(container *container.Container) error {
+	// Here we wait 2 minutes for daemon to handle exit event
+	// of this container. After this, if the container is still
+	// running, maybe the exit event had lost, then we call
+	// StateChanged() to change the container's state to exited.
+	// If the real exit event arrives after some time, daemon
+	// will call StateChanged() again, then we can see following
+	// message in daemon's log:
+	// ```
+	// level=warning msg="error locating sandbox id <containerID>: sandbox <containerID> not found"
+	// level=warning msg="failed to cleanup ipc mounts:\nfailed to umount /var/lib/docker/containers/<containerID>/shm: invalid argument"
+	// level=debug msg="Failed to unmount <mountID> overlay: invalid argument"
+	// ```
+	container.WaitStop(120 * time.Second)
+	if container.IsRunning() {
+		logrus.Warnf("Failed to receive exit event of container %v after 2 minutes, manually change its status to exited", container.ID)
+		return daemon.StateChanged(container.ID, libcontainerd.StateInfo{
+			CommonStateInfo: libcontainerd.CommonStateInfo{
+				State:    libcontainerd.StateExit,
+				ExitCode: 255,
+			}})
+	}
 	return nil
 }
 
@@ -129,28 +155,7 @@ func (daemon *Daemon) Kill(container *container.Container) error {
 		// by that time the container is still running, then the error
 		// we got is probably valid and so we return it to the caller.
 		if isErrNoSuchProcess(err) {
-			// Here we wait 2 minutes for daemon to handle exit event
-			// of this container. After this, if the container is still
-			// running, maybe the exit event had lost, then we call
-			// StateChanged() to change the container's state to exited.
-			// If the real exit event arrives after some time, daemon
-			// will call StateChanged() again, then we can see following
-			// message in daemon's log:
-			// ```
-			// level=warning msg="error locating sandbox id <containerID>: sandbox <containerID> not found"
-			// level=warning msg="failed to cleanup ipc mounts:\nfailed to umount /var/lib/docker/containers/<containerID>/shm: invalid argument"
-			// level=debug msg="Failed to unmount <mountID> overlay: invalid argument"
-			// ```
-			container.WaitStop(120 * time.Second)
-			if container.IsRunning() {
-				logrus.Warnf("Failed to receive exit event of container %v after 2 minutes, manually change its status to exited", container.ID)
-				return daemon.StateChanged(container.ID, libcontainerd.StateInfo{
-					CommonStateInfo: libcontainerd.CommonStateInfo{
-						State:    libcontainerd.StateExit,
-						ExitCode: 255,
-					}})
-			}
-			return nil
+			return daemon.waitAndChangeStat(container)
 		}
 
 		if container.IsRunning() {
@@ -164,30 +169,21 @@ func (daemon *Daemon) Kill(container *container.Container) error {
 	// 2. Wait for the process to die, in last resort, try to kill the process directly
 	if err := killProcessDirectly(container); err != nil {
 		if isErrNoSuchProcess(err) {
-			// Here we wait 2 minutes for daemon to handle exit event
-			// of this container. After this, if the container is still
-			// running, maybe the exit event had lost, then we call
-			// StateChanged() to change the container's state to exited.
-			// If the real exit event arrives after some time, daemon
-			// will call StateChanged() again, then we can see following
-			// message in daemon's log:
-			// ```
-			// level=warning msg="error locating sandbox id <containerID>: sandbox <containerID> not found"
-			// level=warning msg="failed to cleanup ipc mounts:\nfailed to umount /var/lib/docker/containers/<containerID>/shm: invalid argument"
-			// level=debug msg="Failed to unmount <mountID> overlay: invalid argument"
-			// ```
-			container.WaitStop(120 * time.Second)
-			if container.IsRunning() {
-				logrus.Warnf("Failed to receive exit event of container %v after 2 minutes, manually change its status to exited", container.ID)
-				return daemon.StateChanged(container.ID, libcontainerd.StateInfo{
-					CommonStateInfo: libcontainerd.CommonStateInfo{
-						State:    libcontainerd.StateExit,
-						ExitCode: 255,
-					}})
-			}
-			return nil
+			return daemon.waitAndChangeStat(container)
 		}
+
 		return err
+	}
+
+	//when we kill a container, containerd rerurns "container not found".
+	//There will be two reasons:
+	// * the container has exit but daemon havent deal with the 'exit' event
+	// * the container is out of the control.
+	//For the second reason, container will never send the 'exit' event. So
+	//we just wait for 2 minutes.
+	if strings.Contains(container.Error, "container not found") {
+		return daemon.waitAndChangeStat(container)
+
 	}
 
 	container.WaitStop(-1 * time.Second)

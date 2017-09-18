@@ -246,7 +246,9 @@ func (s *imageRouter) getImagesGet(ctx context.Context, w http.ResponseWriter, r
 		names = r.Form["names"]
 	}
 
-	if err := s.backend.ExportImage(names, output); err != nil {
+	compress := httputils.BoolValueOrDefault(r, "compress", false)
+
+	if err := s.backend.ExportImage(names, compress, output); err != nil {
 		if !output.Flushed() {
 			return err
 		}
