@@ -303,6 +303,12 @@ type Pids struct {
 	Limit *int64 `json:"limit,omitempty"`
 }
 
+// Files for Linux cgroup 'files' resource management (https://lwn.net/Articles/604129/)
+type Files struct {
+	// Maximum number of open files".
+	Limit *int64 `json:"limit,omitempty"`
+}
+
 // Network identification and priority configuration
 type Network struct {
 	// Set class identifier for container's network packets
@@ -325,6 +331,8 @@ type Resources struct {
 	CPU *CPU `json:"cpu,omitempty"`
 	// Task resource restriction configuration.
 	Pids *Pids `json:"pids,omitempty"`
+	// Files resource restriction configuration.
+	Files *Files `json:"files,omitempty"`
 	// BlockIO restriction configuration
 	BlockIO *BlockIO `json:"blockIO,omitempty"`
 	// Hugetlb limit (in bytes)

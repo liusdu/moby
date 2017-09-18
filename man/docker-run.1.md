@@ -64,6 +64,7 @@ docker-run - Run a command in a new container
 [**--pid**[=*[PID]*]]
 [**--userns**[=*[]*]]
 [**--pids-limit**[=*PIDS_LIMIT*]]
+[**--files-limit**[=*FILES_LIMIT*]]
 [**--privileged**]
 [**--read-only**]
 [**--restart**[=*RESTART*]]
@@ -482,6 +483,9 @@ Use `docker port` to see the actual mapping: `docker port CONTAINER $CONTAINERPO
 
 **--pids-limit**=""
    Tune the container's pids limit. Set `-1` to have unlimited pids for the container.
+
+**--files-limit**=""
+   Tune the container's files limit. Set `-1` to have max files for the container.
 
 **--uts**=*host*
    Set the UTS mode for the container

@@ -256,6 +256,7 @@ type Resources struct {
 	MemorySwappiness     *int64          // Tuning container memory swappiness behaviour
 	OomKillDisable       *bool           // Whether to disable OOM Killer or not
 	PidsLimit            int64           // Setting pids limit for a container
+	FilesLimit           int64           // Setting files limit for a container
 	Ulimits              []*units.Ulimit // List of ulimits to be set in the container
 
 	// Applicable to Windows

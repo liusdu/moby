@@ -18,7 +18,7 @@ type SysInfo struct {
 	cgroupBlkioInfo
 	cgroupCpusetInfo
 	cgroupPids
-
+	cgroupFiles
 	// Whether IPv4 forwarding is supported or not, if this was disabled, networking will not work
 	IPv4ForwardingDisabled bool
 
@@ -102,6 +102,11 @@ type cgroupCpusetInfo struct {
 type cgroupPids struct {
 	// Whether Pids Limit is supported or not
 	PidsLimit bool
+}
+
+type cgroupFiles struct {
+	// Whether Files Limit is supported or not
+	FilesLimit bool
 }
 
 // IsCpusetCpusAvailable returns `true` if the provided string set is contained

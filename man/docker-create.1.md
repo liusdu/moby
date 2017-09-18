@@ -62,6 +62,7 @@ docker-create - Create a new container
 [**--pid**[=*[PID]*]]
 [**--userns**[=*[]*]]
 [**--pids-limit**[=*PIDS_LIMIT*]]
+[**--files-limit**[=*FILES_LIMIT*]]
 [**--privileged**]
 [**--read-only**]
 [**--restart**[=*RESTART*]]
@@ -304,6 +305,9 @@ unit, `b` is used. Set LIMIT to `-1` to enable unlimited swap.
 
 **--pids-limit**=""
    Tune the container's pids limit. Set `-1` to have unlimited pids for the container.
+
+**--files-limit**=""
+   Tune the container's files limit. Set `-1` to have max files for the container.
 
 **--privileged**=*true*|*false*
    Give extended privileges to this container. The default is *false*.

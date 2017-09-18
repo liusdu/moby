@@ -92,6 +92,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		flIPv6Address       = cmd.String([]string{"-ip6"}, "", "Container IPv6 address (e.g. 2001:db8::33)")
 		flIpcMode           = cmd.String([]string{"-ipc"}, "", "IPC namespace to use")
 		flPidsLimit         = cmd.Int64([]string{"-pids-limit"}, 0, "Tune container pids limit (set -1 for unlimited)")
+		flFilesLimit        = cmd.Int64([]string{"-files-limit"}, 0, "Tune container open files limit")
 		flRestartPolicy     = cmd.String([]string{"-restart"}, "no", "Restart policy to apply when a container exits")
 		flReadonlyRootfs    = cmd.Bool([]string{"-read-only"}, false, "Mount the container's root filesystem as read only")
 		flLoggingDriver     = cmd.String([]string{"-log-driver"}, "", "Logging driver for container")
@@ -373,6 +374,7 @@ func Parse(cmd *flag.FlagSet, args []string) (*container.Config, *container.Host
 		CpusetMems:           *flCpusetMems,
 		CPUQuota:             *flCPUQuota,
 		PidsLimit:            *flPidsLimit,
+		FilesLimit:           *flFilesLimit,
 		BlkioWeight:          *flBlkioWeight,
 		BlkioWeightDevice:    flBlkioWeightDevice.GetList(),
 		BlkioDeviceReadBps:   flDeviceReadBps.GetList(),
