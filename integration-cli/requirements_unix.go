@@ -42,6 +42,12 @@ var (
 		},
 		"Test requires pids limit enabled.",
 	}
+	filesLimit = testRequirement{
+		func() bool {
+			return SysInfo.FilesLimit
+		},
+		"Test requires files limit enabled.",
+	}
 	hugetlbLimitSupport = testRequirement{
 		func() bool {
 			return SysInfo.HugetlbLimit

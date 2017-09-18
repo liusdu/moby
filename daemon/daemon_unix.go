@@ -437,6 +437,12 @@ func verifyContainerResources(resources *containertypes.Resources, sysInfo *sysi
 		resources.PidsLimit = 0
 	}
 
+	if resources.FilesLimit != 0 && !sysInfo.FilesLimit {
+		warnings = append(warnings, "Your kernel does not support files limit capabilities, files limit discarded.")
+		logrus.Warnf("Your kernel does not support files limit capabilities, files limit discarded.")
+		resources.FilesLimit = 0
+	}
+
 	// cpu subsystem checks and adjustments
 	if resources.CPUShares > 0 && !sysInfo.CPUShares {
 		warnings = append(warnings, "Your kernel does not support CPU shares. Shares discarded.")

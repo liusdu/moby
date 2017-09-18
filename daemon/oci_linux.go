@@ -69,6 +69,9 @@ func setResources(s *specs.Spec, r containertypes.Resources) error {
 		Pids: &specs.Pids{
 			Limit: &r.PidsLimit,
 		},
+		Files: &specs.Files{
+			Limit: &r.FilesLimit,
+		},
 		HugepageLimits: hpRes,
 	}
 

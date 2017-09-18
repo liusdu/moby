@@ -1252,6 +1252,18 @@ func (s *DockerSuite) TestRunPidsLimit(c *check.C) {
 	c.Assert(out, checker.Equals, "2", check.Commentf("setting the pids limit failed"))
 }
 
+// TestRunPidsLimit makes sure the pids cgroup is set with --files-limit
+func (s *DockerSuite) TestRunFilesLimit(c *check.C) {
+	testRequires(c, filesLimit)
+
+	file := "/sys/fs/cgroup/files/files.limit"
+	out, _ := dockerCmd(c, "run", "--name", "fileslimit", "--files-limit", "32", "busybox", "cat", file)
+	c.Assert(strings.TrimSpace(out), checker.Equals, "32")
+
+	out = inspectField(c, "fileslimit", "HostConfig.FilesLimit")
+	c.Assert(out, checker.Equals, "32", check.Commentf("setting the files limit failed"))
+}
+
 func (s *DockerSuite) TestRunPrivilegedAllowedDevices(c *check.C) {
 	testRequires(c, DaemonIsLinux, NotUserNamespace)
 

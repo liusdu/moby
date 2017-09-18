@@ -46,6 +46,7 @@ func New(quiet bool) *SysInfo {
 		sysInfo.cgroupBlkioInfo = checkCgroupBlkioInfo(cgMounts, quiet)
 		sysInfo.cgroupCpusetInfo = checkCgroupCpusetInfo(cgMounts, quiet)
 		sysInfo.cgroupPids = checkCgroupPids(quiet)
+		sysInfo.cgroupFiles = checkCgroupFiles(quiet)
 	}
 
 	_, ok := cgMounts["devices"]
@@ -259,6 +260,20 @@ func checkCgroupPids(quiet bool) cgroupPids {
 
 	return cgroupPids{
 		PidsLimit: true,
+	}
+}
+
+// checkCgroupPids reads the files information from the pids cgroup mount point.
+func checkCgroupFiles(quiet bool) cgroupFiles {
+	_, err := cgroups.FindCgroupMountpoint("files")
+	if err != nil {
+		if !quiet {
+			logrus.Warn(err)
+		}
+		return cgroupFiles{}
+	}
+	return cgroupFiles{
+		FilesLimit: true,
 	}
 }
 
