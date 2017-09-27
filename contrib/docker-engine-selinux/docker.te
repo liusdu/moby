@@ -10,7 +10,7 @@ policy_module(docker, 1.0.0)
 ## Allow sandbox containers manage fuse files
 ## </p>
 ## </desc>
-gen_tunable(virt_sandbox_use_fusefs, false)
+#gen_tunable(virt_sandbox_use_fusefs, false)
 
 ## <desc>
 ##  <p>
