@@ -75,6 +75,7 @@ install -m 0644 $MODULES %{buildroot}%{_datadir}/selinux/packages
 #
 # Install all modules in a single transaction
 #
+%{_sbindir}/semodule -r container > /dev/null 2> /dev/null
 if [ $1 -eq 1 ]; then
     %{_sbindir}/setsebool -P -N virt_use_nfs=1 virt_sandbox_use_all_caps=1
 fi
