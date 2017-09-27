@@ -1,5 +1,5 @@
 %global _version 1.11.2.47
-%global _release 0.0.20170928.005653.gitb148424
+%global _release 0.0.20170928.005653.gitd96bbe7
 %global _origversion 1.11.2
 
 Name: docker-engine
