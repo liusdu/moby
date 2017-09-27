@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.11.2.47 (2017-09-28)
+- remove redeclaration of virt_sandbox_use_fusefs and duplicated rule in docker.fc (mr 763 fix DTS2017092701176)
+
 ## v1.11.2.46 (2017-09-18)
 
 - Bump containerd and runc
