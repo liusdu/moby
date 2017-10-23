@@ -17,7 +17,7 @@ import (
 //export DevmapperLogCallback
 func DevmapperLogCallback(level C.int, file *C.char, line C.int, dmErrnoOrClass C.int, message *C.char) {
 	msg := C.GoString(message)
-	logrus.Debugf("Devicemapper: log: %s", msg)
+	logrus.Infof("Devicemapper: log: %s", msg)
 	if level < 7 {
 		if strings.Contains(msg, "busy") {
 			dmSawBusy = true
