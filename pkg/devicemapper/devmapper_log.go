@@ -6,6 +6,8 @@ import "C"
 
 import (
 	"strings"
+
+	"github.com/Sirupsen/logrus"
 )
 
 // Due to the way cgo works this has to be in a separate file, as devmapper.go has
@@ -15,6 +17,7 @@ import (
 //export DevmapperLogCallback
 func DevmapperLogCallback(level C.int, file *C.char, line C.int, dmErrnoOrClass C.int, message *C.char) {
 	msg := C.GoString(message)
+	logrus.Debugf("Devicemapper: log: %s", msg)
 	if level < 7 {
 		if strings.Contains(msg, "busy") {
 			dmSawBusy = true
@@ -26,6 +29,9 @@ func DevmapperLogCallback(level C.int, file *C.char, line C.int, dmErrnoOrClass 
 
 		if strings.Contains(msg, "No such device or address") {
 			dmSawEnxio = true
+		}
+		if strings.Contains(msg, "No data available") {
+			dmSawEnoData = true
 		}
 	}
 
