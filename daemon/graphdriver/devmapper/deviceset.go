@@ -2005,8 +2005,8 @@ func (devices *DeviceSet) deleteTransaction(info *devInfo, syncDelete bool) erro
 	if err != nil {
 		// If syncDelete is true, we want to return error. If deferred
 		// deletion is not enabled, we return an error. If error is
-		// something other then EBUSY, return an error.
-		if syncDelete || !devices.deferredDelete || err != devicemapper.ErrBusy {
+		// something other then EBUSY or ErrEnoData, return an error.
+		if syncDelete || !devices.deferredDelete || (err != devicemapper.ErrBusy && err != devicemapper.ErrEnoData) {
 			logrus.Debugf("devmapper: Error deleting device: %s", err)
 			return err
 		}
